@@ -14,4 +14,4 @@ kaggle.json
 wandb/
 *.engine
 *.onnx
-*.svo2
+*.svo2  
