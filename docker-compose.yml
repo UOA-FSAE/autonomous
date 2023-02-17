@@ -8,8 +8,15 @@ services:
       dockerfile: ./Dockerfile
     environment:
       - DISPLAY
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      
+      - ROS_DOMAIN_ID=47  # Its 47 for obvious reasons
     volumes:
       - .:/ws
+    network_mode: host
+    ipc: host
+    runtime: nvidia
     stdin_open: true
     tty: true
     
