@@ -20,7 +20,7 @@ set(msg_files
 )
 
 set(srv_files
-  "srv/CAN.srv"
+  "srv/CANSendReq.srv"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}
