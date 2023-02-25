@@ -32,7 +32,11 @@ class CANInterfaceJNano(Node):
         )
 
     def callback_publish_can_data(self, req, res):
-        pass
+        # TODO: need to probably rewrite the MCP2515 driver cuz there is litterly zero error checking
+        self.can.Send(req.can.data, 8)
+
+        res.sent = True
+        return res
 
     def callback_read_can_data(self):
         raw_can_data = self.can.Receive()  # Don't know how this data is read out.
