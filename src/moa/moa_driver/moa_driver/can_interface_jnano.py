@@ -12,6 +12,12 @@ class CANInterfaceJNano(Node):
         super().__init__("CAN_interface")
 
         self.can = MCP2515()
+        self.can.Init()
+
+        self.can_read_timer = self.create_timer(
+            0.05,  # TODO: Change to veriable or const
+            self.callback_read_can_data,
+        )
 
         self.publish_can = self.create_publisher(
             CANStamped,
@@ -28,14 +34,22 @@ class CANInterfaceJNano(Node):
     def callback_publish_can_data(self, req, res):
         pass
 
+    def callback_read_can_data(self):
+        raw_can_data = self.can.Receive()  # Don't know how this data is read out.
+        can_data = raw_can_data  # This needs to be changed so that it turns the raw data into Stamed can msgs
+
+        for can_frame in can_data:  # can_data is a list of can messages ready to be published
+            self.publish_can.publish(can_frame)
+
     
-def main():
-    rcply.init()
+def main(args=None):
+    rcply.init(args=args)
 
     can_interface = CANInterfaceJNano()
 
     rcply.spin(can_interface)
     
+    can_interface.destroy_node()
     rcply.shutdown()
 
 if __name__ == '__main__':
