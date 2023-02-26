@@ -32,8 +32,26 @@ class CANInterfaceJNano(Node):
         )
 
     def callback_publish_can_data(self, req, res):
+
+        # Checking to see if a can message is valid to send
+        # List of things that need checking
+        # * Is CAN ID able to fit in 11 bits
+        if req.can.id > 2047:
+            self.get_logger().error(f"Publish request for CAN failed: CAN_ID to large, {req.can.id} > 2047 / 11 bits")
+
+            res.sent = False
+            return res
+
         # TODO: need to probably rewrite the MCP2515 driver cuz there is litterly zero error checking
-        self.can.Send(req.can.data, 8)
+        try:
+            self.can.Send(req.can.data, 8)
+
+        except Exception as e:  # TODO: this needs to be changed so that it catches spesific errors and not just all of them.
+            self.get_logger().error(f"Publish request for CAN failed: Faild to send message for CAN ID {req.can.id}")
+            self.get_logger().error(f"Error log: {e}")
+
+            res.sent = False
+            return res
 
         res.sent = True
         return res
