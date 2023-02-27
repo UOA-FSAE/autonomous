@@ -49,9 +49,9 @@ class CANInterfaceJNano(Node):
             return res
 
 
-        # TODO: need to probably rewrite the MCP2515 driver cuz there is litterly zero error checking
+        # TODO: Need to full rewrite can driver as we can not set id or rtr of the can msg as well as no error checking :(
         try:
-            self.can.Send(req.can.data, 8)
+            self.can.Send(req.can.data, 8)  # TODO:This needs to be changed to include the id and is_rtr
 
         except Exception as e:  # TODO: this needs to be changed so that it catches spesific errors and not just all of them.
             self.get_logger().error(f"Publish request for CAN failed: Faild to send message for CAN msg, {req.can=}")
