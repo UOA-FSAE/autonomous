@@ -48,12 +48,13 @@ class CANInterfaceJNano(Node):
             res.sent = False
             return res
 
-
-        # TODO: Need to full rewrite can driver as we can not set id or rtr of the can msg as well as no error checking :(
+        # TODO: Need to full rewrite can driver as we can not set id or rtr of the can msg as well as no error
+        #  checking :(
         try:
             self.can.Send(req.can.data, 8)  # TODO:This needs to be changed to include the id and is_rtr
 
-        except Exception as e:  # TODO: this needs to be changed so that it catches spesific errors and not just all of them.
+        # TODO: this needs to be changed so that it catches spesific errors and not just all of them.
+        except Exception as e:
             self.get_logger().error(f"Publish request for CAN failed: Faild to send message for CAN msg, {req.can=}")
             self.get_logger().error(f"Error msg: {e}")
 
@@ -70,16 +71,17 @@ class CANInterfaceJNano(Node):
         for can_frame in can_data:  # can_data is a list of can messages ready to be published
             self.publish_can.publish(can_frame)
 
-    
+
 def main(args=None):
     rcply.init(args=args)
 
     can_interface = CANInterfaceJNano()
 
     rcply.spin(can_interface)
-    
+
     can_interface.destroy_node()
     rcply.shutdown()
+
 
 if __name__ == '__main__':
     main()
