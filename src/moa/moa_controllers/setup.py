@@ -13,13 +13,14 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='adam',
+    maintainer='Adam Keating',
     maintainer_email='adam.keating@fsae.co.nz',
-    description='TODO: Package description',
+    description='Converts stamped ackermann msg to CAN msg for motec to read',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'ack_mot_node = moa_controllers.ackermann_to_motec:main'
         ],
     },
 )
