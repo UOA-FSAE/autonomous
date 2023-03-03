@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>Converts stamped ackermann msg to CAN msg for motec to read</description>
   <maintainer email="adam.keating@fsae.co.nz">Adam Keating</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT</license>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
@@ -13,8 +13,10 @@
   <test_depend>python3-pytest</test_depend>
 
   <exec_depend>rclpy</exec_depend>
-  <exec_depend>AckermannDriveStamped</exec_depend>
-  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>ackermann_msgs</exec_depend>
+  <exec_depend>diagnosticmsgs</exec_depend>
+  <exec_depend>CANSendReq</exec_depend>
+
 
   <export>
     <build_type>ament_python</build_type>
