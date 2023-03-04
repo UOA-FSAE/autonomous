@@ -8,9 +8,9 @@ from ackermann_msgs import AckermannDriveStamped
 from diagnostic_msgs import DiagnosticStatus #maybe change to DiagnosticArray
 from moa_msgs import CANSendReq
 
-class ack_to_mot(Node):
+class ack_to_can(Node):
     def __init__(self):
-        super().__init__('ackermann_to_motec') #node name   
+        super().__init__('ackermann_to_can') #node name (NB: MoTec listens to this)
 
         #create subscriber for ackermann input
         self.subscription = self.create_subscription(
@@ -57,7 +57,7 @@ class ack_to_mot(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    node = ack_to_mot()
+    node = ack_to_can()
     rclpy.spin(node)
 
     node.destroy_node()
