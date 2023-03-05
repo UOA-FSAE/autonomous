@@ -21,7 +21,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'ack_to_can_node = moa_controllers.ackermann_to_motec:main'
+            'ack_to_can_node = moa_controllers.ackermann_to_can:main'
         ],
     },
 )

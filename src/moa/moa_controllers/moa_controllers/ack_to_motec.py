@@ -5,7 +5,7 @@ from ctypes import c_uint8
 import time
 
 from ackermann_msgs import AckermannDriveStamped
-from diagnostic_msgs import DiagnosticStatus #maybe change to DiagnosticArray
+from diagnostic_msgs import DiagnosticArray
 from moa_msgs import CANSendReq
 
 class ack_to_can(Node):
@@ -22,7 +22,7 @@ class ack_to_can(Node):
 
         #create publisher for diagnostics
         self.diagnostics = self.create_publisher(
-            DiagnosticStatus,          #msg type
+            DiagnosticArray,           #msg type
             "diagnostics",             #topic sent to
             10                         #qos
         )
@@ -34,25 +34,28 @@ class ack_to_can(Node):
         )
 
         #create server for CAN
-        self.server = self.create_service( #Unsure if needs to be server or client
+        self.can_client = self.create_client( #Unsure if needs to be server or client
             CANSendReq,
-            'CAN_SEND_SRV',
-            self.can_srv_callback
+            'CAN_SEND_SRV'  
         )
 
+        self.req = CANSendReq.Request()
 
     def listener_callback(self, msg): #TODO
+        '''
+        When receive message compute CAN message and submit async request to
+        CAN_SEND_SRV
+        '''
+        
         input = msg.data
         pass
         
-    def send_beat(): #TODO might need to be async process
-        pass
+    def send_request(self,a): #TODO
+        self.req.a = a
+        self.future = self.can_client.call_async(self.req)
+        rclpy.spin_until_future_complete(self,self.future)
+        return self.future.result()
 
-    def can_srv_callback(self, request, response): #TODO 
-        if request is not None:
-            response = True
-        return response
-        
 
 def main(args=None):
     rclpy.init(args=args)
