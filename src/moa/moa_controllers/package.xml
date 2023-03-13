@@ -14,8 +14,8 @@
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>ackermann_msgs</exec_depend>
-  <exec_depend>diagnosticmsgs</exec_depend>
   <exec_depend>moa_msgs</exec_depend>
+  <exec_depend>diagnostics</exec_depend>
 
 
   <export>

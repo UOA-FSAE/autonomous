@@ -5,7 +5,6 @@ from ctypes import c_uint8
 import time
 
 from ackermann_msgs import AckermannDriveStamped
-from diagnostic_msgs import DiagnosticArray
 from moa_msgs import CANSendReq
 
 class ack_to_can(Node):
@@ -39,7 +38,11 @@ class ack_to_can(Node):
             'CAN_SEND_SRV'  
         )
 
+        #wait for service connection then send request   
+        while not self.cli.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
         self.req = CANSendReq.Request()
+
 
     def listener_callback(self, msg): #TODO
         '''
