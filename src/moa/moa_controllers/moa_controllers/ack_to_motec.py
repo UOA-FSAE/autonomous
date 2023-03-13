@@ -52,12 +52,6 @@ class ack_to_can(Node):
         
         input = msg.data
         pass
-        
-    def send_request(self,a): #TODO
-        self.req.a = a
-        self.future = self.can_client.call_async(self.req)
-        rclpy.spin_until_future_complete(self,self.future)
-        return self.future.result()
 
 
 def main(args=None):
