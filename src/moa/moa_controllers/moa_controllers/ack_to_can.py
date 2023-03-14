@@ -33,12 +33,24 @@ class ack_to_can(Node):
     def listener_callback(self, msg): #TODO
         can_msg = CANStamped 
         
-        #unpack received msg     
-        self.get_logger().info(msg.data)
+        #unpack received Ackermann msg
+        can_msg.can.id = 56
+        can_msg.can.data = [
+            msg.drive.speed,
+            msg.drive.acceleration,
+            msg.drive.jerk,
+            msg.drive.steering_angle,
+            msg.drive.steering_angle_velocity,
+            0,
+            0,
+            0
+        ]
 
+        self.get_logger().info(msg.data)
 
         #sends CAN to topic
         self.can_pub.publish(can_msg)
+
 
 def main(args=None):
     rclpy.init(args=args)
