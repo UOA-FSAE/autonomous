@@ -17,7 +17,7 @@ services:
 
     volumes:
       - .:/ws
-      - /tmp/.X11-unix:/tmp/.X11-unix
+
 
     network_mode: host
     ipc: host
