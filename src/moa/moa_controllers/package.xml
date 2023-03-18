@@ -12,7 +12,12 @@
   <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
 
+  <!--Python Packages-->
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>ctypes</exec_depend>
+  <exec_depend>struct</exec_depend>
+
+  <!--ROS2 Message Types-->
   <exec_depend>ackermann_msgs</exec_depend>
   <exec_depend>moa_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
