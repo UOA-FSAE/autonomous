@@ -9,37 +9,38 @@ from ackermann_msgs.msg import AckermannDrive
 from moa_msgs.msg import CANStamped
 from std_msgs.msg import Header
 from builtin_interfaces.msg import Time
-import struct
 
-def float_to_bin(f):
-    hex_str = hex(struct.unpack('<I', struct.pack('<f', f))[0])
-    bin_str = bin(int(hex_str, 16))[2:].zfill(32)
-    return bin_str
+import numpy as np
+import zlib
 
-def twos_comp(num, no_bits):
-    #input is float32 for ackermann
-    if -(2**(no_bits-1)) <= num <= (2**(no_bits-1)-1):
-        return ~num #doesnt work for floats
+def compress_floats(values:np.ndarray):    
+    # Compute the differences between consecutive values
+    differences = np.diff(values)
+
+    # Compress the differences using zlib
+    compressed = zlib.compress(differences, level=9)
+
+    return compressed
+
+# def twos_comp(num, no_bits):
+#     #input is float32 for ackermann
+#     if -(2**(no_bits-1)) <= num <= (2**(no_bits-1)-1):
+#         return ~num #doesnt work for floats
 
 def ackermann_to_can_parser(ack_msg: AckermannDriveStamped) -> CANStamped:
-        can_msg = CANStamped 
-        
-        #unpack received Ackermann msg
-        can_msg.can.id = 56 #TODO need to change to dynamic
-        can_msg.can.data = [     
-            #if use c_uint8 it overflows e.g. 257 becomes 1
-        
+        ackermann_vals = np.array([
             ack_msg.drive.speed, #need to check between 0-256
             ack_msg.drive.acceleration, #need to check between 0-256
             ack_msg.drive.jerk, #need to check between 0-256
             ack_msg.drive.steering_angle, #can be negative
             ack_msg.drive.steering_angle_velocity, #can be negative
-            0,
-            0,
-            0
-        ]
+            ])
 
-        return can_msg
+        compressed_ack_vals = compress_floats(ackermann_vals)
+        data_packets = [compressed_ack_vals[i:i+1] for i in range(0, len(compressed_ack_vals), 1)]
+
+        
+        return data_packets
 
 
 class ack_to_can(Node):
@@ -62,8 +63,15 @@ class ack_to_can(Node):
         )
 
     def ack_to_can_publish_callback(self, ack_msg: AckermannDriveStamped):
-        can_msg: CANStamped = ackermann_to_can_parser(ack_msg)
-        self.can_pub.publish(can_msg)
+        can_data_packets = ackermann_to_can_parser(ack_msg)
+        
+        for i in range(0, len(can_data_packets), 8):
+            can_msg = CANStamped 
+
+            can_msg.can.id = 56 #TODO need to change to dynamic
+            can_msg.can.data = can_data_packets[i:i+8]
+
+            self.can_pub.publish(can_msg)
         
     
 def main(args=None):
