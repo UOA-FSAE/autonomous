@@ -1,4 +1,5 @@
 #/usr/bin/env python3
+from typing import Optional
 import rclpy
 from rclpy.node import Node
 from ctypes import c_uint8
@@ -12,6 +13,7 @@ from builtin_interfaces.msg import Time
 
 import numpy as np
 import zlib
+from math import pi
 
 '''
 For ackermann messages make assumptions to scale down bit size (eg steering angle less than 45 and acceleration less than 256)
@@ -30,19 +32,31 @@ def compress_floats(values:np.ndarray) -> bytes:
     return compressed
 
 
-def ackermann_to_can_parser(ack_msg: AckermannDriveStamped) -> option(CANStamped): #type for option optionalnull
+def ackermann_to_can_parser(ack_msg: AckermannDriveStamped) -> Optional[CANStamped]: #type for option optionalnull
         #pass check list
-        if 0>= ack_msg.drive.speed <= 120:
-             return None
+        if 0 < ack_msg.drive.speed > 120/3.6: #m/s   
+            return None
         
+        elif 0 < ack_msg.drive.acceleration > 256: #m/s^2
+            return None
+
+        elif 0 < ack_msg.drive.jerk: #m/s^3 
+            #not too fussed about assign 1 byte (minifloat)
+            return None
         
-        ackermann_vals = np.array([
-            ack_msg.drive.speed, #need to check between 0-256 km/h (functionally limited to 100-120) integer and round 
-            ack_msg.drive.acceleration, #need to check between 0-256 
-            ack_msg.drive.jerk, #need to check between 0-256 if dont need document that dont need and don't parse
-            ack_msg.drive.steering_angle, #can be negative (assume between +-45 degrees change to radians) make float16
-            ack_msg.drive.steering_angle_velocity, #can be negative between 0-1 (take 1 byte 8 bit minifloat)
-            ], dtype = np.float16)
+        elif -45*pi/180 < ack_msg.drive.steering_angle > 45*pi/180: #rads
+            return None
+        
+        elif ack_msg.drive.steering_angle_velocity: #rads/s
+            return None
+        
+        ackermann_vals = [
+            np.uint8(round(ack_msg.drive.speed)), #(functionally limited to 100-120km/h) integer and round 
+            np.uint8(round(ack_msg.drive.acceleration)), #need to check between 0-256 
+            np.uint8(ack_msg.drive.jerk*1000), #need to check between 0-256 if dont need document that dont need and don't parse
+            np.float16(ack_msg.drive.steering_angle), #can be negative (assume between +-45 degrees change to radians) make float16
+            np.uint8(ack_msg.drive.steering_angle_velocity*1000), #can be negative between 0-1 (take 1 byte 8 bit minifloat)
+            ]
 
         compressed_ack_vals = compress_floats(ackermann_vals)
         data_packets = [compressed_ack_vals[i:i+1] for i in range(0, len(compressed_ack_vals), 1)]
@@ -70,15 +84,12 @@ class ack_to_can(Node):
         )
 
     def ack_to_can_publish_callback(self, ack_msg: AckermannDriveStamped):
-        can_data_packets = ackermann_to_can_parser(ack_msg)
-        
-        for i in range(0, len(can_data_packets), 8):
-            can_msg = CANStamped 
+        can_msg = CANStamped 
 
-            can_msg.can.id = 56 #TODO need to change to dynamic
-            can_msg.can.data = can_data_packets[i:i+8]
+        can_msg.can.id = 56 #TODO need to change to dynamic
+        can_msg.can.data = ackermann_to_can_parser(ack_msg)
 
-            self.can_pub.publish(can_msg)
+        self.can_pub.publish(can_msg)
         
     
 def main(args=None):
