@@ -34,12 +34,11 @@ def ackermann_to_can_parser(ack_msg: AckermannDriveStamped) -> CANStamped:
             ack_msg.drive.jerk, #need to check between 0-256
             ack_msg.drive.steering_angle, #can be negative
             ack_msg.drive.steering_angle_velocity, #can be negative
-            ])
+            ], dtype = np.float16)
 
         compressed_ack_vals = compress_floats(ackermann_vals)
         data_packets = [compressed_ack_vals[i:i+1] for i in range(0, len(compressed_ack_vals), 1)]
 
-        
         return data_packets
 
 
