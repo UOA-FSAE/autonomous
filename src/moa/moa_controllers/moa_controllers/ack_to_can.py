@@ -2,7 +2,6 @@
 from typing import Optional
 import rclpy
 from rclpy.node import Node
-from ctypes import c_uint8
 import time
 
 from ackermann_msgs.msg import AckermannDriveStamped
@@ -15,12 +14,6 @@ import numpy as np
 import zlib
 from math import pi
 
-'''
-For ackermann messages make assumptions to scale down bit size (eg steering angle less than 45 and acceleration less than 256)
-
-Test if compression would work out well
-
-'''
 
 def compress_floats(values:np.ndarray) -> bytes:    
     # Compute the differences between consecutive values
@@ -33,7 +26,7 @@ def compress_floats(values:np.ndarray) -> bytes:
 
 
 def ackermann_to_can_parser(ack_msg: AckermannDriveStamped) -> Optional[CANStamped]: #type for option optionalnull
-        #pass check list
+        #checks before sending Ackermann
         if 0 < ack_msg.drive.speed > 120/3.6: #m/s   
             return None
         
@@ -44,12 +37,13 @@ def ackermann_to_can_parser(ack_msg: AckermannDriveStamped) -> Optional[CANStamp
             #not too fussed about assign 1 byte (minifloat)
             return None
         
-        elif -45*pi/180 < ack_msg.drive.steering_angle > 45*pi/180: #rads
+        elif -45*pi/180 < ack_msg.drive.steering_angle > 45*pi/180: #radians
             return None
         
-        elif ack_msg.drive.steering_angle_velocity: #rads/s
+        elif ack_msg.drive.steering_angle_velocity: #radians/s
             return None
         
+        #format values of Ackermann
         ackermann_vals = [
             np.uint8(round(ack_msg.drive.speed)), #(functionally limited to 100-120km/h) integer and round 
             np.uint8(round(ack_msg.drive.acceleration)), #need to check between 0-256 
@@ -58,7 +52,10 @@ def ackermann_to_can_parser(ack_msg: AckermannDriveStamped) -> Optional[CANStamp
             np.uint8(ack_msg.drive.steering_angle_velocity*1000), #can be negative between 0-1 (take 1 byte 8 bit minifloat)
             ]
 
+        #compress Ackermann values
         compressed_ack_vals = compress_floats(ackermann_vals)
+        
+        #separate compressed ackermann values to list of bytes for CAN
         data_packets = [compressed_ack_vals[i:i+1] for i in range(0, len(compressed_ack_vals), 1)]
 
         return data_packets
@@ -86,11 +83,19 @@ class ack_to_can(Node):
     def ack_to_can_publish_callback(self, ack_msg: AckermannDriveStamped):
         can_msg = CANStamped 
 
+        #configure header
+        can_header = Header()
+        can_header.stamp = self.get_clock().now()
+        can_header.frame_id = 'from ack_to_can node'
+
+        #set CAN header/data/id 
+        can_msg.header = can_header
         can_msg.can.id = 56 #TODO need to change to dynamic
         can_msg.can.data = ackermann_to_can_parser(ack_msg)
 
+        #publish CAN to topic
         self.can_pub.publish(can_msg)
-        
+        return
     
 def main(args=None):
     rclpy.init(args=args)
