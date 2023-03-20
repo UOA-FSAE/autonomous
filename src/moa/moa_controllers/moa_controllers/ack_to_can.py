@@ -13,7 +13,14 @@ from builtin_interfaces.msg import Time
 import numpy as np
 import zlib
 
-def compress_floats(values:np.ndarray):    
+'''
+For ackermann messages make assumptions to scale down bit size (eg steering angle less than 45 and acceleration less than 256)
+
+Test if compression would work out well
+
+'''
+
+def compress_floats(values:np.ndarray) -> bytes:    
     # Compute the differences between consecutive values
     differences = np.diff(values)
 
@@ -22,18 +29,19 @@ def compress_floats(values:np.ndarray):
 
     return compressed
 
-# def twos_comp(num, no_bits):
-#     #input is float32 for ackermann
-#     if -(2**(no_bits-1)) <= num <= (2**(no_bits-1)-1):
-#         return ~num #doesnt work for floats
 
-def ackermann_to_can_parser(ack_msg: AckermannDriveStamped) -> CANStamped:
+def ackermann_to_can_parser(ack_msg: AckermannDriveStamped) -> option(CANStamped): #type for option optionalnull
+        #pass check list
+        if 0>= ack_msg.drive.speed <= 120:
+             return None
+        
+        
         ackermann_vals = np.array([
-            ack_msg.drive.speed, #need to check between 0-256
-            ack_msg.drive.acceleration, #need to check between 0-256
-            ack_msg.drive.jerk, #need to check between 0-256
-            ack_msg.drive.steering_angle, #can be negative
-            ack_msg.drive.steering_angle_velocity, #can be negative
+            ack_msg.drive.speed, #need to check between 0-256 km/h (functionally limited to 100-120) integer and round 
+            ack_msg.drive.acceleration, #need to check between 0-256 
+            ack_msg.drive.jerk, #need to check between 0-256 if dont need document that dont need and don't parse
+            ack_msg.drive.steering_angle, #can be negative (assume between +-45 degrees change to radians) make float16
+            ack_msg.drive.steering_angle_velocity, #can be negative between 0-1 (take 1 byte 8 bit minifloat)
             ], dtype = np.float16)
 
         compressed_ack_vals = compress_floats(ackermann_vals)
