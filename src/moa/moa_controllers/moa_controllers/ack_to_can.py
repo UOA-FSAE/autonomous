@@ -25,22 +25,27 @@ def compress_floats(values:np.ndarray) -> bytes:
     return compressed
 
 
-def ackermann_to_can_parser(ack_msg: AckermannDriveStamped) -> Optional[CANStamped]: #type for option optionalnull
+def ackermann_to_can_parser(node: Node, ack_msg: AckermannDriveStamped) -> Optional[CANStamped]: #type for option optionalnull
         #checks before sending Ackermann
         if 0 < ack_msg.drive.speed > 120/3.6: #m/s   
+            node.get_logger().warn(f'ackermann drive SPEED out of bounds')
             return None
         
         elif 0 < ack_msg.drive.acceleration > 256: #m/s^2
+            node.get_logger().warn(f'ackermann drive ACCLERATION out of bounds')
             return None
 
         elif 0 < ack_msg.drive.jerk: #m/s^3 
             #not too fussed about assign 1 byte (minifloat)
+            node.get_logger().warn(f'ackermann drive JERK out of bounds')
             return None
         
         elif -45*pi/180 < ack_msg.drive.steering_angle > 45*pi/180: #radians
+            node.get_logger().warn(f'ackermann drive STEERING_ANGLE out of bounds')
             return None
         
         elif ack_msg.drive.steering_angle_velocity: #radians/s
+            node.get_logger().warn(f'ackermann drive STEERING_ANGLE_VELOCITY out of bounds')
             return None
         
         #format values of Ackermann
@@ -86,7 +91,7 @@ class ack_to_can(Node):
         #configure header
         can_header = Header()
         can_header.stamp = self.get_clock().now()
-        can_header.frame_id = 'from ack_to_can node'
+        can_header.frame_id = 'ackermann_to_can'
 
         #set CAN header/data/id 
         can_msg.header = can_header
