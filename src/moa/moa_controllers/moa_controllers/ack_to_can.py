@@ -44,7 +44,8 @@ def ackermann_to_can_parser(node: Node, ack_msg: AckermannDriveStamped) -> Optio
             node.get_logger().warn(f'ackermann drive STEERING_ANGLE out of bounds')
             return None
         
-        elif ack_msg.drive.steering_angle_velocity: #radians/s
+        elif 0 < ack_msg.drive.steering_angle_velocity < 1: #radians/s
+            #unsure of upper limit def dont need more than 1
             node.get_logger().warn(f'ackermann drive STEERING_ANGLE_VELOCITY out of bounds')
             return None
         
