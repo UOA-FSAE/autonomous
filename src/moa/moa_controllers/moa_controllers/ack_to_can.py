@@ -99,8 +99,10 @@ class ack_to_can(Node):
         can_msg.can.id = 56 #TODO need to change to dynamic
         can_msg.can.data = ackermann_to_can_parser(ack_msg)
 
-        #publish CAN to topic
-        self.can_pub.publish(can_msg)
+        if can_msg.can.data is not None:
+            #publish CAN to topic
+            self.can_pub.publish(can_msg)
+        
         return
     
 def main(args=None):
