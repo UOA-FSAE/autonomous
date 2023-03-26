@@ -27,24 +27,24 @@ def compress_floats(values:np.ndarray) -> bytes:
 
 def ackermann_to_can_parser(node: Node, ack_msg: AckermannDriveStamped) -> Optional[CANStamped]: #type for option optionalnull
         #checks before sending Ackermann
-        if 0 < ack_msg.drive.speed > 120/3.6: #m/s   
+        if 0 < {ack_msg.drive.speed} > 120/3.6: #m/s   
             node.get_logger().warn(f'ackermann drive SPEED out of bounds')
             return None
         
-        elif 0 < ack_msg.drive.acceleration > 256: #m/s^2
+        elif 0 < {ack_msg.drive.acceleration} > 256: #m/s^2
             node.get_logger().warn(f'ackermann drive ACCLERATION out of bounds')
             return None
 
-        elif 0 < ack_msg.drive.jerk: #m/s^3 
+        elif 0 < {ack_msg.drive.jerk}: #m/s^3 
             #not too fussed about assign 1 byte (minifloat)
             node.get_logger().warn(f'ackermann drive JERK out of bounds')
             return None
         
-        elif -45*pi/180 < ack_msg.drive.steering_angle > 45*pi/180: #radians
+        elif -45*pi/180 < {ack_msg.drive.steering_angle} > 45*pi/180: #radians
             node.get_logger().warn(f'ackermann drive STEERING_ANGLE out of bounds')
             return None
         
-        elif 0 < ack_msg.drive.steering_angle_velocity < 1: #radians/s
+        elif 0 < {ack_msg.drive.steering_angle_velocity} < 1: #radians/s
             #unsure of upper limit def dont need more than 1
             node.get_logger().warn(f'ackermann drive STEERING_ANGLE_VELOCITY out of bounds')
             return None
@@ -58,13 +58,13 @@ def ackermann_to_can_parser(node: Node, ack_msg: AckermannDriveStamped) -> Optio
             np.uint8(ack_msg.drive.steering_angle_velocity*1000), #can be negative between 0-1 (take 1 byte 8 bit minifloat)
             ]
 
-        #compress Ackermann values
-        compressed_ack_vals = compress_floats(ackermann_vals)
+        # #compress Ackermann values
+        # compressed_ack_vals = compress_floats(ackermann_vals)
         
-        #separate compressed ackermann values to list of bytes for CAN
-        data_packets = [compressed_ack_vals[i:i+1] for i in range(0, len(compressed_ack_vals), 1)]
+        # #separate compressed ackermann values to list of bytes for CAN
+        # data_packets = [compressed_ack_vals[i:i+1] for i in range(0, len(compressed_ack_vals), 1)]
 
-        return data_packets
+        return ackermann_vals
 
 
 class ack_to_can(Node):
