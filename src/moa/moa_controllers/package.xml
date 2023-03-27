@@ -15,7 +15,7 @@
   <!--Python Packages-->
   <exec_depend>rclpy</exec_depend>
   <exec_depend>numpy</exec_depend>
-  <exec_depend>zlib</exec_depend>
+  <!-- <exec_depend>zlib</exec_depend> -->
   <exec_depend>math</exec_depend>
 
   <!--ROS2 Message Types-->
