@@ -16,16 +16,18 @@ help: all
 ROS2_IMAGE_NAME = autonomous
 
 .PHONY: build
+# make build target=jetson
 build:
-	docker build -t $(ROS2_IMAGE_NAME) .
+	docker-compose -f ./docker-compose-macos.yml -p local_run build $(target)
 
-.PHONY: up
+.PHONY: upp
 upp:
-	docker-compose -f ./docker-compose.yml -p local_run run autonomous_ros2
+	docker-compose -f ./docker-compose.yml -p local_run run $(target)
 
+# different docker-compose file for macos
 .PHONY: up
 up:
-	docker-compose -f ./docker-compose_macos.yml -p local_run run autonomous_ros2
+	docker-compose -f ./docker-compose-macos.yml -p local_run run $(target)
 
 .PHONY: down
 down:

@@ -1,0 +1,44 @@
+version: '3.4'
+
+services:
+  autonomous_ros2:
+    platform: linux/amd64/v8
+    image: autonomous
+
+    build:
+      context: .
+      dockerfile: ./ros2_ws.Dockerfile
+
+    environment:
+      - DISPLAY
+      - ROS_DOMAIN_ID=47  # Its 47 for obvious reasons
+
+    volumes:
+      - .:/ws
+
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true
+
+
+  jetson:
+    platform: linux/amd64/v8
+    image: autonomous
+
+    build:
+      context: .
+      dockerfile: ./jetson.Dockerfile
+
+    environment:
+      - DISPLAY
+      - ROS_DOMAIN_ID=47  # Its 47 for obvious reasons
+
+    volumes:
+      - .:/ws
+
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true
+  # will need to add mroe services
