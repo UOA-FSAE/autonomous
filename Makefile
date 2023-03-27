@@ -20,8 +20,12 @@ build:
 	docker build -t $(ROS2_IMAGE_NAME) .
 
 .PHONY: up
-up:
+upp:
 	docker-compose -f ./docker-compose.yml -p local_run run autonomous_ros2
+
+.PHONY: up
+up:
+	docker-compose -f ./docker-compose_macos.yml -p local_run run autonomous_ros2
 
 .PHONY: down
 down:
