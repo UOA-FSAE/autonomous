@@ -1,6 +1,16 @@
 # autonomous
 
-## Setting up docker container:
+1. build a service (eg. jetson, autonomous_ros2)
+```
+make build target=jetson
+```
+
+2. run a service
+```
+make up target=jetson
+```
+
+## OLD instructions:
 
 1. Install docker desktop, if you install docker standalone (eg brew install docker) it might not come with the compose plugin.
     
