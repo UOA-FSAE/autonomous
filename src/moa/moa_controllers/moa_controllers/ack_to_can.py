@@ -46,24 +46,24 @@ class ack_to_can(Node):
 
     def ackermann_to_can_parser(self, ack_msg: AckermannDriveStamped) -> Optional[CANStamped]: #type for option optionalnull
         #checks before sending Ackermann
-        if 0 < {ack_msg.drive.speed} > 120/3.6: #m/s   
+        if 0 < ack_msg.drive.speed > 120/3.6: #m/s   
             self.get_logger().warn(f'ackermann drive SPEED out of bounds')
             return None
         
-        elif 0 < {ack_msg.drive.acceleration} > 256: #m/s^2
+        elif 0 < ack_msg.drive.acceleration > 256: #m/s^2
             self.get_logger().warn(f'ackermann drive ACCLERATION out of bounds')
             return None
 
-        elif 0 < {ack_msg.drive.jerk}: #m/s^3 
+        elif 0 < ack_msg.drive.jerk: #m/s^3 
             #not too fussed about assign 1 byte (minifloat)
             self.get_logger().warn(f'ackermann drive JERK out of bounds')
             return None
         
-        elif -45*pi/180 < {ack_msg.drive.steering_angle} > 45*pi/180: #radians
+        elif -45*pi/180 < ack_msg.drive.steering_angle > 45*pi/180: #radians
             self.get_logger().warn(f'ackermann drive STEERING_ANGLE out of bounds')
             return None
         
-        elif 0 < {ack_msg.drive.steering_angle_velocity} < 1: #radians/s
+        elif 0 < ack_msg.drive.steering_angle_velocity < 1: #radians/s
             #unsure of upper limit def dont need more than 1
             self.get_logger().warn(f'ackermann drive STEERING_ANGLE_VELOCITY out of bounds')
             return None
