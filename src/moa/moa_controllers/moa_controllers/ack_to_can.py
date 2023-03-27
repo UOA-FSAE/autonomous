@@ -69,12 +69,23 @@ class ack_to_can(Node):
             return None
         
         #format values of Ackermann
+        speed = np.uint8(round(ack_msg.drive.speed)) #(functionally limited to 100-120km/h) integer and round 
+        acceleration = np.uint8(round(ack_msg.drive.acceleration))
+        jerk = np.uint8(ack_msg.drive.jerk*1000)
+        steering_angle = np.float16(ack_msg.drive.steering_angle)
+        steering_angle_vel = np.uint8(ack_msg.drive.steering_angle_velocity*1000)
+        
+        #separator for steering_angle
+        sav_size = len(steering_angle_vel)
+
+        #Compose CAN data packet
         ackermann_vals = [
-            np.uint8(round(ack_msg.drive.speed)), #(functionally limited to 100-120km/h) integer and round 
-            np.uint8(round(ack_msg.drive.acceleration)), #need to check between 0-256 
-            np.uint8(ack_msg.drive.jerk*1000), #need to check between 0-256 if dont need document that dont need and don't parse
-            np.float16(ack_msg.drive.steering_angle), #can be negative (assume between +-45 degrees change to radians) make float16
-            np.uint8(ack_msg.drive.steering_angle_velocity*1000), #can be negative between 0-1 (take 1 byte 8 bit minifloat)
+            speed.tobytes(),
+            acceleration.tobytes(), 
+            jerk.tobytes(), 
+            steering_angle.tobytes()[:sav_size//2], 
+            steering_angle.tobytes()[sav_size//2:],
+            steering_angle_vel.tobytes(), 
             ]
 
         # #compress Ackermann values
