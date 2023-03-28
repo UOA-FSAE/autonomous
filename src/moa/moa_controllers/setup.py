@@ -15,8 +15,7 @@ setup(
     zip_safe=True,
     maintainer='Adam Keating',
     maintainer_email='adam.keating@fsae.co.nz',
-    description='Receives stamped ackermann msg from a topic and converts \
-        it to CAN msg for motec to read and publishes CAN msg to service',
+    description='Contains all the controllers for the car that integrate hardware and software',
     license='MIT',
     tests_require=['pytest'],
     entry_points={

@@ -3,13 +3,7 @@
 <package format="3">
   <name>moa_controllers</name>
   <version>0.0.0</version>
-  <description>Receives stamped ackermann msg from a topic and converts it to CAN msg for motec to read and publishes CAN msg to service</description>
-  moa drivers = drivers of the car (hardware side) 
-  moa msgs = default mesgs (custom msg files)
-  moa control = controllers (interface between software and hardware)
-  moa bringup = launch files
-  moa desc = robot description format
-  
+  <description>Contains all the controllers for the car that integrate hardware and software</description>
   
   <maintainer email="adam.keating@fsae.co.nz">Adam Keating</maintainer>
   <license>MIT</license>
