@@ -129,13 +129,10 @@ class ack_to_can(Node):
         can_msg = CANStamped()
 
         # configure header
-        can_header = Header()
-        can_header.stamp = self.get_clock().now()
-        can_header.frame_id = 'ackermann_to_can'
+        can_msg.header.frame_id = 'ackermann_to_can'
 
         # set CAN header/data/id 
-        can_msg.header = can_header
-        can_msg.can.id = 56 #TODO need to change to dynamic
+        can_msg.can.id = 25 #TODO need to change to dynamic (between 0-20 accumulator/inverter/brake sensor)
         can_msg.can.data = self.ackermann_to_can_parser(ack_msg)
 
         if can_msg.can.data is not None:
