@@ -18,5 +18,6 @@ RUN apt-get update && \
         python3-pip
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
-CMD [ "bash" ]
+
+CMD [ "ros2", "launch", "launch/demo_nodes_launch.py" ]
 
