@@ -73,25 +73,25 @@ class ack_to_can(Node):
         """
 
         # checks before sending Ackermann
-        if 0 > ack_msg.drive.speed > 120/3.6:  # m/s   
+        if 0 > ack_msg.drive.speed or ack_msg.drive.speed > 120/3.6:  # m/s   
             self.get_logger().warn('ackermann drive SPEED out of bounds')
             return None
 
-        elif 0 > ack_msg.drive.acceleration > 255:  # m/s^2
+        elif 0 > ack_msg.drive.acceleration or ack_msg.drive.acceleration > 255:  # m/s^2
             self.get_logger().warn('ackermann drive ACCLERATION out of bounds')
             return None
 
-        elif 0 > ack_msg.drive.jerk > 1:  # m/s^3 
+        elif 0 > ack_msg.drive.jerk or ack_msg.drive.jerk > 1:  # m/s^3 
             # unsure of upper limit
             # not too fussed about assign 1 byte 
             self.get_logger().warn('ackermann drive JERK out of bounds')
             return None
         
-        elif -45*pi/180 > ack_msg.drive.steering_angle > 45*pi/180:  # radians
+        elif -45*pi/180 > ack_msg.drive.steering_angle or ack_msg.drive.steering_angle > 45*pi/180:  # radians
             self.get_logger().warn('ackermann drive STEERING_ANGLE out of bounds')
             return None
 
-        elif 0 > ack_msg.drive.steering_angle_velocity > 1:  # radians/s
+        elif 0 > ack_msg.drive.steering_angle_velocity or ack_msg.drive.steering_angle_velocity > 1:  # radians/s
             # unsure of upper limit definitely dont need more than 1
             self.get_logger().warn('ackermann drive STEERING_ANGLE_VELOCITY out of bounds')
             return None
@@ -99,9 +99,9 @@ class ack_to_can(Node):
         # format values of Ackermann
         speed = round(ack_msg.drive.speed)
         acceleration = round(ack_msg.drive.acceleration)
-        jerk = round(ack_msg.drive.jerk*1000)
+        jerk = round(ack_msg.drive.jerk*100)
         steering_angle = np.float16(ack_msg.drive.steering_angle).tobytes()
-        steering_angle_vel = round(ack_msg.drive.steering_angle_velocity*1000)
+        steering_angle_vel = round(ack_msg.drive.steering_angle_velocity*100)
 
         # separator for steering_angle
         s_a_size = len(steering_angle)
@@ -111,8 +111,8 @@ class ack_to_can(Node):
             speed,
             acceleration,
             jerk,
-            steering_angle[:s_a_size//2],
-            steering_angle[s_a_size//2:],
+            int.from_bytes(steering_angle[:s_a_size//2], 'big'),
+            int.from_bytes(steering_angle[s_a_size//2:], 'big'),
             steering_angle_vel,
             ]
 
