@@ -97,24 +97,27 @@ class ack_to_can(Node):
             return None
 
         # format values of Ackermann
-        speed = round(ack_msg.drive.speed)
-        acceleration = round(ack_msg.drive.acceleration)
-        jerk = round(ack_msg.drive.jerk*100)
+        speed = ack_msg.drive.speed
+        acceleration = ack_msg.drive.acceleration
+        jerk = ack_msg.drive.jerk*100
         steering_angle = np.float16(ack_msg.drive.steering_angle).tobytes()
-        steering_angle_vel = round(ack_msg.drive.steering_angle_velocity*100)
+        steering_angle_vel = ack_msg.drive.steering_angle_velocity*100
 
         # separator for steering_angle
         s_a_size = len(steering_angle)
 
         # Compose CAN data packet
-        ackermann_vals = [
+        ackermann_vals = np.array([
             speed,
             acceleration,
             jerk,
             int.from_bytes(steering_angle[:s_a_size//2], 'big'),
             int.from_bytes(steering_angle[s_a_size//2:], 'big'),
             steering_angle_vel,
-            ]
+            0,
+            0], 
+            dtype=np.uint8
+            )
 
         # #compress Ackermann values
         # compressed_ack_vals = compress_floats(ackermann_vals)

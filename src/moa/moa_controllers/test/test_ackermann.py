@@ -58,16 +58,21 @@ def test_ackermann_to_can_parser_valid_values(node: ack_to_can):
     ack_msg.drive.steering_angle = np.pi/4 # radians
     ack_msg.drive.steering_angle_velocity = 0.5 # rad/s
     
-    expected_result = [
-        np.uint8(round(ack_msg.drive.speed)),
-        np.uint8(round(ack_msg.drive.acceleration)),
-        np.uint8(ack_msg.drive.jerk*100),
-        np.float16(ack_msg.drive.steering_angle),
-        np.uint8(ack_msg.drive.steering_angle_velocity*100),
-    ]
+    steering_angle = np.float16(ack_msg.drive.steering_angle).tobytes()
+    s_a_size = len(steering_angle)
+
+    expected_result = np.array([
+        ack_msg.drive.speed,
+        ack_msg.drive.acceleration,
+        ack_msg.drive.jerk*100,
+        int.from_bytes(steering_angle[:s_a_size//2], 'big'),
+        int.from_bytes(steering_angle[s_a_size//2:], 'big'),
+        ack_msg.drive.steering_angle_velocity*100,
+        0,
+        0], dtype=np.uint8)
     
     can_data = node.ackermann_to_can_parser(ack_msg) 
-    assert can_data == expected_result
+    assert np.all(can_data == expected_result)
 
 
 def test_ack_to_can_publish_callback(node: ack_to_can):
@@ -95,5 +100,19 @@ def test_ack_to_can_publish_callback(node: ack_to_can):
     args, kwargs = mock_publisher.publish.call_args
     published_msg = args[0]
 
-    assert published_msg.can.id == 56
-    assert published_msg.can.data == [10, 100, 100, 59, 204, 0]
+    
+    steering_angle = np.float16(ack_msg.drive.steering_angle).tobytes()
+    s_a_size = len(steering_angle)
+
+    expected_result = np.array([
+        ack_msg.drive.speed,
+        ack_msg.drive.acceleration,
+        ack_msg.drive.jerk*100,
+        int.from_bytes(steering_angle[:s_a_size//2], 'big'),
+        int.from_bytes(steering_angle[s_a_size//2:], 'big'),
+        ack_msg.drive.steering_angle_velocity*100,
+        0,
+        0], dtype=np.uint8)
+
+    assert published_msg.can.id == 25
+    assert np.all(published_msg.can.data == expected_result)
