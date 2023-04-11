@@ -6,6 +6,7 @@ from moa_msgs.srv import CANSendReq
 
 from .drivers.MCP2515 import MCP2515
 
+# TIMER_
 
 class CANInterfaceJNano(Node):
     def __init__(self) -> None:
@@ -15,7 +16,7 @@ class CANInterfaceJNano(Node):
         self.can.Init()
 
         self.can_read_timer = self.create_timer(
-            0.05,  # TODO: Change to veriable or const
+            0.05,  # TODO: Change to variable or const
             self.callback_read_can_data,
         )
 
@@ -53,9 +54,9 @@ class CANInterfaceJNano(Node):
         try:
             self.can.Send(req.can.data, 8)  # TODO:This needs to be changed to include the id and is_rtr
 
-        # TODO: this needs to be changed so that it catches spesific errors and not just all of them.
+        # TODO: this needs to be changed so that it catches specific errors and not just all of them.
         except Exception as e:
-            self.get_logger().error(f"Publish request for CAN failed: Faild to send message for CAN msg, {req.can=}")
+            self.get_logger().error(f"Publish request for CAN failed: Failed to send message for CAN msg, {req.can=}")
             self.get_logger().error(f"Error msg: {e}")
 
             res.sent = False
@@ -66,7 +67,7 @@ class CANInterfaceJNano(Node):
 
     def callback_read_can_data(self):
         raw_can_data = self.can.Receive()  # Don't know how this data is read out.
-        can_data = raw_can_data  # This needs to be changed so that it turns the raw data into Stamed can msgs
+        can_data = raw_can_data  # This needs to be changed so that it turns the raw data into Stamped can msgs
 
         for can_frame in can_data:  # can_data is a list of can messages ready to be published
             self.publish_can.publish(can_frame)
