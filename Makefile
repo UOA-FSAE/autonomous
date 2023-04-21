@@ -15,19 +15,30 @@ help: all
 
 ROS2_IMAGE_NAME = autonomous
 
+ifeq ($(OS),Windows_NT) 
+    detected_OS := Windows
+else
+    detected_OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
+endif
+
+# ifeq ($(detected_OS),Windows)
+#     echo 1
+# endif
+# ifeq ($(detected_OS),Darwin)        # Mac OS X
+#     @echo "hello"
+# endif
+# ifeq ($(detected_OS),Linux)
+#     echo 3
+# endif
+
 .PHONY: build
 # make build target=jetson
 build:
-	docker-compose -f ./docker-compose-macos.yml -p local_run build $(target)
+	docker-compose -f ./docker-compose-$(detected_OS).yml -p local_run build $(target)
 
 .PHONY: upp
-upp:
-	docker-compose -f ./docker-compose.yml -p local_run run $(target)
-
-# different docker-compose file for macos
-.PHONY: up
 up:
-	docker-compose -f ./docker-compose-macos.yml -p local_run run $(target)
+	docker-compose -f ./docker-compose-$(detected_OS).yml -p local_run run $(target)
 
 .PHONY: down
 down:
