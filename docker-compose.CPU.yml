@@ -1,0 +1,23 @@
+version: '3.4'
+
+services:
+  autonomous_ros2:
+    image: autonomous
+
+    build:
+      context: .
+      dockerfile: ./ros2_ws.Dockerfile
+
+    environment:
+      - DISPLAY
+      
+      - ROS_DOMAIN_ID=47  # Its 47 for obvious reasons
+
+    volumes:
+      - .:/ws
+
+
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true
