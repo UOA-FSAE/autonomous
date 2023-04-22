@@ -2,3 +2,10 @@
 build
 install
 log
+
+vs/CMakeWorkspaceSettings.json
+.vs/ProjectSettings.json
+.vs/VSWorkspaceState.json
+.vs/autonomous/FileContentIndex/read.lock
+.vs/autonomous/v17/.suo
+.vs/slnx.sqlite
