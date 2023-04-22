@@ -1,5 +1,4 @@
 SHELL = /bin/sh
-.DEFAULT_GOAL := help
 .SUFFIXES:
 .SILENT:
 
@@ -14,24 +13,11 @@ else
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH")))
 endif
 
-
-.PHONY:help
-help:
-	@echo "Available targets:"
-	@echo " init - initialise the container"
-	@echo " start - start the container"
-
-.PHONY: init
-init:
+.PHONY: build
+build:
 ifneq ($(findstring NVIDIA,$(GPU)),)
-	@echo GPU
-	$(shell docker compose -f docker-compose.GPU.yml -d)
+	docker compose -f docker-compose.GPU.yml up -d
 else
 	@echo CPU
-	$(shell docker compose -f docker-compose.CPU.yml -d)
+	docker compose -f docker-compose.CPU.yml -d
 endif
-
-
-.PHONY: start
-start:
-	docker compose -f docker-compose.CPU.yml up -d
