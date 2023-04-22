@@ -1,51 +1,37 @@
-.PHONY: OS_CHECK GPU_CHECK PREREQ_CHECK INIT start
-.SILENT: 
+SHELL = /bin/sh
+.DEFAULT_GOAL := help
+.SUFFIXES:
+.SILENT:
 
-OS_CHECK:
-    $(info Checking OS)
-    ifeq ($(OS),Windows_NT)
-        MACHINE = WIN32
-    else
-        UNAME_S := $(shell uname -s)
-        ifeq ($(UNAME_S),Linux)
-            MACHINE = LINUX
-        endif
-        ifeq ($(UNAME_S),Darwin)
-            MACHINE = OSX
-        endif
-    endif
-    $(info OS is $(MACHINE))
+PREREQS = docker docker-compose code
+ifeq ($(OS),Windows_NT)
+	GPU := $(shell wmic path win32_VideoController get name)
+	K := $(foreach exec,$(PREREQS),\
+        $(if $(shell where $(exec)),some string,$(error "No $(exec) in PATH")))
+else
+	GPU := lspci | grep -i 'vga\|3d\|2d'
+	K := $(foreach exec,$(PREREQS),\
+        $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH")))
+endif
 
 
-GPU_CHECK: OS_CHECK
-    $(info Checking presence of NVIDIA GPU)
-    ifeq ($(MACHINE),WIN32)
-        GPU := $(shell wmic path win32_VideoController get name)
-    else
-        GPU := $(shell lspci | grep -i 'vga\|3d\|2d')
-    endif
-    ifeq ($(findstring NVIDIA,$(GPU)),NVIDIA)
-        GPU := True
-    endif
-    $(info NVIDIA GPU found)
+.PHONY:help
+help:
+	@echo "Available targets:"
+	@echo " init - initialise the container"
+	@echo " start - start the container"
+
+.PHONY: init
+init:
+ifneq ($(findstring NVIDIA,$(GPU)),)
+	@echo GPU
+	$(shell docker compose -f docker-compose.GPU.yml -d)
+else
+	@echo CPU
+	$(shell docker compose -f docker-compose.CPU.yml -d)
+endif
 
 
-PREREQ_CHECK: OS_CHECK
-	PREREQS = docker  
-
-	PREREQ_INSTALLED = False
-
-
-INIT: $(GPU) PREREQ_INSTALLED
-	ifeq ($(PREREQ_INSTALLED),True)	
-		ifeq ($(GPU), True)
-			$(shell docker compose -f docker-compose.GPU.yml -d)
-		else
-			$(shell docker compose -f docker-compose.CPU.yml -d)
-		endif
-	endif
-
-	
+.PHONY: start
 start:
-	$(info Starting autonomous container)
-# $(shell docker compose -f docker-compose.CPU.yml up -d)
+	docker compose -f docker-compose.CPU.yml up -d
