@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Ellipse
+import math
 
 class car:
     # A virtual test bot on python that runs through the world to get dataset
@@ -23,6 +24,7 @@ class car:
     speed_unit = 0;
     angular_speed_unit = 0;
     t = 0;
+    recorded_data = [];
 
     def __init__(self, x, y, theta, speed_unit, angular_speed_unit):
         self.pos_x = x;
@@ -34,6 +36,7 @@ class car:
         self.speed_unit = speed_unit;
         self.angular_speed_unit = angular_speed_unit;
         self.t = 0;
+        self.recorded_data = [];
 
     #State getter
     def return_position(self):
@@ -66,20 +69,32 @@ class car:
         self.vel_y = 0;
 
     def detect(self, cones_in_global_frame):
-        pass
+        rotation_angle = self.theta - np.pi/2;
+        rotation_matrx = np.array([[np.cos(rotation_angle), np.sin(rotation_angle)],[-np.sin(rotation_angle), np.cos(rotation_angle)]]);
+        cones_in_car_frame_no_rotation = cones_in_global_frame - np.array([[self.pos_x],[self.pos_y]]);
+        cones_in_car_frame = np.matmul(rotation_matrx, cones_in_car_frame_no_rotation)
+        measured_cones_distance = [];
+        measured_cones_angle = [];
+        for i in range(0,cones_in_car_frame[0].size,1):
+            if cones_in_car_frame[1][i] > 0:
+                measured_cones_distance.append(math.sqrt(cones_in_car_frame[0][i] ** 2 + cones_in_car_frame[1][i] ** 2));
+                measured_cones_angle.append(math.tan(cones_in_car_frame[1][i]/cones_in_car_frame[0][i]) - np.pi/2);
+        self.recorded_data.append([self.t, measured_cones_distance, measured_cones_angle])
+        
+        return cones_in_car_frame
+
+    def return_recorded_data(self):
+        return self.recorded_data;
+
 
 def cone_arrangement_generation(number_of_cones, left_boundary, right_boundary, top_boundary, bottom_boundary):
-    cone_list = [];
     x_list = np.random.uniform(left_boundary, right_boundary, size=number_of_cones)
     y_list = np.random.uniform(bottom_boundary, top_boundary, size=number_of_cones)
-    for n in range(0,number_of_cones,1):
-        x = x_list[n];
-        y = y_list[n];
-        cone_list.append(np.array([x,y]));
+    cone_list = np.array([x_list,y_list]);
 
     return cone_list, x_list, y_list;
 
-def time_lapsing(graph_arrow, car, time, animation_scale):
+def time_lapsing(graph_arrow, cone_detected_plot, car, time, animation_scale, cones_in_global):
     for i in range(0, time * 100, 1):
         car.time_lapsing(0.01);
         new_x = CAR.return_position()[0]
@@ -88,45 +103,54 @@ def time_lapsing(graph_arrow, car, time, animation_scale):
         new_dx = 1 * np.cos(new_theta);
         new_dy = 1 * np.sin(new_theta);
         graph_arrow.set_data(x = new_x, y = new_y, dx = new_dx, dy = new_dy)
-        plt.draw()
-        plt.pause(0.01 / animation_scale)
 
+        #Change graphs for cones under car's reference frame
+        detected_cone = car.detect(cones_in_global)
+
+        plt.draw()
+        plt.pause(0.01 / animation_scale) 
+
+def DCM(theta):
+    return np.array([[np.cos(theta), np.sin(theta)],[-np.sin(theta), np.cos(theta)]]);
 #
 # Main code below:
 #
 
 # Initialize world and car 
-CAR = car(0,0,0,1,np.pi/180);  #It is setted such that for each second, the rotation is one degree, and the translation is one unit
+CAR = car(5,0,0,1,np.pi/180);  #It is setted such that for each second, the rotation is one degree, and the translation is one unit
 left_boundary = 0;
 right_boundary = 100;
 top_boundary = 100;
 bottom_boundary = 0;
-number_of_cones  = 10;
+number_of_cones  = 5;
 cone_list, real_cone_x, real_cone_y = cone_arrangement_generation(number_of_cones, left_boundary, right_boundary, top_boundary, bottom_boundary);
+
 animation_scale = 1;     #animation scale: the animation speed is animation_scale x real time
 # Define landmarks
 
 # create figure and axis
 fig, ax = plt.subplots()
+fig2, ax2 = plt.subplots()
 
 # set axis limits
 ax.set_xlim([left_boundary, right_boundary])
 ax.set_ylim([bottom_boundary, top_boundary])
-
+ax.axis('equal')
+ax2.set_xlim([-100, 100])
+ax2.set_ylim([-100, 100])
+ax2.axis('equal')
 # plot initial point
-cart_symbol = ax.arrow(0, 0, 1, 0, head_width=0.1, head_length=0.1, fc='k', ec='k')
+cart_symbol = ax.arrow(0, 0, 1, 0, head_width=1, head_length=1, fc='k', ec='k')
 #point, = ax.plot(0, 0, marker='o', color='blue')
-ax.scatter(real_cone_x, real_cone_y, marker="x")
+ax.scatter(cone_list[0], cone_list[1], marker="x")
+initial_detected_cone = CAR.detect(cone_list);
+point_detected_cones = ax2.plot(initial_detected_cone[0], initial_detected_cone[1], marker="X", linestyle = 'None')
 
 # List of explicit command provided by t and command
-CAR.change_rotation(45);
-time_lapsing(cart_symbol, CAR, 1, animation_scale);
+
+#CAR.change_rotation(45);
 CAR.change_translation(10);
-time_lapsing(cart_symbol, CAR, 5, animation_scale);
-CAR.change_rotation(-45);
-time_lapsing(cart_symbol, CAR, 1, animation_scale);
-CAR.change_translation(10);
-time_lapsing(cart_symbol, CAR, 2, animation_scale);
+time_lapsing(cart_symbol, point_detected_cones, CAR, 1, animation_scale, cone_list);
 
 # show plot
 plt.show()
