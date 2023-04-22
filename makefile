@@ -16,8 +16,9 @@ endif
 .PHONY: build
 build:
 ifneq ($(findstring NVIDIA,$(GPU)),)
+	@echo using GPU container
 	docker compose -f docker-compose.GPU.yml up -d
 else
-	@echo CPU
+	@echo using CPU container
 	docker compose -f docker-compose.CPU.yml -d
 endif
