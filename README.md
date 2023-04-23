@@ -16,8 +16,9 @@
 5. select autonomous container
 
 ### Dev environment usage
-Once installed can access dev container from the remote explorer dev containers tab
+After first time setup can access dev container from the remote explorer dev containers tab
 1. click attach to container button (next to container name)
 
-### Common Issues
-- if have integrated graphics or more than 1 GPU may need to specify the id
+### Known Issues
+- sometimes won't detect dedicated graphics if also have integrated graphics
+  - just use the command ````docker compose -f docker-compose.CPU.yml up -d```` when in autonomous directory to initialise container
