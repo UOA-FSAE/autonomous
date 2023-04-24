@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Ellipse
 import math
+from datetime import date
 
 class car:
     # A virtual test bot on python that runs through the world to get dataset
@@ -24,9 +25,10 @@ class car:
     speed_unit = 0;
     angular_speed_unit = 0;
     t = 0;
+    sensing_range = 0;
     recorded_data = [];
 
-    def __init__(self, x, y, theta, speed_unit, angular_speed_unit):
+    def __init__(self, x, y, theta, speed_unit, angular_speed_unit, sensing_range):
         self.pos_x = x;
         self.pos_y = y;
         self.theta = theta;
@@ -37,6 +39,7 @@ class car:
         self.angular_speed_unit = angular_speed_unit;
         self.t = 0;
         self.recorded_data = [];
+        self.sensing_range = sensing_range
 
     #State getter
     def return_position(self):
@@ -52,7 +55,7 @@ class car:
         self.pos_y = self.vel_y * delta_t + self.pos_y;
         self.theta = self.theta_dot * delta_t + self.theta;
         self.t = delta_t + self.t;
-        print("State at t =", self.t, ":", self.pos_x, "unit", ",", self.pos_y, "unit", ",", self.theta * 180 / np.pi, "degree")
+        #print("State at t =", self.t, ":", self.pos_x, "unit", ",", self.pos_y, "unit", ",", self.theta * 180 / np.pi, "degree")
 
     def change_rotation(self, speed):  #Change rotation speed of the cart
         self.stop();
@@ -76,10 +79,10 @@ class car:
         measured_cones_distance = [];
         measured_cones_angle = [];
         for i in range(0,cones_in_car_frame[0].size,1):
-            if cones_in_car_frame[1][i] > 0:
+            if (cones_in_car_frame[1][i] > 0) and (math.sqrt(cones_in_car_frame[0][i] ** 2 + cones_in_car_frame[1][i] ** 2) < self.sensing_range):
                 measured_cones_distance.append(math.sqrt(cones_in_car_frame[0][i] ** 2 + cones_in_car_frame[1][i] ** 2));
                 measured_cones_angle.append(math.tan(cones_in_car_frame[1][i]/cones_in_car_frame[0][i]) - np.pi/2);
-        self.recorded_data.append([self.t, measured_cones_distance, measured_cones_angle])
+        self.recorded_data.append([self.t, measured_cones_distance, measured_cones_angle, self.return_position()[0], self.return_position()[1], self.return_position()[2]])
         
         return cones_in_car_frame
 
@@ -94,7 +97,7 @@ def cone_arrangement_generation(number_of_cones, left_boundary, right_boundary, 
 
     return cone_list, x_list, y_list;
 
-def time_lapsing(graph_arrow, cone_detected_plot, car, time, animation_scale, cones_in_global):
+def time_lapsing(graph_arrow, point_detected_cones, car, time, animation_scale, cones_in_global):
     for i in range(0, time * 100, 1):
         car.time_lapsing(0.01);
         new_x = CAR.return_position()[0]
@@ -106,7 +109,8 @@ def time_lapsing(graph_arrow, cone_detected_plot, car, time, animation_scale, co
 
         #Change graphs for cones under car's reference frame
         detected_cone = car.detect(cones_in_global)
-
+        point_detected_cones = ax2.plot(detected_cone[0], detected_cone[1], marker="o", linestyle = 'None')
+        
         plt.draw()
         plt.pause(0.01 / animation_scale) 
 
@@ -116,14 +120,30 @@ def DCM(theta):
 # Main code below:
 #
 
+# Set file name for saving rosbag data
+file_name = "test-data-5-cones.txt"
+test_data_output_string = ""
+
+# Clearing a file
+decimal_place = 4;
+
+head_for_cone_list = "List of cones" + "\n" + "x, y\n"
+head_for_sensor_data = "List of real time data" + "\n" + "t, x, y, theta, (distance(unit), theta(rad)) lists\n"
+
 # Initialize world and car 
-CAR = car(5,0,0,1,np.pi/180);  #It is setted such that for each second, the rotation is one degree, and the translation is one unit
+CAR = car(5,0,0,1,np.pi/180,100);  #It is setted such that for each second, the rotation is one degree, and the translation is one unit
 left_boundary = 0;
 right_boundary = 100;
 top_boundary = 100;
 bottom_boundary = 0;
 number_of_cones  = 5;
 cone_list, real_cone_x, real_cone_y = cone_arrangement_generation(number_of_cones, left_boundary, right_boundary, top_boundary, bottom_boundary);
+
+# Write existing cone into the file
+test_data_output_string = test_data_output_string + head_for_cone_list
+for index in range(0,len(real_cone_x),1):
+    append_string = str(round(real_cone_x[index],decimal_place)) + "," + str(round(real_cone_y[index],decimal_place)) + "\n";
+    test_data_output_string = test_data_output_string + append_string
 
 animation_scale = 1;     #animation scale: the animation speed is animation_scale x real time
 # Define landmarks
@@ -136,21 +156,58 @@ fig2, ax2 = plt.subplots()
 ax.set_xlim([left_boundary, right_boundary])
 ax.set_ylim([bottom_boundary, top_boundary])
 ax.axis('equal')
+ax.set_title("Car motion in the world")
+ax.set_xlabel('x (unit)')
+ax.set_ylabel('y (unit)')
+
 ax2.set_xlim([-100, 100])
 ax2.set_ylim([-100, 100])
 ax2.axis('equal')
-# plot initial point
+ax2.set_title("Sensed cone data in space")
+ax2.set_xlabel('sideway direction (unit)')
+ax2.set_ylabel('frontal direction (unit)')
+
 cart_symbol = ax.arrow(0, 0, 1, 0, head_width=1, head_length=1, fc='k', ec='k')
-#point, = ax.plot(0, 0, marker='o', color='blue')
 ax.scatter(cone_list[0], cone_list[1], marker="x")
 initial_detected_cone = CAR.detect(cone_list);
 point_detected_cones = ax2.plot(initial_detected_cone[0], initial_detected_cone[1], marker="X", linestyle = 'None')
 
 # List of explicit command provided by t and command
-
-#CAR.change_rotation(45);
+# Car instructions
+##
 CAR.change_translation(10);
 time_lapsing(cart_symbol, point_detected_cones, CAR, 1, animation_scale, cone_list);
+CAR.change_rotation(45);
+time_lapsing(cart_symbol, point_detected_cones, CAR, 1, animation_scale, cone_list);
+CAR.change_translation(10);
+time_lapsing(cart_symbol, point_detected_cones, CAR, 10, animation_scale, cone_list);
+##
+##
+##
+
+# Record all sensor data in format
+test_data_output_string = test_data_output_string + head_for_sensor_data
+
+sensor_data = CAR.return_recorded_data();
+for index in range(0, len(sensor_data), 1):
+    append_string = str(round(sensor_data[index][0], decimal_place)) +  ","  + str(round(sensor_data[index][3], decimal_place)) +  ","  + str(round(sensor_data[index][4], decimal_place)) + "," + str(round(sensor_data[index][5], decimal_place)) + ","  
+    for sensor_index in range(0, len(sensor_data[index][1]), 1):
+        append_string = append_string + "(" + str(round(sensor_data[index][1][sensor_index], decimal_place)) + "," + str(round(sensor_data[index][2][sensor_index], decimal_place)) + ")"
+        if not(sensor_index == (len(sensor_data[index][1]) - 1)):
+            append_string = append_string + ","
+    append_string = append_string + "\n"
+    test_data_output_string = test_data_output_string + append_string
+    append_string = ""
+
+test_data_output_string = test_data_output_string + "end\n"
+print(test_data_output_string)
+
+# Write output string to file
+text_file_output = open(file_name, mode = "w", buffering = -1);
+text_file_output.write(test_data_output_string);
+text_file_output.close()
+
+fig
 
 # show plot
 plt.show()
