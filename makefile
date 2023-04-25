@@ -6,28 +6,31 @@ ifeq ($(OS),Windows_NT)
 SHELL := C:/Program Files/Git/bin/bash.exe
 PREREQS = docker docker-compose code
 GPU := wmic path win32_VideoController get name | findstr "NVIDIA"
+	ifneq ($(findstring NVIDIA, $(GPU)),)
+GPU_ID := $(shell nvidia-smi --query-gpu=index --format=csv,noheader | findstr "^[0-9]")
+	endif
 K := $(foreach exec,$(PREREQS),\
 	$(if $(shell where $(exec)),some string,$(error "No $(exec) in PATH")))
 pwd := $(strip $(shell cd))
 else
 PREREQS = docker compose code
 GPU := lspci | grep -i 'vga\|3d\|2d'
+	
+	ifneq ($(findstring NVIDIA, $(GPU)),)
+GPU_ID := $(shell nvidia-smi --list-gpus | grep -oP '(\d+)' | head -1)
+	endif
+
 K := $(foreach exec,$(PREREQS),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH")))
 endif
 
-
 .PHONY: build
 build:
 	docker build -t autonomous_test . -f ros2_ws.Dockerfile
-ifneq ($(findstring NVIDIA, $(GPU)),)
-	ifeq ($(OS),Windows_NT)
-GPU_ID := $(shell nvidia-smi --query-gpu=index --format=csv,noheader | findstr "^[0-9]")
-	else
-GPU_ID := $(shell nvidia-smi --list-gpus | grep -oP '(\d+)' | head -1)
-	endif
 
+ifneq ($(findstring NVIDIA, $(GPU)),)
 	@echo using GPU container
+
 	docker run -d \
 	--gpus all \
 	--env DISPLAY \
@@ -43,8 +46,8 @@ GPU_ID := $(shell nvidia-smi --list-gpus | grep -oP '(\d+)' | head -1)
 	/bin/bash
 
 else
-
 	@echo using CPU container
+
 	docker run -d \
 	--env DISPLAY \
 	--env ROS_DOMAIN_ID=47 \
