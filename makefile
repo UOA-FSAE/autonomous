@@ -1,5 +1,5 @@
 .SUFFIXES:
-# .SILENT:
+.SILENT:
 
 
 ifeq ($(OS),Windows_NT)
@@ -25,7 +25,7 @@ endif
 
 .PHONY: build
 build: $(pwd)
-	docker build -t autonomous_test . -f ros2_ws.Dockerfile
+	docker build -t autonomous_img . -f ros2_ws.Dockerfile
 ifneq ($(strip $(GPU)),)
 	$(info using GPU container)
 
@@ -40,7 +40,8 @@ ifneq ($(strip $(GPU)),)
 	--ipc host \
 	--interactive \
 	--tty \
-	autonomous_test \
+	--name autonomous \
+	autonomous_img \
 	/bin/bash
 
 else
@@ -54,6 +55,7 @@ else
 	--ipc host \
 	--interactive \
 	--tty \
-	autonomous_test \
+	--name autonomous \
+	autonomous_img \
 	/bin/bash
 endif
