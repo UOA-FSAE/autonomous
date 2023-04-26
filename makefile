@@ -14,9 +14,8 @@ K := $(foreach exec,$(PREREQS),\
 pwd := $(strip $(shell cd))
 else
 PREREQS = docker compose code
-GPU := lspci | grep -i 'vga\|3d\|2d'
-	
-	ifneq ($(findstring NVIDIA, $(GPU)),)
+GPU := $(shell lspci | grep -i "NVIDIA")
+	ifneq ($(strip $(GPU)),)
 GPU_ID := $(shell nvidia-smi --list-gpus | grep -oP '(\d+)' | head -1)
 	endif
 
