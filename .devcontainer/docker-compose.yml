@@ -10,7 +10,7 @@ services:
 
     environment:
       - DISPLAY
-      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=all
       
       - ROS_DOMAIN_ID=47  # Its 47 for obvious reasons

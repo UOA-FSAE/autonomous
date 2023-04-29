@@ -13,11 +13,15 @@
 1. clone repo using ```git clone https://github.com/UOA-FSAE/autonomous.git```
 2. cd into repo
 3. run ```make build```
-   - use cmd if on windows
-4. in VS Code under the Ctrl+Shift+P menu run ```>Dev Containers: attach running container to```
-5. select autonomous container
+   - use git bash if on windows
+4. in VS Code under the Ctrl+Shift+P menu run ```Dev Containers: Rebuild and Reopen in Container```
+- or if prompted click reopen in container from popup
 
-### Dev environment usage
-After first time setup can access dev container from the remote explorer dev containers tab
-1. click attach to container button (next to container name)
+### Normal usage
+##### Method 1
+1. Go to remote explorer
+2. Click icon next to autonomous devcontainer (open folder in container)
 
+##### Method 2
+1. in VS Code under the Ctrl+Shift+P menu run ```Dev Containers: Rebuild and Reopen in Container``
+   - with folder open in vscode

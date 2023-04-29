@@ -6,7 +6,7 @@ services:
 
     build:
       context: .
-      dockerfile: ./ros2_ws.Dockerfile
+      dockerfile: ../ros2_ws.Dockerfile
 
     environment:
       - DISPLAY
@@ -14,7 +14,7 @@ services:
       - ROS_DOMAIN_ID=47  # Its 47 for obvious reasons
 
     volumes:
-      - .:/ws
+      - ..:/ws
 
 
     network_mode: host

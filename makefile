@@ -3,7 +3,6 @@
 
 
 ifeq ($(OS),Windows_NT)
-SHELL := C:\Program Files\Git\usr\bin\bash.exe
 PREREQS = docker docker-compose code
 GPU := $(shell wmic path win32_VideoController get name | findstr "NVIDIA")
 	ifneq ($(strip $(GPU)),)
@@ -25,37 +24,40 @@ endif
 
 .PHONY: build
 build: $(pwd)
-	docker build -t autonomous_img . -f ros2_ws.Dockerfile
+#	docker build -t autonomous_img . -f ros2_ws.Dockerfile
 ifneq ($(strip $(GPU)),)
 	$(info using GPU container)
-
-	docker run -d \
-	--gpus all \
-	--env DISPLAY \
-	--env NVIDIA_VISIBLE_DEVICES=$(GPU_ID) \
-	--env NVIDIA_DRIVER_CAPABILITIES=all \
-	--env ROS_DOMAIN_ID=47 \
-	--volume $(pwd):/ws \
-	--network host \
-	--ipc host \
-	--interactive \
-	--tty \
-	--name autonomous \
-	autonomous_img \
-	/bin/bash
+	cp docker-compose.GPU.yml docker-compose.yml
+	sed -i 's/NVIDIA_VISIBLE_DEVICES=.*/NVIDIA_VISIBLE_DEVICES=0/g' docker-compose.yml
+	mv docker-compose.yml .devcontainer
+#	docker run -d \
+#	--gpus all \
+#	--env DISPLAY \
+#	--env NVIDIA_VISIBLE_DEVICES=$(GPU_ID) \
+#	--env NVIDIA_DRIVER_CAPABILITIES=all \
+#	--env ROS_DOMAIN_ID=47 \
+#	--volume $(pwd):/ws \
+#	--network host \
+#	--ipc host \
+#	--interactive \
+#	--tty \
+#	--name autonomous \
+#	autonomous_img \
+#	/bin/bash
 
 else
 	$(info using CPU container)
-
-	docker run -d \
-	--env DISPLAY \
-	--env ROS_DOMAIN_ID=47 \
-	--volume $(pwd):/ws \
-	--network host \
-	--ipc host \
-	--interactive \
-	--tty \
-	--name autonomous \
-	autonomous_img \
-	/bin/bash
+	cp docker-compose.CPU.yml .devcontainer/docker-compose.yml
+# 	docker run -d \
+# 	--env DISPLAY \
+# 	--env ROS_DOMAIN_ID=47 \
+# 	--volume $(pwd):/ws \
+# 	--network host \
+# 	--ipc host \
+# 	--interactive \
+# 	--tty \
+# 	--name autonomous \
+# 	autonomous_img \
+# 	/bin/bash
 endif
+	code .
