@@ -15,7 +15,7 @@
 3. run ```make build```
    - use git bash if on windows
 4. in VS Code under the Ctrl+Shift+P menu run ```Dev Containers: Rebuild and Reopen in Container```
-- or if prompted click reopen in container from popup
+   - or if prompted click reopen in container from popup
 
 ### Normal usage
 #### Method 1
