@@ -18,10 +18,10 @@
 - or if prompted click reopen in container from popup
 
 ### Normal usage
-##### Method 1
+#### Method 1
 1. Go to remote explorer
 2. Click icon next to autonomous devcontainer (open folder in container)
 
-##### Method 2
+#### Method 2
 1. in VS Code under the Ctrl+Shift+P menu run ```Dev Containers: Rebuild and Reopen in Container``
    - with folder open in vscode
