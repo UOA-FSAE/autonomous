@@ -14,7 +14,7 @@
 2. cd into repo
 3. run ```make build```
    - use git bash if on windows
-4. in VS Code under the Ctrl+Shift+P menu run ```Dev Containers: Rebuild and Reopen in Container```
+4. in VS Code under the Ctrl+Shift+P menu run ```Dev Containers: Rebuild and Reopen in Container``` or run ```make start```
    - or if prompted click reopen in container from popup
 
 ### Normal usage
