@@ -12,6 +12,7 @@ K := $(foreach exec,$(PREREQS),\
 	$(if $(shell where $(exec)),some string,$(error "No $(exec) in PATH")))
 pwd := $(strip $(shell cd))
 else
+
 PREREQS = docker compose code
 GPU := $(shell lspci | grep -i "NVIDIA")
 	ifneq ($(strip $(GPU)),)
@@ -60,4 +61,8 @@ else
 # 	autonomous_img \
 # 	/bin/bash
 endif
-	code .
+
+
+.PHONY: start
+start: build
+	docker compose -f .devcontainer/docker-compose.yml up -d
