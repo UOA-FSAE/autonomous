@@ -1,4 +1,4 @@
-# autonomous
+# UOA FSAE - autonomous
 
 ## Dev environment
 ### Prerequisites
@@ -30,3 +30,7 @@
 1. Go to remote explorer
 2. Change to GitHub Codespaces tab
 3. Click connect to codespace icon next to desired codespace
+
+## Ros2
+### Running commands
+- use ```ros2 <command>```
