@@ -5,6 +5,7 @@
 	"service": "autonomous_ros2",
 	"shutdownAction": "none",
 
+	"postCreateCommand": "pip install -r requirements.txt",
 
 	"workspaceFolder": "/ws",
 	"customizations": {
