@@ -3,12 +3,15 @@
 ## Dev environment
 ### Prerequisites
 - GNUmake
-  - can install on windows using [chocolatey](https://chocolatey.org/install#generic)
+  - install on windows using [chocolatey](https://chocolatey.org/install#generic)
+   - install on mac using homebrew ```brew install make```
+   - install on linux using apt ```apt install make```
 - VS code
   - [Remote Development Extension Pack](https://vscode.dev/github/UOA-FSAE/autonomous/blob/c73088e44093aeaae48ef29d6cef836453db4acfcode-remote-extensionpack\extension) 
 - Git
+  - [install link](https://git-scm.com/downloads) 
 - Docker (compose and engine)
-
+   - [install link](https://docs.docker.com/get-docker/)
 ### Local dev environment - first time setup
 1. clone repo using ```git clone https://github.com/UOA-FSAE/autonomous.git```
 2. cd into repo
