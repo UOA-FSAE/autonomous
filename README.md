@@ -26,7 +26,7 @@
 2. Click icon next to autonomous devcontainer (open folder in container)
 
 #### Method 2
-1. In VS Code under the Ctrl+Shift+P menu run ```Dev Containers: Rebuild and Reopen in Container``
+1. In VS Code under the Ctrl+Shift+P menu run ```Dev Containers: Rebuild and Reopen in Container```
    - with folder open in vscode
 
 ### Codespaces dev environment
