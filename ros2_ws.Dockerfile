@@ -10,5 +10,9 @@ RUN source /opt/ros/humble/setup.bash && \
     rosdep update && \
     colcon build 
 
+RUN apt-get update && apt-get install -y \
+    python3-pip && \
+    apt-get clean
+
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD [ "bash" ]
