@@ -27,7 +27,7 @@
 
 #### Method 2
 1. In VS Code under the Ctrl+Shift+P menu run ```Dev Containers: Rebuild and Reopen in Container```
-   - with folder open in vscode
+   - with repo open in vscode
 
 ### Codespaces dev environment
 1. Go to remote explorer
