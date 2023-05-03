@@ -1,0 +1,9 @@
+train: /yolov7/train
+test: /yolov7/test
+valid:
+
+#Classes
+#number of classes
+nc: 4 
+#classes names
+names: ['0', '1', '2', '3'] 
