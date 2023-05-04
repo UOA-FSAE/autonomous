@@ -5,6 +5,8 @@
 	"service": "autonomous_ros2",
 	"shutdownAction": "none",
 
+	"postCreateCommand": "rosdep install --from-paths src -y --ignore-src && colcon build",
+	
 	"workspaceFolder": "/ws",
 	"customizations": {
 		"vscode": {
