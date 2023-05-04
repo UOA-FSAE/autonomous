@@ -17,6 +17,10 @@ find_package(rosidl_default_generators REQUIRED)
 set(msg_files
   "msg/CAN.msg"
   "msg/CANStamped.msg"
+  "msg/Cone.msg"
+  "msg/ConeStamped.msg"
+  "msg/ConeMap.msg"
+  "msg/ConeMapStamped.msg"
 )
 
 set(srv_files
