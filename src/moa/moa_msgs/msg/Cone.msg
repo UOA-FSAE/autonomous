@@ -1,31 +1,10 @@
-# ID value of cone
-# optional value and defults to 0 if no id is given
-uint32                              id          0
+uint32 id          0   # ID value of cone (optional, defaults to 0 if not given)
 
-# The confidence that this is the cone.
-# This value is only really usfull as a value given by the
-# cone dection system.
-# This value is a % from 0% -> 100% 
-# defult value 0.0%
-float32                             confidence  0.0
+float32 confidence 0.0 # The confidence that this is the cone, a percentage value from 0 to 100 (defaults to 0.0)
 
-# What colour is the cone
-# 0: Blue
-# 1: Orange
-# 2: Yellow
-# 3: Other
-uint8                               colour     
+uint8 colour           # The color of the cone: 0 for Blue, 1 for Orange, 2 for Yellow, and 3 for Other
 
-# Position of cone
-# pose is the x, y, z postion of the cone from
-# given refernce point alonge with its rotation
-geometry_msgs/PoseWithCovariance    pose
+geometry_msgs/PoseWithCovariance pose # Position of cone (x, y, z) and rotation
 
-# Size of cone
-# to get the edge of the cone you get the pose of the cone
-# and add the radius of the cone to find the area the cone
-# occupes.
-# same goes for height
-# ONLY CHANGE VALUE IF NEEDED OTHERWISE USE DEFULT
-float32                             radius      0 # TODO: CHANGE THIS AS SOON AS POSIBLE
-float32                             height      0
+float32 radius      0.0 # Size of cone, radius (defaults to 0.0)
+float32 height      0.0 # Size of cone, height (defaults to 0.0)
