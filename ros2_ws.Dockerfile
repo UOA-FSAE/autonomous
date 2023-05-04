@@ -13,6 +13,8 @@ RUN source /opt/ros/humble/setup.bash && \
 RUN apt-get update && apt-get install -y \
     python3-pip && \
     apt-get clean
+    
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD [ "bash" ]
