@@ -11,10 +11,8 @@ RUN apt-get update && apt-get install -y \
     ros-humble-foxglove-bridge
 
 RUN source /opt/ros/humble/setup.bash && \
-    rosdep update && \
-    rosdep install --from-paths /ws/src -y --ignore-src && \
-    colcon build
-
+    rosdep update
+    
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
     echo "source /ws/install/setup.bash" >> ~/.bashrc
 
