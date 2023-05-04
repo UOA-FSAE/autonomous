@@ -8,7 +8,8 @@ COPY . .
 
 RUN source /opt/ros/humble/setup.bash && \
     rosdep update && \
-    colcon build 
+    rosdep install --from-paths src -y --ignore-src && \
+    colcon build
 
 RUN apt-get update && apt-get install -y \
     python3-pip && \
