@@ -7,9 +7,10 @@ def generate_launch_description():
             package='moa_controllers',
             executable='ack_to_can_node',
             name='ack_to_can_node'),
-  
-        launch_ros.actions.Node(
-            package='moa_driver',
-            executable='can_interface_jnano',
-            name='can_interface_jnano'),
+        
+        # # uncomment when CAN interface is completed
+        # launch_ros.actions.Node(
+        #     package='moa_driver',
+        #     executable='can_interface_jnano',
+        #     name='can_interface_jnano'),
   ])
