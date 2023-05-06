@@ -1,0 +1,5 @@
+scrut_mission_node:
+  ros_parameters:
+    max_steering: 45
+    max_speed: 5
+    jerk: 1
