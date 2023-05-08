@@ -17,12 +17,14 @@ jobs:
         run: apt-get update && apt-get install -y python3-pip
 
       - name: rosdep install
+        shell: bash
         run: |
           . /opt/ros/humble/setup.bash
           rosdep update
           rosdep install --from-paths src -y --ignore-src
 
       - name: colcon build
+        shell: bash
         run: |
           . /opt/ros/humble/setup.bash
           colcon build
