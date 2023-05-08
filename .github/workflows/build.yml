@@ -20,5 +20,5 @@ jobs:
         run: rosdep update && rosdep install --from-paths src -y --ignore-src
       
       - name: colcon build
-        run: colcon build
+        run: . /opt/ros/humble/setup.bash && colcon build
       
