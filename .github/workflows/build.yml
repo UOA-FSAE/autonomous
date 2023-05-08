@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Source ros2
-        run: source /opt/ros/humble/setup.bash
+        run: . /opt/ros/humble/setup.bash
         
       - name: rosdep install
         run: rosdep install --from-paths src -y --ignore-src
