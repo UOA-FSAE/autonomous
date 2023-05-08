@@ -32,14 +32,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   DEPENDENCIES std_msgs geometry_msgs
 )
 
-# Link package dependencies
-ament_target_dependencies(${PROJECT_NAME}
-  "std_msgs"
-  "geometry_msgs"
-)
-
 # Export package dependencies
 ament_export_dependencies(rosidl_default_runtime)
-
-# Enable testing and linting
-if(BUILD_TESTING)
+ament_package()
