@@ -7,14 +7,23 @@ jobs:
   build_test:
     name: Test if builds correctly
     runs-on: ubuntu-latest
+    container:
+      image: osrf/ros:humble-desktop
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-    - name: Install colcon
-      run: sudo apt-get update && sudo apt-get install -y python3-colcon-common-extensions
+      - name: apt update
+        run: apt-get update && apt-get install -y python3-pip
 
-    - name: Build workspace
-      run: colcon build
+      - name: rosdep install
+        run: |
+          . /opt/ros/humble/setup.bash
+          rosdep update
+          rosdep install --from-paths src -y --ignore-src
+
+      - name: colcon build
+        run: |
+          . /opt/ros/humble/setup.bash
+          colcon build
       
