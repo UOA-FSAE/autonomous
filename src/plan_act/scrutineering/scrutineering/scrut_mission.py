@@ -14,12 +14,12 @@ class scrut_mission_node(Node):
     def __init__(self):
         super().__init__('scrut_mission_node')
         self.declare_parameters('', [
-            ('timeout', 10),
-            ('max_steering_angle', 45.0),
-            ('steering_angle_velocity', 36.0),
-            ('max_speed', 5.0),
-            ('max_acceleration', 5.0),
-            ('jerk', 1.0),
+            ('timeout', 30),
+            ('max_steering_angle', 0.0),
+            ('steering_angle_velocity', 0.0),
+            ('max_speed', 0.0),
+            ('max_acceleration', 0.0),
+            ('jerk', 0.0),
         ])
         
         self.publisher = self.create_publisher(
@@ -40,6 +40,20 @@ class scrut_mission_node(Node):
 
     def read_state(self, msg):
         self.curr_state = msg.drive
+
+    def check_equal(self, sent: AckermannDriveStamped, received: AckermannDriveStamped) -> bool: 
+        is_same = True
+        if received is not None:
+            sent = sent.drive
+            received = received.drive
+            
+            is_same = is_same and (sent.steering_angle * 0.95 <= received.steering_angle <= sent.steering_angle * 1.05)
+            is_same = is_same and (sent.steering_angle_velocity * 0.95 <= received.steering_angle_velocity <= sent.steering_angle_velocity * 1.05)
+            is_same = is_same and (sent.speed * 0.95 <= received.speed <= sent.speed * 1.05)
+            is_same = is_same and (sent.acceleration * 0.95 <= received.acceleration <= sent.acceleration * 1.05)
+            is_same = is_same and (sent.jerk * 0.95 <= received.jerk <= sent.jerk * 1.05)
+
+        return is_same 
 
     def send_payloads(self, payloads):
         timeout = self.get_parameter('timeout').value
