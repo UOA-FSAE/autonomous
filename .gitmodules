@@ -1,3 +1,9 @@
 [submodule "src/hardware_drivers/zed-ros2-wrapper"]
 	path = src/hardware_drivers/zed-ros2-wrapper
 	url = https://github.com/stereolabs/zed-ros2-wrapper.git
+[submodule "src/perception/isaac-ros-visual-slam"]
+	path = src/perception/isaac-ros-visual-slam
+	url = https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam
+[submodule "src/perception/isaac-ros-common"]
+	path = src/perception/isaac-ros-common
+	url = https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common
