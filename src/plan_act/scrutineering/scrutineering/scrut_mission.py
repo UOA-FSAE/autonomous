@@ -1,106 +1,111 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
-
+from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
 from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
-from math import pi
-
-
-def deg_rads(degs):
-    return degs * 180/pi
-
+from math import radians as to_rads
+from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
 
 class scrut_mission_node(Node):
     def __init__(self):
         super().__init__('scrut_mission_node')
         self.declare_parameters('', [
-            ('timeout', 30),
-            ('max_steering_angle', 0.0),
-            ('steering_angle_velocity', 0.0),
-            ('max_speed', 0.0),
-            ('max_acceleration', 0.0),
-            ('jerk', 0.0),
+            ('timeout', 10),
+            ('max_steering_angle', 45.0),
+            ('steering_angle_velocity', 36.0),
+            ('max_speed', 5.0),
+            ('max_acceleration', 5.0),
+            ('jerk', 1.0),
         ])
         
+        self.cb_group = ReentrantCallbackGroup()
+
         self.publisher = self.create_publisher(
             AckermannDriveStamped, 
             'cmd_val', 
-            10
+            10,
+            callback_group=self.cb_group
         )
 
         self.subscriber = self.create_subscription(
             AckermannDriveStamped,
-            "moa/curr_vel",
+            'moa/curr_vel',
             self.read_state,
-            10
+            10,
+            callback_group=self.cb_group
         )
-
+        
         self.curr_state = None
 
+    def read_state(self, msg: AckermannDriveStamped):
+        self.get_logger().info('received msg')
+        self.curr_state = msg
 
-    def read_state(self, msg):
-        self.curr_state = msg.drive
-
-    def check_equal(self, sent: AckermannDriveStamped, received: AckermannDriveStamped) -> bool: 
-        is_same = True
+    def check_equal(self, sent: AckermannDriveStamped, received: AckermannDriveStamped, confidence: float) -> bool: 
+        is_same = False
+        high, low = 1+confidence, 1-confidence
         if received is not None:
             sent = sent.drive
             received = received.drive
-            
-            is_same = is_same and (sent.steering_angle * 0.95 <= received.steering_angle <= sent.steering_angle * 1.05)
-            is_same = is_same and (sent.steering_angle_velocity * 0.95 <= received.steering_angle_velocity <= sent.steering_angle_velocity * 1.05)
-            is_same = is_same and (sent.speed * 0.95 <= received.speed <= sent.speed * 1.05)
-            is_same = is_same and (sent.acceleration * 0.95 <= received.acceleration <= sent.acceleration * 1.05)
-            is_same = is_same and (sent.jerk * 0.95 <= received.jerk <= sent.jerk * 1.05)
+            is_same = True
+
+            is_same = is_same and (abs(sent.steering_angle * low) <= abs(received.steering_angle) <= abs(sent.steering_angle * high))
+            is_same = is_same and (abs(sent.steering_angle_velocity * low) <= abs(received.steering_angle_velocity) <= abs(sent.steering_angle_velocity * high))
+            is_same = is_same and (abs(sent.speed * low) <= abs(received.speed) <= abs(sent.speed * high))
+            is_same = is_same and (abs(sent.acceleration * low) <= abs(received.acceleration) <= abs(sent.acceleration * high))
+            is_same = is_same and (abs(sent.jerk * low) <= abs(received.jerk) <= abs(sent.jerk * high))
 
         return is_same 
 
     def send_payloads(self, payloads):
         timeout = self.get_parameter('timeout').value
         timeout = Duration(seconds=timeout)
-        start_time = self.get_clock().now()
-        end_time = start_time + timeout
-
+        
         for data in payloads:
             msg = AckermannDriveStamped(drive = data)
             self.publisher.publish(msg)
-            while self.curr_state != msg and self.get_clock().now() < end_time:
-                pass
-            if self.curr_state != msg:
+
+            start_time = self.get_clock().now()
+            end_time = start_time + timeout
+
+            while (self.get_clock().now() < end_time) and rclpy.ok():
+                rclpy.spin_once(self)
+                is_same = self.check_equal(msg, self.curr_state, 0.05)
+                if is_same:
+                    self.get_logger().info("command complete")
+                    break
+                
+    
+            if not is_same:
                 self.get_logger().error("timeout: command didn't complete")
                 raise TimeoutError()
-            
+
     def steer_test(self) -> None:
         max_steer_angle = self.get_parameter('max_steering_angle').value
         steer_angle_vel = self.get_parameter('steering_angle_velocity').value
-
+     
         payloads = [
-            AckermannDrive(steering_angle=deg_rads(-max_steer_angle), 
-                           steering_angle_velocity=deg_rads(steer_angle_vel)),
-            AckermannDrive(steering_angle=deg_rads(0.0), 
-                           steering_angle_velocity=deg_rads(steer_angle_vel)),
-            AckermannDrive(steering_angle=deg_rads(max_steer_angle), 
-                           steering_angle_velocity=deg_rads(steer_angle_vel)),
-            AckermannDrive(steering_angle=deg_rads(0.0), 
-                           steering_angle_velocity=deg_rads(steer_angle_vel))
+            AckermannDrive(steering_angle=to_rads(-max_steer_angle), 
+                           steering_angle_velocity=to_rads(steer_angle_vel)),
+            AckermannDrive(steering_angle=to_rads(0.0), 
+                           steering_angle_velocity=to_rads(steer_angle_vel)),
+            AckermannDrive(steering_angle=to_rads(max_steer_angle), 
+                           steering_angle_velocity=to_rads(steer_angle_vel)),
+            AckermannDrive(steering_angle=to_rads(0.0), 
+                           steering_angle_velocity=to_rads(steer_angle_vel))
             ]
-        
+
         self.get_logger().info("commencing steering test")
-        self.send_payloads(payloads)        
+        self.send_payloads(payloads)
+        self.get_logger().info("complete steering test")
     
     def accel_test(self) -> None:
         max_speed = self.get_parameter('max_speed').value
         max_accel = self.get_parameter('max_acceleration').value
-        max_jerk = self.get_parameter('max_jerk').value
-
-        # remove after test
-        self.get_logger().info(f"max_speed {max_speed}")
-        self.get_logger().info(f"max_accel {max_accel}")
-        self.get_logger().info(f"max_jerk {max_jerk}")
-      
+        jerk = self.get_parameter('jerk').value
 
         payloads = [
-            AckermannDrive(speed=max_speed,acceleration=max_accel,jerk=max_jerk)
+            AckermannDrive(speed=max_speed,acceleration=max_accel,jerk=jerk)
             ]
         
         self.get_logger().info("commencing acceleration test")
@@ -108,14 +113,10 @@ class scrut_mission_node(Node):
 
     def brake_test(self) -> None:
         max_accel = self.get_parameter('max_acceleration').value
-        max_jerk = self.get_parameter('max_jerk').value
-        
-        # remove after test
-        self.get_logger().info(f"max_accel {max_accel}")
-        self.get_logger().info(f"max_jerk {max_jerk}")
+        jerk = self.get_parameter('jerk').value
 
         payloads = [
-            AckermannDrive(speed=0.0,acceleration=max_accel,jerk=max_jerk)
+            AckermannDrive(speed=0.0,acceleration=max_accel,jerk=jerk)
             ]
         
         self.get_logger().info("commencing brake test")
@@ -124,33 +125,35 @@ class scrut_mission_node(Node):
     def ebs_test(self) -> None:
         max_speed = self.get_parameter('max_speed').value
         max_accel = self.get_parameter('max_acceleration').value
-        max_jerk = self.get_parameter('max_jerk').value
-
-        # remove after test
-        self.get_logger().info(f"max_speed {max_speed}")
-        self.get_logger().info(f"max_accel {max_accel}")
-        self.get_logger().info(f"max_jerk {max_jerk}")
+        jerk = self.get_parameter('jerk').value
 
         payloads = [
-            AckermannDrive(speed=max_speed,acceleration=max_accel,jerk=max_jerk)
+            AckermannDrive(speed=max_speed,acceleration=max_accel,jerk=jerk)
             ]
         
         self.get_logger().info("commencing EBS test")
         self.send_payloads(payloads)
-
+        
 
 def main(args=None):
     rclpy.init(args=args)
+    try:
+        scrut_node = scrut_mission_node()
 
-    scrut_node = scrut_mission_node()
-    
-    scrut_node.steer_test()
-    scrut_node.accel_test()
-    scrut_node.brake_test()
-    scrut_node.ebs_test()
+        executor = SingleThreadedExecutor()
+        executor.add_node(scrut_node)
+        
+        executor.create_task(scrut_node.steer_test())
+        executor.create_task(scrut_node.accel_test())
+        executor.create_task(scrut_node.brake_test())
+        executor.create_task(scrut_node.ebs_test()) 
 
-    scrut_node.destroy_node()
-    rclpy.shutdown()
+
+    finally:
+        executor.shutdown()
+        scrut_node.destroy_node()
+  
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':
