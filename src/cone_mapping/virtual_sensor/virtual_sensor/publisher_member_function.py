@@ -18,16 +18,16 @@ from rclpy.node import Node
 from std_msgs.msg import String
 
 
-class MinimalPublisher(Node):
+class Virtual_Cone_Detection(Node):
     stored_data_string_list = ""
 
     def __init__(self):
-        super().__init__('minimal_publisher')
-        self.publisher_ = self.create_publisher(String, 'topic', 10)
+        super().__init__('virtual_cone_detection')
+        self.publisher_ = self.create_publisher(String, 'cone_detect', 10)
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
-        with open('/home/dyu056/FSAE/autonomous/src/cone_mapping/virtual_sensor/virtual_sensor/test-data-5-cones.txt') as f:
+        with open('/home/dyu056/FSAE/autonomous/src/cone_mapping/test_data.txt') as f:
         	self.stored_data_list = f.readlines()
         	self.total_length = len(self.stored_data_list)
         	#print(self.stored_data_list)
@@ -47,14 +47,14 @@ def main(args=None):
     
     rclpy.init(args=args)
 
-    minimal_publisher = MinimalPublisher()
+    cone_detection = Virtual_Cone_Detection()
 
-    rclpy.spin(minimal_publisher)
+    rclpy.spin(cone_detection)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    minimal_publisher.destroy_node()
+    cone_detection.destroy_node()
     rclpy.shutdown()
 
 

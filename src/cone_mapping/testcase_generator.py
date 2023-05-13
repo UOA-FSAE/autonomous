@@ -76,13 +76,13 @@ class car:
         rotation_matrx = np.array([[np.cos(rotation_angle), np.sin(rotation_angle)],[-np.sin(rotation_angle), np.cos(rotation_angle)]]);
         cones_in_car_frame_no_rotation = cones_in_global_frame - np.array([[self.pos_x],[self.pos_y]]);
         cones_in_car_frame = np.matmul(rotation_matrx, cones_in_car_frame_no_rotation)
-        measured_cones_distance = [];
-        measured_cones_angle = [];
+        measured_cones_x = [];
+        measured_cones_y = [];
         for i in range(0,cones_in_car_frame[0].size,1):
             if (cones_in_car_frame[1][i] > 0) and (math.sqrt(cones_in_car_frame[0][i] ** 2 + cones_in_car_frame[1][i] ** 2) < self.sensing_range):
-                measured_cones_distance.append(math.sqrt(cones_in_car_frame[0][i] ** 2 + cones_in_car_frame[1][i] ** 2));
-                measured_cones_angle.append(math.tan(cones_in_car_frame[1][i]/cones_in_car_frame[0][i]) - np.pi/2);
-        self.recorded_data.append([self.t, measured_cones_distance, measured_cones_angle, self.return_position()[0], self.return_position()[1], self.return_position()[2]])
+                measured_cones_x.append(cones_in_car_frame[0][i]);
+                measured_cones_y.append(cones_in_car_frame[1][i])
+        self.recorded_data.append([self.t, measured_cones_x, measured_cones_y, self.return_position()[0], self.return_position()[1], self.return_position()[2]])
         
         return cones_in_car_frame
 
@@ -94,7 +94,6 @@ def cone_arrangement_generation(number_of_cones, left_boundary, right_boundary, 
     x_list = np.random.uniform(left_boundary, right_boundary, size=number_of_cones)
     y_list = np.random.uniform(bottom_boundary, top_boundary, size=number_of_cones)
     cone_list = np.array([x_list,y_list]);
-
     return cone_list, x_list, y_list;
 
 def time_lapsing(graph_arrow, point_detected_cones, car, time, animation_scale, cones_in_global):
@@ -138,6 +137,9 @@ top_boundary = 100;
 bottom_boundary = 0;
 number_of_cones  = 5;
 cone_list, real_cone_x, real_cone_y = cone_arrangement_generation(number_of_cones, left_boundary, right_boundary, top_boundary, bottom_boundary);
+real_cone_x = [76.5979, 96.1476, 92.0906, 62.8596, 26.6301];
+real_cone_y = [76.2157, 90.4749, 16.2427, 74.0812, 17.7761];
+cone_list = np.array([real_cone_x, real_cone_y])
 
 # Write existing cone into the file
 test_data_output_string = test_data_output_string + head_for_cone_list
@@ -206,8 +208,6 @@ print(test_data_output_string)
 text_file_output = open(file_name, mode = "w", buffering = -1);
 text_file_output.write(test_data_output_string);
 text_file_output.close()
-
-fig
 
 # show plot
 plt.show()
