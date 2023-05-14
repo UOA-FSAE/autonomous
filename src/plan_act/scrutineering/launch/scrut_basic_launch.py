@@ -11,9 +11,6 @@ def generate_launch_description():
         'test_params.yaml'
     )
     
-    # with open(config, 'r') as f:
-    #   params = yaml.safe_load(f)
-
     return launch.LaunchDescription([
         launch_ros.actions.Node(
             package='scrutineering',
