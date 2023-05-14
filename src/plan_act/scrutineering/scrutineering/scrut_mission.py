@@ -10,7 +10,7 @@ class scrut_mission_node(Node):
     def __init__(self):
         super().__init__('scrut_mission_node')
         self.declare_parameters('', [
-            ('timeout', 0.0),
+            ('timeout', 0),
             ('max_steering_angle', 0.0),
             ('steering_angle_velocity', 0.0),
             ('max_speed', 0.0),
