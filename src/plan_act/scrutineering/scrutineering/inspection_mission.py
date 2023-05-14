@@ -6,9 +6,9 @@ from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 from math import radians as to_rads
 from rclpy.callback_groups import ReentrantCallbackGroup
 
-class scrut_mission_node(Node):
+class inspection_mission_node(Node):
     def __init__(self):
-        super().__init__('scrut_mission_node')
+        super().__init__('inspection_mission_node')
         
         self.declare_parameters('', [
             ('timeout', 0),
@@ -129,70 +129,21 @@ class scrut_mission_node(Node):
         self.send_payloads(payloads)
         self.get_logger().info("complete steering test")
     
-    def accel_test(self) -> None:
-        """
-        Executes acceleration test. Goes from 0m/s to max_speed at 0m/s^2 to max_acceleration (accleration changes by jerk m/s^2)        
-        """
-        
-        max_speed = self.get_parameter('max_speed').value
-        max_accel = self.get_parameter('max_acceleration').value
-        jerk = self.get_parameter('jerk').value
-
-        payloads = [
-            AckermannDrive(speed=max_speed,acceleration=max_accel,jerk=jerk)
-            ]
-        
-        self.get_logger().info("commencing acceleration test")
-        self.send_payloads(payloads)   
-
-    def brake_test(self) -> None:
-        """
-        Executes acceleration test. Goes from max_speed to 0m/s at 0m/s^2 to max_acceleration (accleration changes by jerk m/s^2)        
-        """
-
-        max_accel = self.get_parameter('max_acceleration').value
-        jerk = self.get_parameter('jerk').value
-
-        payloads = [
-            AckermannDrive(speed=0.0,acceleration=max_accel,jerk=jerk)
-            ]
-        
-        self.get_logger().info("commencing brake test")
-        self.send_payloads(payloads)
-
-    def ebs_test(self) -> None:
-        """
-        Executes acceleration test. Goes from 0m/s to max_speed at 0m/s^2 to max_acceleration (accleration changes by jerk m/s^2)        
-        """
-
-        max_speed = self.get_parameter('max_speed').value
-        max_accel = self.get_parameter('max_acceleration').value
-        jerk = self.get_parameter('jerk').value
-
-        payloads = [
-            AckermannDrive(speed=max_speed,acceleration=max_accel,jerk=jerk)
-            ]
-        
-        self.get_logger().info("commencing EBS test")
-        self.send_payloads(payloads)
         
 
 def main(args=None):
     rclpy.init(args=args)
     try:
-        scrut_node = scrut_mission_node()
+        inspection_node = inspection_mission_node()
 
         executor = SingleThreadedExecutor()
-        executor.add_node(scrut_node)
+        executor.add_node(inspection_node)
         
-        executor.create_task(scrut_node.steer_test())
-        executor.create_task(scrut_node.accel_test())
-        executor.create_task(scrut_node.brake_test())
-        executor.create_task(scrut_node.ebs_test()) 
+        executor.create_task(inspection_node.steer_test())
 
     finally:
         executor.shutdown()
-        scrut_node.destroy_node()
+        inspection_node.destroy_node()
   
         rclpy.shutdown()
 

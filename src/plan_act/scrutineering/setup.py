@@ -26,7 +26,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'scrut_mission_node = scrutineering.scrut_mission:main',
+            'inspection_mission_node = scrutineering.inspection_mission:main',
         ],
     },
 )
