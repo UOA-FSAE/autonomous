@@ -1,8 +1,8 @@
 scrut_mission_node:
   ros__parameters: 
-    timeout: 10
-    max_steering_angle: 45.0
-    steering_angle_velocity: 36.0
-    max_speed: 5.0
-    max_acceleration: 5.0
-    jerk: 1.0
+    timeout: 10 #s
+    max_steering_angle: 45.0 #degrees
+    steering_angle_velocity: 36.0 #degrees/s
+    max_speed: 5.0 #m/s
+    max_acceleration: 5.0 #m/s^2
+    jerk: 1.0 #m/s^3

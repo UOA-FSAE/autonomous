@@ -1,14 +1,15 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
-from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
+from rclpy.executors import SingleThreadedExecutor
 from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 from math import radians as to_rads
-from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
+from rclpy.callback_groups import ReentrantCallbackGroup
 
 class scrut_mission_node(Node):
     def __init__(self):
         super().__init__('scrut_mission_node')
+        
         self.declare_parameters('', [
             ('timeout', 0),
             ('max_steering_angle', 0.0),
@@ -18,13 +19,10 @@ class scrut_mission_node(Node):
             ('jerk', 0.0),
         ])
         
-        self.cb_group = ReentrantCallbackGroup()
-
         self.publisher = self.create_publisher(
             AckermannDriveStamped, 
             'cmd_val', 
             10,
-            callback_group=self.cb_group
         )
 
         self.subscriber = self.create_subscription(
@@ -32,16 +30,29 @@ class scrut_mission_node(Node):
             'moa/curr_vel',
             self.read_state,
             10,
-            callback_group=self.cb_group
         )
         
         self.curr_state = None
 
-    def read_state(self, msg: AckermannDriveStamped):
+    def read_state(self, msg: AckermannDriveStamped): #subscriber callback
         self.get_logger().info('received msg')
         self.curr_state = msg
 
     def check_equal(self, sent: AckermannDriveStamped, received: AckermannDriveStamped, confidence: float) -> bool: 
+        """
+        Checks equality of 2 AckermannDriveStamped messages between a confidence interval
+
+        Args
+        ---------------------------
+        - sent: The AckermannDriveStamped command sent to the car 
+        - received: The AckermannDriveStamped message from moa/curr_vel depicting car's current state
+        - confidence: Float value depicting percentage difference allowed for equality
+        
+        Returns
+        ---------------------------
+        - Boolean value saying whether the two AckermannDriveStamped messages are equal
+        """
+       
         is_same = False
         high, low = 1+confidence, 1-confidence
         if received is not None:
@@ -57,7 +68,22 @@ class scrut_mission_node(Node):
 
         return is_same 
 
-    def send_payloads(self, payloads):
+    def send_payloads(self, payloads: list[AckermannDrive]) -> None:
+        """
+        Takes a list of AckermannDrive messages and sends them to cmd_vel topic 
+        and checks command executed before sending next message in list
+
+        Args
+        ---------------------------
+        - payloads: list of AckermannDrive messages
+        
+        Returns
+        ---------------------------
+        - None
+        
+        If car doesn't respond to command in a certain time period TimeoutError is raised
+        """
+        
         timeout = self.get_parameter('timeout').value
         timeout = Duration(seconds=timeout)
         
@@ -81,6 +107,10 @@ class scrut_mission_node(Node):
                 raise TimeoutError()
 
     def steer_test(self) -> None:
+        """
+        Executes steering test. Goes from -max_steering_angle to 0 to max_steering_angle to 0        
+        """
+
         max_steer_angle = self.get_parameter('max_steering_angle').value
         steer_angle_vel = self.get_parameter('steering_angle_velocity').value
      
@@ -100,6 +130,10 @@ class scrut_mission_node(Node):
         self.get_logger().info("complete steering test")
     
     def accel_test(self) -> None:
+        """
+        Executes acceleration test. Goes from 0m/s to max_speed at 0m/s^2 to max_acceleration (accleration changes by jerk m/s^2)        
+        """
+        
         max_speed = self.get_parameter('max_speed').value
         max_accel = self.get_parameter('max_acceleration').value
         jerk = self.get_parameter('jerk').value
@@ -112,6 +146,10 @@ class scrut_mission_node(Node):
         self.send_payloads(payloads)   
 
     def brake_test(self) -> None:
+        """
+        Executes acceleration test. Goes from max_speed to 0m/s at 0m/s^2 to max_acceleration (accleration changes by jerk m/s^2)        
+        """
+
         max_accel = self.get_parameter('max_acceleration').value
         jerk = self.get_parameter('jerk').value
 
@@ -123,6 +161,10 @@ class scrut_mission_node(Node):
         self.send_payloads(payloads)
 
     def ebs_test(self) -> None:
+        """
+        Executes acceleration test. Goes from 0m/s to max_speed at 0m/s^2 to max_acceleration (accleration changes by jerk m/s^2)        
+        """
+
         max_speed = self.get_parameter('max_speed').value
         max_accel = self.get_parameter('max_acceleration').value
         jerk = self.get_parameter('jerk').value
@@ -147,7 +189,6 @@ def main(args=None):
         executor.create_task(scrut_node.accel_test())
         executor.create_task(scrut_node.brake_test())
         executor.create_task(scrut_node.ebs_test()) 
-
 
     finally:
         executor.shutdown()
