@@ -4,7 +4,8 @@ from rclpy.duration import Duration
 from rclpy.executors import SingleThreadedExecutor
 from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 from math import radians as to_rads
-from rclpy.callback_groups import ReentrantCallbackGroup
+from math import sin
+import time
 
 class inspection_mission_node(Node):
     def __init__(self):
@@ -31,12 +32,13 @@ class inspection_mission_node(Node):
             self.read_state,
             10,
         )
-        
+
         self.curr_state = None
 
-    def read_state(self, msg: AckermannDriveStamped): #subscriber callback
+    def read_state(self, msg: AckermannDriveStamped) -> None: #subscriber callback
         self.get_logger().info('received msg')
         self.curr_state = msg
+
 
     def check_equal(self, sent: AckermannDriveStamped, received: AckermannDriveStamped, confidence: float) -> bool: 
         """
@@ -86,7 +88,7 @@ class inspection_mission_node(Node):
         
         timeout = self.get_parameter('timeout').value
         timeout = Duration(seconds=timeout)
-        
+
         for data in payloads:
             msg = AckermannDriveStamped(drive = data)
             self.publisher.publish(msg)
@@ -94,54 +96,59 @@ class inspection_mission_node(Node):
             start_time = self.get_clock().now()
             end_time = start_time + timeout
 
-            while (self.get_clock().now() < end_time) and rclpy.ok():
+            while (self.get_clock().now() < end_time):
                 rclpy.spin_once(self)
                 is_same = self.check_equal(msg, self.curr_state, 0.05)
                 if is_same:
                     self.get_logger().info("command complete")
                     break
-                
     
             if not is_same:
                 self.get_logger().error("timeout: command didn't complete")
                 raise TimeoutError()
-
-    def steer_test(self) -> None:
-        """
-        Executes steering test. Goes from -max_steering_angle to 0 to max_steering_angle to 0        
-        """
-
-        max_steer_angle = self.get_parameter('max_steering_angle').value
-        steer_angle_vel = self.get_parameter('steering_angle_velocity').value
-     
-        payloads = [
-            AckermannDrive(steering_angle=to_rads(-max_steer_angle), 
-                           steering_angle_velocity=to_rads(steer_angle_vel)),
-            AckermannDrive(steering_angle=to_rads(0.0), 
-                           steering_angle_velocity=to_rads(steer_angle_vel)),
-            AckermannDrive(steering_angle=to_rads(max_steer_angle), 
-                           steering_angle_velocity=to_rads(steer_angle_vel)),
-            AckermannDrive(steering_angle=to_rads(0.0), 
-                           steering_angle_velocity=to_rads(steer_angle_vel))
-            ]
-
-        self.get_logger().info("commencing steering test")
-        self.send_payloads(payloads)
-        self.get_logger().info("complete steering test")
     
+    def update_car(self) -> None:
+        max_speed = self.get_parameter('max_speed').value
+        max_steering_angle = to_rads(self.get_parameter('max_steering_angle').value)
+        curr_time = self.get_clock().now().seconds_nanoseconds()
+
+        speed = max_speed * sin(curr_time[0])
+        steering_angle = max_steering_angle * sin(curr_time[0])
+
+        self.get_logger().info('sent command')
+        self.send_payloads([AckermannDrive(speed = speed, steering_angle = steering_angle)])
+
+    def reset(self) -> None:
+        """
+        Spins down wheels. Goes from max_speed to 0m/s at 0m/s^2 to max_acceleration (accleration changes by jerk m/s^2)        
+        """
+
+        max_accel = self.get_parameter('max_acceleration').value
+        jerk = self.get_parameter('jerk').value
+
+        to_send = AckermannDrive(steering_angle = 0.0, speed=0.0, acceleration=max_accel, jerk=jerk)
+        self.publisher.publish(AckermannDriveStamped(drive = to_send))
         
+        self.get_logger().info('car reset')
+
 
 def main(args=None):
     rclpy.init(args=args)
+    
     try:
         inspection_node = inspection_mission_node()
 
         executor = SingleThreadedExecutor()
         executor.add_node(inspection_node)
         
-        executor.create_task(inspection_node.steer_test())
+        start_time = time.monotonic()
 
+        while time.monotonic() <= start_time + 25:
+            executor.create_task(inspection_node.update_car())
+            time.sleep(1)
+        
     finally:
+        executor.create_task(inspection_node.reset())
         executor.shutdown()
         inspection_node.destroy_node()
   

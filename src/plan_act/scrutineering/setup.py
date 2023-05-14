@@ -27,6 +27,7 @@ setup(
     entry_points={
         'console_scripts': [
             'inspection_mission_node = scrutineering.inspection_mission:main',
+            'test_node = scrutineering.test_node:main',
         ],
     },
 )

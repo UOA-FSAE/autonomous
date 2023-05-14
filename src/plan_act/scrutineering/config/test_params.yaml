@@ -1,4 +1,4 @@
-scrut_mission_node:
+inspection_mission_node:
   ros__parameters: 
     timeout: 10 #s
     max_steering_angle: 45.0 #degrees

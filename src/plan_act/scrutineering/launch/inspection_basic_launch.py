@@ -14,8 +14,8 @@ def generate_launch_description():
     return launch.LaunchDescription([
         launch_ros.actions.Node(
             package='scrutineering',
-            executable='scrut_mission_node',
-            name='scrut_mission_node',
+            executable='inspection_mission_node',
+            name='inspection_mission_node',
             parameters=[config]
         )
     ])
