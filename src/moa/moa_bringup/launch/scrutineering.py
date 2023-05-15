@@ -15,7 +15,7 @@ def generate_launch_description():
     scrut_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('scrutineering'), 'launch'),
-                        '/scrut_basic_launch.py'])
+                        '/inspection_basic_launch.py'])
     )
         
     return LaunchDescription([
