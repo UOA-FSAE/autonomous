@@ -1,4 +1,5 @@
 FROM osrf/ros:humble-desktop
+FROM stereolabs/zed:3.8-devel-cuda11.7-ubuntu22.04
 LABEL Name=autonomous Version=0.0.1
 
 SHELL [ "/bin/bash", "-c" ]
