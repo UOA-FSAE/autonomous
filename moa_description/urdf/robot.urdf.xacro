@@ -1,0 +1,12 @@
+<?xml version='1.0'?>
+<robot name="moa23" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- Contestants and stuff -->
+    <xacro:include filename="$(find moa_description)/urdf/const.xacro" />
+    <xacro:include filename="$(find moa_description)/urdf/macro.xacro" />
+
+    <!-- links and joints -->
+    <xacro:include filename="$(find moa_description)/urdf/links.xacro" />
+    <xacro:include filename="$(find moa_description)/urdf/joints.xacro" />
+
+</robot>
