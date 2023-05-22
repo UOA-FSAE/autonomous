@@ -3,3 +3,7 @@ build
 install
 log
 kaggle.json
+.devcontainer/docker-compose.yml
+.vscode/settings.json
+.gitignore
+.vscode/c_cpp_properties.json

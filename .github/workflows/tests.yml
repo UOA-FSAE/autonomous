@@ -1,0 +1,37 @@
+on:
+  pull_request:
+    branches:
+      - main
+      
+jobs:
+  build_test:
+    name: Test if builds correctly
+    runs-on: ubuntu-latest
+    container:
+      image: osrf/ros:humble-desktop
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: apt update
+        run: apt-get update && apt-get install -y python3-pip
+
+      - name: rosdep install
+        shell: bash
+        run: |
+          . /opt/ros/humble/setup.bash
+          rosdep update
+          rosdep install --from-paths src -y --ignore-src
+
+      - name: colcon build
+        shell: bash
+        run: |
+          . /opt/ros/humble/setup.bash
+          colcon build
+
+      - name: colcon test
+        shell: bash
+        run: |
+          . /opt/ros/humble/setup.bash
+          colcon test
+      

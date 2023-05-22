@@ -1,10 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>moa_controllers</name>
+  <name>scrutineering</name>
   <version>0.0.0</version>
-  <description>Contains all the controllers for the car that integrate hardware and software</description>
-  
+  <description>TODO: Package description</description>
   <maintainer email="adam.keating@fsae.co.nz">Adam Keating</maintainer>
   <license>MIT</license>
 
@@ -13,16 +12,8 @@
   <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
 
-  <!--Python Packages-->
-  <exec_depend>python3-numpy</exec_depend>
-  <!-- <exec_depend>zlib</exec_depend> -->
-
-  <!--ROS2 Message Types-->
   <exec_depend>ackermann_msgs</exec_depend>
-  <exec_depend>moa_msgs</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-  <exec_depend>builtin_interfaces</exec_depend>
-
+  <exec_depend>ros2launch</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>
