@@ -1,0 +1,30 @@
+<?xml version='1.0'?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<!--WHERE THERE IS 'ABC' IT MEANS THE VALUE OR FIELD IS NOT DETERMINED YET-->
+
+    <!--wheel macro-->
+    <xacro:macro name="tyre_link" params="name, *origin">
+        <link name="${name}">
+            <visual>
+                <xacro:insert_block name='origin'/>
+                <geometry>
+                    <mesh filename='package://moa_description/meshes/M023_Wheel.stl'/>
+                </geometry>
+            </visual>
+        </link>
+    </xacro:macro> 
+
+    <!--kingpin macro-->
+    <xacro:macro name='kingpin_link' params='name *origin'>
+        <link name="${name}">
+            <visual>
+                <xacro:insert_block name='origin'/>
+                <geometry>
+                    <sphere radius='3'/>
+                </geometry>
+            </visual>
+        </link>
+    </xacro:macro>
+
+</robot>
