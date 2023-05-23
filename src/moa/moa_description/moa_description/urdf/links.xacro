@@ -2,12 +2,11 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
 <!--WHERE THERE IS 'ABC' IT MEANS THE VALUE OR FIELD IS NOT DETERMINED YET-->
-
     <!--base link-->
     <link name='base_link'/>
 
     <!--chassis link-->
-    <link name='chassis'>
+    <link name='chassis_link'>
         <visual>
             <geometry>
                 <!--mesh filename='$ABC'-->
@@ -18,28 +17,28 @@
     </link>
     
     <!--Wheel/Tyre link-->
-    <xacro:tyre_link name='front_right_wheel'>
+    <xacro:tyre_link name='front_right_wheel_link'>
         <origin xyz='A B C' rpy='A B C'/>
     </xacro:tyre_link>
 
-    <xacro:tyre_link name='front_left_wheel'>
+    <xacro:tyre_link name='front_left_wheel_link'>
         <origin xyz='A B C' rpy='A B C'/>
     </xacro:tyre_link>
 
-    <xacro:tyre_link name='rear_right_wheel'>
+    <xacro:tyre_link name='rear_right_wheel_link'>
         <origin xyz='A B C' rpy='A B C'/>
     </xacro:tyre_link>
 
-    <xacro:tyre_link name='rear_left_wheel'>
+    <xacro:tyre_link name='rear_left_wheel_link'>
         <origin xyz='A B C' rpy='A B C'/>
     </xacro:tyre_link>
 
     <!--kingpin link-->
-    <xacro:kingpin_link name='front_right_pin'>
+    <xacro:kingpin_link name='right_kingpin_link'>
         <origin xyz='A B C' rpy='A B C'/>
     </xacro:kingpin_link>
 
-    <xacro:kingpin_link name='front_left_pin'>
+    <xacro:kingpin_link name='left_kingpin_link'>
         <origin xyz='A B C' rpy='A B C'/>
     </xacro:kingpin_link>
 
