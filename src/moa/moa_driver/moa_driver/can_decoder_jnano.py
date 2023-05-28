@@ -3,7 +3,8 @@ from rclpy.node import Node
 
 # import all msg types needed
 from moa_msgs.msg import CANStamped
-from sensor_msgs.msg import BatteryState
+from sensor_msgs.msg import BatteryState # https://docs.ros2.org/foxy/api/sensor_msgs/msg/BatteryState.html
+from ackermann_msgs.msg import AckermannStamped
 
 
 class CANDecoderJNano(Node):
@@ -11,7 +12,7 @@ class CANDecoderJNano(Node):
         super().__init__("CAN_decoder")
 
         self.battery_count = 0
-        self.battery_msg = BatteryState()
+        self.drive_count  = 0
 
         # subscribe to raw can data from CAN_interface
         self.can_sub = self.create_subscription(
@@ -22,8 +23,8 @@ class CANDecoderJNano(Node):
         )
 
         # publish different status msgs
-        self.battery_status_pub = self.create_publisher(BatteryState, "/battery_status", 10)
-        self.steering_status_pub = self.create_publisher()
+        self.battery_status_pub = self.create_publisher(BatteryState, "/battery_state", 10)
+        self.drive_status_pub = self.create_publisher(AckermannStamped, "/drive_status", 10)
         self.steering_status_pub = self.create_publisher()
 
     def callback_can_data(self, msg: CANStamped):
@@ -37,30 +38,51 @@ class CANDecoderJNano(Node):
 
         # BATTERY STATUS
 
-        if self.battery_count == 0:             # need to make sure all battery msgs are received
+        # need to make sure all battery msgs are received before publishing
+        if self.battery_count == 0 and msg.can.id == 0x6b0 or msg.can.id == 0x6b3 or msg.can.id == 0x6b4:             
             self.battery_msg = BatteryState()
+            self.battery_count += 1
         
-        if msg.can.id == 0x6b0:  
-            self.battery_msg.present = True               
-            self.battery_msg.current = int(msg.can.data[0] + msg.can.data[1])
-            self.battery_msg.voltage = int(msg.can.data[2] + msg.can.data[3])
-            self.battery_count += 1
+        if self.battery_count != 0: 
+            if msg.can.id == 0x6b0:  
+                self.battery_msg.present = True               
+                self.battery_msg.current = int(msg.can.data[0] + msg.can.data[1])
+                self.battery_msg.voltage = int(msg.can.data[2] + msg.can.data[3])
+                self.battery_count += 1
 
-        if msg.can.id == 0x6b3:
-            self.battery_msg.cell_voltage = [float('nan') for _ in range(int(msg.can.data[6]))]
-            self.battery_count += 1
+            if msg.can.id == 0x6b3:
+                self.battery_msg.cell_voltage = [float('nan') for _ in range(int(msg.can.data[6]))]
+                self.battery_msg.cell_temperature = [float('nan') for _ in range(int(msg.can.data[6]))]
+                self.battery_count += 1
 
-        if msg.can.id == 0x6b4:
-            self.battery_msg.temperature = int(msg.can.data[2] + msg.can.data[3])
-            self.battery_count += 1
+            if msg.can.id == 0x6b4:
+                self.battery_msg.temperature = int(msg.can.data[2] + msg.can.data[3])
+                self.battery_count += 1
 
-        if self.battery_count == 3:
+        if self.battery_count == 4:         # dont know which order it gets published
+            self.battery_msg.header.stamp = self.get_clock().now().to_msg()         # not sure if this is needed
             self.battery_status_pub.publish(self.battery_msg)
             self.battery_count = 0
 
 
-        # STEERING STATUS
+        # DRIVE STATUS
+        if self.drive_count == 0 and msg.can.id == 0x604 or msg.can.id == 0x605:
+            self.drive_status_msg = AckermannStamped()
+            self.drive_count += 1
 
+        if self.drive_count != 0:
+            if msg.can.id == 0x604:
+                self.drive_status_msg.drive.speed = int(msg.can.data[4])     # are we sure it is in binary
+                self.drive_count += 1
+
+            if msg.can.id == 0x605:
+                self.drive_status_msg.drive.steering_angle = int(msg.can.data[0])
+                self.drive_count += 1
+
+        if self.drive_count == 3:
+            self.drive_status_msg.header.stamp = self.get_clock().now().to_msg()         # not sure if this is needed
+            self.drive_status_pub.publish(self.drive_status_msg)
+            self.drive_count = 0
 
         # GLV STATUS
 
