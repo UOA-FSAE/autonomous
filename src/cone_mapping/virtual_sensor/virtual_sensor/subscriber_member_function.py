@@ -32,7 +32,7 @@ class MinimalSubscriber(Node):
     def listener_callback(self, msg):
         self.get_logger().info('I heard: "%s"' % msg.data)
 
-    def get_global_coordinate(self, position, orientation, list_of_cones)
+    def get_global_coordinate(self, position, orientation, list_of_cones):
         pass        
 
 def main(args=None):

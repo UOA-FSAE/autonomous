@@ -24,4 +24,5 @@ setup(
 		            'listener = virtual_sensor.subscriber_member_function:main',
 		    ],
 	},
+	
 )
