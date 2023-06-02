@@ -4,7 +4,7 @@
 <!--WHERE THERE IS 'ABC' IT MEANS THE VALUE OR FIELD IS NOT DETERMINED YET-->
 
     <!--wheel macro-->
-    <xacro:macro name="tyre_link" params="name, *origin">
+    <xacro:macro name="tyre_link" params="name *origin">
         <link name="${name}">
             <visual>
                 <xacro:insert_block name='origin'/>

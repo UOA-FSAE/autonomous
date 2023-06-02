@@ -7,25 +7,25 @@
         <parent link='base_link'/>
         <child link='chassis_link'/>
         <!--the origin tag over here means the origin of the join before any motion/transformation occurs-->
-        <origin xyz='A B C' rpy='A B C'/>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
     </joint>
 
     <!--Chassis to kingpin1 joint-->
     <joint name='chassis_to_kingpin1_joint' type='revolute'>
         <parent link='chassis_link'/>
         <child link='right_kingpin_link'/>
-        <origin xyz='A B C' rpy='A B C'/>
-        <axis xyz='A B C'/>
-        <limit lower='-A' upper='+A' velocity='1' effot='25'/>   
+        <origin xyz='0 0 0' rpy='0 0 0'/>
+        <axis xyz='0 0 0'/>
+        <limit lower='-0.44' upper='0.66' velocity='1' effot='25'/>   
     </joint>
 
       <!--Chassis to kingpin2 joint-->
     <joint name='chassis_to_kingpin2_joint' type='revolute'>
         <parent link='chassis_link'/>
         <child link='left_kingpin_link'/>
-        <origin xyz='A B C' rpy='A B C'/>
-        <axis xyz='A B C'/>
-        <limit lower='-A' upper='+A' velocity='1' effot='25'/>   
+        <origin xyz='0 0 0' rpy='0 0 0'/>
+        <axis xyz='0 0 0'/>
+        <limit lower='-0.44' upper='0.66' velocity='1' effot='25'/>   
     </joint>
 
     <!--Kingpin1 to wheel joint-->
@@ -33,30 +33,30 @@
         <parent link='right_kingpin_link'/>
         <child link='front_right_wheel_link'/>
         <!--steering wheel joints don't have origin as its at the kinpin link?-->
-        <axis xyz='A B C'/>
+        <axis xyz='0 1 0'/>
     </joint>
 
     <!--Kingpin2 to wheel joint-->
     <joint name='kingpin2_to_front_left_wheel' type='continuous'>
         <parent link='left_kingpin_link'/>
         <child link='front_left_wheel_link'/>
-        <axis xyz='A B C'/>
+        <axis xyz='0 1 0'/>
     </joint>
 
     <!--Chassis to wheel joint-->
     <joint name='chassis_to_rear_right_wheel' type='continuous'>
         <parent link='chassis_link'/>
         <child link='rear_right_wheel_link'/>
-        <origin xyz='A B C' rpy='A B C'/>
-        <axis xyz='A B C'/>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
+        <axis xyz='0 1 0'/>
     </joint>
 
     <!--Chassis to wheel joint-->
     <joint name='chassis_to_rear_left_wheel' type='continuous'>
         <parent link='chassis_link'/>
         <child link='rear_left_wheel_link'/>
-        <origin xyz='A B C' rpy='A B C'/>
-        <axis xyz='A B C'/>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
+        <axis xyz='0 1 0'/>
     </joint>
 
-</robot>~
+</robot>

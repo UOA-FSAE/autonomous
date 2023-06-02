@@ -10,36 +10,36 @@
         <visual>
             <geometry>
                 <!--mesh filename='$ABC'-->
-                <box size='1000'/>
+                <box size='500'/>
             </geometry>
-            <origin  xyz='A B C' rpy='A B C'/>
+            <origin  xyz='0 0 0' rpy='0 0 0'/>
         </visual>
     </link>
     
     <!--Wheel/Tyre link-->
     <xacro:tyre_link name='front_right_wheel_link'>
-        <origin xyz='A B C' rpy='A B C'/>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
     </xacro:tyre_link>
 
     <xacro:tyre_link name='front_left_wheel_link'>
-        <origin xyz='A B C' rpy='A B C'/>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
     </xacro:tyre_link>
 
     <xacro:tyre_link name='rear_right_wheel_link'>
-        <origin xyz='A B C' rpy='A B C'/>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
     </xacro:tyre_link>
 
     <xacro:tyre_link name='rear_left_wheel_link'>
-        <origin xyz='A B C' rpy='A B C'/>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
     </xacro:tyre_link>
 
     <!--kingpin link-->
     <xacro:kingpin_link name='right_kingpin_link'>
-        <origin xyz='A B C' rpy='A B C'/>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
     </xacro:kingpin_link>
 
     <xacro:kingpin_link name='left_kingpin_link'>
-        <origin xyz='A B C' rpy='A B C'/>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
     </xacro:kingpin_link>
 
 </robot>

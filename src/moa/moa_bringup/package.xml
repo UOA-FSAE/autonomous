@@ -7,6 +7,10 @@
   <maintainer email="chrisgraham908@gmail.com">chris</maintainer>
   <license>TODO: License declaration</license>
 
+  <depend>xacro</depend>
+  <depend>robot_state_publisher</depend>
+  <depend>joint_state_publisher_gui</depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
