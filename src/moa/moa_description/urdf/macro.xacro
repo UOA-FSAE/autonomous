@@ -9,7 +9,7 @@
             <visual>
                 <xacro:insert_block name='origin'/>
                 <geometry>
-                    <mesh filename='package://src/moa/moa_description/moa_description/meshes/M023_Wheel.stl'/>
+                    <mesh filename='package://src/moa/moa_description/meshes/M023_Wheel.stl'/>
                 </geometry>
             </visual>
         </link>

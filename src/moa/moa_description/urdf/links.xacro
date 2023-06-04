@@ -10,7 +10,7 @@
         <visual>
             <geometry>
                 <!--mesh filename='$ABC'-->
-                <box size='500'/>
+                <box size='50 50 50'/>
             </geometry>
             <origin  xyz='0 0 0' rpy='0 0 0'/>
         </visual>

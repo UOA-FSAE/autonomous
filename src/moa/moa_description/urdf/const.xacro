@@ -5,6 +5,5 @@
 	<xacro:property name='robot_name' value='moa23'/>
 
 	<!-- quick edit to set all origins/rpy-->
-	<!-- <xacro:property name='A B C' value='0 0 0'/> -->
 	
 </robot>
