@@ -26,10 +26,10 @@ def generate_launch_description():
         )
     
     # joint state publisher node
-    joint_state_pub_node = Node(
-            package='joint_state_publisher_gui',
-            executable='joint_state_publisher_gui',
-            remappings=[('joint_states','/joint_states')]
-        )
+    # joint_state_pub_node = Node(
+    #         package='joint_state_publisher',
+    #         executable='joint_state_publisher',
+    #         remappings=[('joint_states','/joint_states')]
+    #     )
 
-    return LaunchDescription([robot_state_pub_node, joint_state_pub_node])
+    return LaunchDescription([robot_state_pub_node])

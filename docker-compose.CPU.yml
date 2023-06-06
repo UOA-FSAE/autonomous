@@ -21,3 +21,6 @@ services:
     ipc: host
     stdin_open: true
     tty: true
+
+  zed_sdk:
+    image: stereolabs/zed:3.8-runtime-cuda11.7-ubuntu22.04

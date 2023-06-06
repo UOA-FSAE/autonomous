@@ -9,10 +9,10 @@
             <visual>
                 <xacro:insert_block name='origin'/>
                 <geometry>
-                    <mesh filename='package://src/moa/moa_description/meshes/M023_Wheel.stl'/>
+                    <mesh filename='package://moa_description/meshes/wheel.stl'/>
                 </geometry>
             </visual>
-        </link>
+        </link> 
     </xacro:macro> 
 
     <!--kingpin macro-->

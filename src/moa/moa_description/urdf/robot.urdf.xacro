@@ -9,4 +9,7 @@
     <xacro:include filename="$(find moa_description)/urdf/links.xacro" />
     <xacro:include filename="$(find moa_description)/urdf/joints.xacro" />
 
+    <!-- camera urdf -->
+    <!-- <xacro:include filename='/ws/src/hardware_drivers/zed-ros2-wrapper/zed_wrapper/urdf/zed_descr.urdf.xacro'/> -->
+
 </robot>

@@ -9,8 +9,8 @@
     <link name='chassis_link'>
         <visual>
             <geometry>
-                <!--mesh filename='$ABC'-->
-                <box size='50 50 50'/>
+                <mesh filename='package://src/moa/moa_description/meshes/Body23.stl'/>
+                <!-- <box size='50 50 50'/> -->
             </geometry>
             <origin  xyz='0 0 0' rpy='0 0 0'/>
         </visual>
