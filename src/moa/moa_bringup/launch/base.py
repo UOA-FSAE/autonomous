@@ -15,6 +15,11 @@ def generate_launch_description():
         #     name='can_interface_jnano'),
 
         launch_ros.actions.Node(
+            package='moa_controllers',
+            executable='as_status_node',
+            name='as_status_node'),
+
+        launch_ros.actions.Node(
             package='foxglove_bridge',
             executable='foxglove_bridge',
             name='foxglove_bridge'),
