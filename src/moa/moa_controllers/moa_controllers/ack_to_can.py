@@ -4,7 +4,6 @@ from typing import Optional
 import rclpy
 from rclpy.node import Node
 import numpy as np
-# import zlib
 from math import pi
 
 # Ros Imports
@@ -12,17 +11,6 @@ from ackermann_msgs.msg import AckermannDriveStamped
 from moa_msgs.msg import CANStamped
 from std_msgs.msg import Header
 from builtin_interfaces.msg import Time
-
-
-# def compress_floats(values:np.ndarray) -> bytes:    
-#     # Compute the differences between consecutive values
-#     differences = np.diff(values)
-
-#     # Compress the differences using zlib
-#     compressed = zlib.compress(differences, level=9)
-
-#     return compressed
-
 
 class ack_to_can(Node):
     def __init__(self):
@@ -118,12 +106,6 @@ class ack_to_can(Node):
             0], 
             dtype=np.uint8
             )
-
-        # #compress Ackermann values
-        # compressed_ack_vals = compress_floats(ackermann_vals)
-        
-        # #separate compressed ackermann values to list of bytes for CAN
-        # data_packets = [compressed_ack_vals[i:i+1] for i in range(0, len(compressed_ack_vals), 1)]
 
         return ackermann_vals
 
