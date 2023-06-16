@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
-from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
-from moa_msgs.msg import CANStamped
+from ackermann_msgs.msg import AckermannDriveStamped
 from moa_controllers.ack_to_can import ack_to_can
 from unittest.mock import Mock
 import rclpy
