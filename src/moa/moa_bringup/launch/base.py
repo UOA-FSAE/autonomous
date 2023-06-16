@@ -24,6 +24,11 @@ def generate_launch_description():
                             '/urdf_model.py'])),
 
         launch_ros.actions.Node(
+            package='moa_controllers',
+            executable='as_status_node',
+            name='as_status_node'),
+
+        launch_ros.actions.Node(
             package='foxglove_bridge',
             executable='foxglove_bridge',
             name='foxglove_bridge'),
