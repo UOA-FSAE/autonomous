@@ -16,14 +16,14 @@ class as_status(Node):
     def __init__(self):
         super().__init__('autonomous_sys_status')
         
-        # publishers
+        # init publishers
         self.status_pub = self.create_publisher(
             UInt8,
             'as_status',
             10,
         )
         
-        # subscribers
+        # init subscribers
         self.ackermann_sub = Subscriber(
             self,
             AckermannDriveStamped,
@@ -42,6 +42,7 @@ class as_status(Node):
             'moa/hardware_state', # TODO change name
         )
         
+        # init Time Synchroniser
         self.time_sync = ApproximateTimeSynchronizer(
             [self.ackermann_sub, self.mission_status_sub, self.hardware_status_sub],
             queue_size = 5,
@@ -50,6 +51,7 @@ class as_status(Node):
 
         self.time_sync.registerCallback(self.update_state)
 
+        # from MoTec
         # system states
         self.hw_states = {
             'ebs_active': False,
@@ -68,7 +70,15 @@ class as_status(Node):
         self.mission_selected = False
 
 
-    def check_mission_status(self, msg: MissionStatesStamped): # TODO needs more planning work done
+    def check_mission_status(self, msg: MissionStatesStamped): # TODO needs more planning work done (maybe change message to separate selected and finished)
+        """
+            Records the states of hardware components 
+
+            Args
+            ------------------------------
+            msg: A ROS message of type `MissionStateStamped`, containing the whether mission is selected or finished.
+        """
+
         if msg.mission_state == 0:
             self.mission_selected = False
             self.mission_finished = True
@@ -82,6 +92,14 @@ class as_status(Node):
             self.mission_finished = False
 
     def check_hardware(self, msg: HardwareStatesStamped): #TODO
+        """
+            Records the states of hardware components 
+
+            Args
+            ------------------------------
+            msg: A ROS message of type `HardwareStatesStamped`, containing the states of hardware components to be parsed.
+        """
+
         msg_data = msg.hardware_states
         msg_attrs = [attr for attr in dir(msg_data) 
                     if not attr.startswith("_") and "serialize" not in attr]
@@ -92,20 +110,42 @@ class as_status(Node):
         
 
     def check_car_stopped(self, msg: AckermannDriveStamped):
+        """
+            Checks whether car is stationary and records this information
+
+            Args
+            ------------------------------
+            msg: A ROS message of type `AckermannDriveStamped`, containing the Ackermann drive commands to be parsed.
+        """
+        
         if msg.drive.speed == 0.0 and msg.drive.acceleration == 0.0:
             self.car_stopped = True
         else:
             self.car_stopped = False
 
-    def update_state(self, ack_msg=None, mission_msg=None, hw_msg=None, prod=True):
-        '''
-            AS states:
+    def update_state(self, ack_msg: AckermannDriveStamped =None, mission_msg: MissionStatesStamped = None, 
+                     hw_msg: HardwareStatesStamped = None, prod: bool = True):
+        """
+            Updates the state of autonomous system using messages provided by time synchroniser. 
+            
+            Args
+            ------------------------------
+            - ack_msg: A ROS message of type `AckermannDriveStamped`, containing the Ackermann drive commands to be parsed.
+            - mission_msg: A ROS message of type `MissionStateStamped`, containing the whether mission is selected or finished.
+            - hw_msg: A ROS message of type `HardwareStatesStamped`, containing the states of hardware components to be parsed.
+            - prod: boolean value signifying whether function is in production or testing mode
+
+            Returns
+            ------------------------------
+            - Integer signifying the state of the Autonomous System.
+            
+            Possible AS states:
             0 : AS finished
             1 : AS emergency
             2 : AS ready
             3 : AS driving
             4 : AS off
-        '''
+        """
         if prod:
             self.check_car_stopped(ack_msg)
             self.check_hardware(hw_msg)
