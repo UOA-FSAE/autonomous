@@ -70,7 +70,7 @@ class as_status(Node):
         self.mission_selected = False
 
 
-    def check_mission_status(self, msg: MissionStatesStamped): # TODO needs more planning work done (maybe change message to separate selected and finished)
+    def check_mission_status(self, msg: MissionStatesStamped):
         """
             Records the states of hardware components 
 
@@ -79,19 +79,12 @@ class as_status(Node):
             msg: A ROS message of type `MissionStateStamped`, containing the whether mission is selected or finished.
         """
 
-        if msg.mission_state == 0:
-            self.mission_selected = False
-            self.mission_finished = True
-        
-        elif msg.mission_state == 1:
-            self.mission_selected = False
-            self.mission_finished = False
+        msg_data = msg.mission_states
+        self.mission_selected = bool(msg_data.mission_selected)
+        self.mission_finished = bool(msg_data.mission_finished)
 
-        elif msg.mission_state == 2:
-            self.mission_selected = True
-            self.mission_finished = False
 
-    def check_hardware(self, msg: HardwareStatesStamped): #TODO
+    def check_hardware(self, msg: HardwareStatesStamped):
         """
             Records the states of hardware components 
 

@@ -1,0 +1,2 @@
+uint8 mission_selected
+uint8 mission_finished
