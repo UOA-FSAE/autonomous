@@ -28,7 +28,8 @@
 				"redhat.vscode-xml",
 				"twxs.cmake",
 				"VisualStudioExptTeam.intellicode-api-usage-examples",
-				"VisualStudioExptTeam.vscodeintellicode"
+				"VisualStudioExptTeam.vscodeintellicode",
+				"redhat.vscode-yaml"
 			]
 		}
 	}
