@@ -1,9 +1,8 @@
 import pytest
 import rclpy
 from moa_controllers.sys_status import as_status
-from moa_msgs.msg import HardwareStatesStamped
+from moa_msgs.msg import HardwareStatesStamped, MissionStatesStamped
 from ackermann_msgs.msg import AckermannDriveStamped
-from std_msgs.msg import UInt8
 
 
 @pytest.fixture(autouse=True, scope='function')
@@ -23,7 +22,7 @@ def test_state_0(node: as_status):
     node.mission_finished = True
     node.car_stopped = True
     
-    assert node.update_state() == 0
+    assert node.update_state(prod=0) == 0
 
 
 def test_state_1(node: as_status):
@@ -34,7 +33,7 @@ def test_state_1(node: as_status):
         node.mission_finished = test[0]
         node.car_stopped = test[1]
         
-        assert node.update_state() == 1
+        assert node.update_state(prod=0) == 1
 
 
 def test_state_2(node: as_status):
@@ -45,7 +44,7 @@ def test_state_2(node: as_status):
     
     node.hw_states['brakes_engaged'] = True
     
-    assert node.update_state() == 2
+    assert node.update_state(prod=0) == 2
 
 
 def test_state_3(node: as_status):
@@ -56,7 +55,7 @@ def test_state_3(node: as_status):
     
     node.hw_states['in_gear'] = True
     
-    assert node.update_state() == 3
+    assert node.update_state(prod=0) == 3
 
 
 def test_state_4(node: as_status): # TODO to complete
@@ -65,21 +64,21 @@ def test_state_4(node: as_status): # TODO to complete
     node.hw_states['asb_ready'] = True
     node.hw_states['ts_active'] = True
 
-    assert node.update_state() == 4
+    assert node.update_state(prod=0) == 4
 
 
 def test_check_mission_status(node: as_status): # TODO need to sort out planning/complete
-    msg = UInt8(data = 0) 
+    msg = MissionStatesStamped(mission_state = 0) 
     node.check_mission_status(msg)
     assert node.mission_selected == False and node.mission_finished == True
 
-    msg = UInt8(data = 1) 
+    msg = MissionStatesStamped(mission_state = 1) 
     node.check_mission_status(msg)
     assert node.mission_selected == False and node.mission_finished == False
 
-    msg = UInt8(data = 2) 
+    msg = MissionStatesStamped(mission_state = 2) 
     node.check_mission_status(msg)
-    assert node.mission_selected == True and node.mission_finished == True
+    assert node.mission_selected == True and node.mission_finished == False
 
 
 def test_check_car_stopped(node: as_status):
@@ -114,4 +113,4 @@ def test_check_hardware(node: as_status): # TODO complete
     }
 
     node.check_hardware(msg)
-    assert node.hw_states == test_case
+    assert node.hw_states == test_case   
