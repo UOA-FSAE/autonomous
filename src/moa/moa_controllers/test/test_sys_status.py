@@ -67,18 +67,27 @@ def test_state_4(node: as_status): # TODO to complete
     assert node.update_state(prod=0) == 4
 
 
-def test_check_mission_status(node: as_status): # TODO need to sort out planning/complete
-    msg = MissionStatesStamped(mission_state = 0) 
+def test_check_mission_status(node: as_status): # TODO need to sort out planning/complete    
+    msg = MissionStatesStamped() 
+    msg.mission_states.mission_selected = 0
+    msg.mission_states.mission_finished = 1
     node.check_mission_status(msg)
     assert node.mission_selected == False and node.mission_finished == True
 
-    msg = MissionStatesStamped(mission_state = 1) 
+    msg.mission_states.mission_selected = 0
+    msg.mission_states.mission_finished = 0
     node.check_mission_status(msg)
     assert node.mission_selected == False and node.mission_finished == False
 
-    msg = MissionStatesStamped(mission_state = 2) 
+    msg.mission_states.mission_selected = 1
+    msg.mission_states.mission_finished = 0
     node.check_mission_status(msg)
     assert node.mission_selected == True and node.mission_finished == False
+
+    msg.mission_states.mission_selected = 1
+    msg.mission_states.mission_finished = 1
+    node.check_mission_status(msg)
+    assert node.mission_selected == True and node.mission_finished == True
 
 
 def test_check_car_stopped(node: as_status):
