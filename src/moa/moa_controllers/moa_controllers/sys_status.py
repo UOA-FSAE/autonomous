@@ -3,6 +3,8 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
+from re import search
 
 # ROS imports
 from ackermann_msgs.msg import AckermannDriveStamped
@@ -33,7 +35,7 @@ class as_status(Node):
 
         self.mission_status_sub = self.create_subscription(
             UInt8,
-            '',
+            'as_status', # TODO change name
             self.check_mission_status,
             10,
             callback_group = self.sub_cbgroup,
@@ -41,7 +43,7 @@ class as_status(Node):
 
         self.hardware_status_sub = self.create_subscription(
             HardwareStatesStamped,
-            '',
+            'moa/hardware_state', # TODO change name
             self.check_hardware,
             10,
             callback_group = self.sub_cbgroup,
@@ -49,18 +51,19 @@ class as_status(Node):
         
         #timer
         self.update_timer = self.create_timer(
-            1/50, #time in seconds (currently equiv of 50Hz)
+            1/50, #time in seconds (currently equiv of 50 times per second)
             self.update_state,
         )
 
         # system states
-        # from motec
-        self.ebs_state = False
-        self.ts_active = False
-        self.in_gear = False
-        self.master_switch_on = False
-        self.asb_ready = False
-        self.brakes_engaged = False
+        self.hw_states = {
+            'ebs_active': False,
+            'ts_active': False,
+            'in_gear': False,
+            'master_switch_on': False,
+            'asb_ready': False,
+            'brakes_engaged': False,
+            }
         
         # from moa/curr_vel
         self.car_stopped = False      
@@ -72,18 +75,27 @@ class as_status(Node):
 
     def check_mission_status(self, msg: UInt8): # TODO needs more planning work done
         if msg.data == 0:
+            self.mission_finished = True            
+        
+        elif msg.data == 1:
             self.mission_selected = False
             self.mission_finished = False
-        
-        if msg.data == 1:
-            self.mission_finished == True
+
         elif msg.data == 2:
             self.mission_selected = True
         
         self.get_logger().info('checked mission status')
             
 
-    def check_hardware(self, msg: HardwareStatesStamped):
+    def check_hardware(self, msg: HardwareStatesStamped): #TODO
+        msg_data = msg.hardware_states
+        msg_attrs = [attr for attr in dir(msg_data) 
+                    if not attr.startswith("_") and "serialize" not in attr]
+
+        for attr in msg_attrs:
+            if search("get_*", attr) is None and search("SLOT*", attr) is None:           
+                self.hw_states[attr] = getattr(msg_data, attr)
+        
         self.get_logger().info('checked hardware')
         
 
@@ -107,30 +119,36 @@ class as_status(Node):
         '''
         status_code = 4
         try:
-            if self.ebs_state:
-                if self.mission_status and self.car_stopped:
+            if self.hw_states['ebs_active']:
+                if self.mission_finished and self.car_stopped:
                     status_code = 0
                 else:
                     raise Exception
             else:
-                if self.mission_selected and self.master_switch_on and self.asb_ready and self.ts_active:
-                    if self.ts_active and self.in_gear:
+                if (self.mission_selected and self.hw_states['master_switch_on'] and 
+                        self.hw_states['asb_ready'] and self.hw_states['ts_active']):
+                    if self.hw_states['ts_active'] and self.hw_states['in_gear']:
                         status_code = 3
                     else:
-                        if self.brakes_engaged:
+                        if self.hw_states['brakes_engaged']:
                             status_code = 2       
-        except:
+        except Exception:
+            self.get_logger().error("ERROR: AS in emergency state")
             status_code = 1
-        
-        msg = UInt8(data=status_code)
-        self.status_pub.publish(msg)
+        finally:
+            msg = UInt8(data=status_code)
+            self.status_pub.publish(msg)
+            return status_code
 
 
 def main(args=None):
     rclpy.init(args=args)
     
     node = as_status()
-    rclpy.spin(node)
+    executor = MultiThreadedExecutor(num_threads=2)
+    executor.add_node(node)
+
+    executor.spin()
 
     node.destroy_node()
     rclpy.shutdown()
