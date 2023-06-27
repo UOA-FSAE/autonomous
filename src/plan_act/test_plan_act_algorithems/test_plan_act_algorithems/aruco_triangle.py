@@ -16,7 +16,7 @@ class ArucoTriangleNode(Node):
 
         self.create_subscription(
             Image,
-            '/zed/zed_node/rgb/image_rect_color',
+            '/zed2i/zed_node/rgb/image_rect_color',
             self.image_callback,
             10)
 
@@ -30,13 +30,15 @@ class ArucoTriangleNode(Node):
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
 
         # Load the ArUco dictionary
-        aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
+        aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
 
         # Initialize the detector parameters
-        parameters = aruco.DetectorParameters_create()
+        parameters = aruco.DetectorParameters()
+
+        detector = aruco.ArucoDetector(aruco_dict, parameters)
 
         # Detect the markers
-        corners, ids, rejectedImgPoints = aruco.detectMarkers(cv_image, aruco_dict, parameters=parameters)
+        corners, ids, rejectedImgPoints = detector.detectMarkers(cv_image)
 
         if ids is not None:
             odd_markers = []
@@ -61,13 +63,18 @@ class ArucoTriangleNode(Node):
                         closest_pair = (odd, even)
 
             if closest_pair is not None:
-                midpoint = np.mean(closest_pair, axis=0)
+                midpoint = np.mean(closest_pair, axis=0)[0]
                 self.get_logger().info(f'Closest midpoint: {midpoint}')
 
                 # calculate steering percentage
                 img_width = cv_image.shape[1]
-                steering_percentage = ((midpoint[0] / img_width) - 0.5) * 200  # normalize to [-100, 100]
-                self.steering_pub.publish(Float32(data=steering_percentage))
+                steering_percentage = ((midpoint[0] / img_width) - 0.5) * 200 # normalize to [-100, 100]
+                # self.steering_pub.publish(Float32(data=steering_percentage))
+
+                # Draw the midpoint on the image
+                cv2.circle(cv_image, (int(midpoint[0]), int(midpoint[1])), 5, (0, 255, 0), -1)
+                cv2.imshow("Image with Midpoint", cv_image)
+                cv2.waitKey(1)
 
         else:
             self.get_logger().info('No ArUco markers detected')

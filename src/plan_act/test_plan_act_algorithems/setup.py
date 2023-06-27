@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'aruco_triangle = test_plan_act_algorithems.aruco_triangle:main'
         ],
     },
 )
