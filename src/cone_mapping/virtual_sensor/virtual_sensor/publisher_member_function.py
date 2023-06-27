@@ -25,6 +25,7 @@ from geometry_msgs.msg import Pose;
 
 import math
 import numpy as np
+from scipy.stats import norm
 
 class Virtual_Cone_Detection(Node):
     stored_data_string_list = ""
@@ -94,14 +95,19 @@ class Virtual_Cone_Detection(Node):
         orientation = Quaternion();
         pose_with_covariance = PoseWithCovariance();
         pose = Pose();
-        position.x = x;
-        position.y = y;
-        orientation.w = theta;
+        position.x = self.contaminate_message(x, 0.05);
+        position.y = self.contaminate_message(y, 0.05);
+        orientation.w = self.contaminate_message(theta, 0.02);
         pose.position = position;
         pose.orientation = orientation;
         pose_with_covariance.pose = pose;
         output_cone.pose = pose_with_covariance;
         return output_cone
+
+    def contaminate_message(self, data_input, noise_scale):
+        #Create noisy signal from the data input
+        output_number = np.random.normal(loc=data_input, scale = noise_scale, size=1)
+        return float(output_number[0])
         
 
 def main(args=None):
