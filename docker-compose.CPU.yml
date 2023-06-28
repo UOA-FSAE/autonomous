@@ -21,3 +21,25 @@ services:
     ipc: host
     stdin_open: true
     tty: true
+
+  autonomous_zed:
+    image: zed_sdk
+
+    build:
+      context: ..
+      dockerfile: ./zed.Dockerfile
+
+    environment:
+      - DISPLAY
+      
+      - ROS_DOMAIN_ID=47
+
+    command: "ros2 launch zed_wrapper zed.launch.py"
+
+    volumes:
+      - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
+
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true

@@ -24,7 +24,7 @@ services:
 
   autonomous_zed:
     image: zed_sdk
-  
+
     build:
       context: ..
       dockerfile: ./zed.Dockerfile
@@ -43,11 +43,3 @@ services:
     ipc: host
     stdin_open: true
     tty: true
-
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: []
-              capabilities: [gpu]
