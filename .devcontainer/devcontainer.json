@@ -1,5 +1,5 @@
 {
-	"name": "Autonomous Devcontainer",
+	"name": "Autonomous Dev",
 	
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "autonomous_ros2",
