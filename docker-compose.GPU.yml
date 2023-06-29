@@ -46,7 +46,7 @@ services:
       
       - ROS_DOMAIN_ID=47
 
-    command: "ros2 launch zed_wrapper zed.launch.py"
+    command: "ros2 launch zed_wrapper zed2.launch.py"
 
     volumes:
       - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
