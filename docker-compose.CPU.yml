@@ -27,7 +27,7 @@ services:
 
     build:
       context: ..
-      dockerfile: ./zed.Dockerfile
+      dockerfile: .devcontainer/zed.Dockerfile
 
     environment:
       - DISPLAY

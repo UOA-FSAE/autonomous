@@ -28,9 +28,16 @@ build: $(pwd)
 #	docker build -t autonomous_img . -f ros2_ws.Dockerfile
 ifneq ($(strip $(GPU)),)
 	$(info using GPU container)
-	cp docker-compose.GPU.yml docker-compose.yml
-	sed -i 's/NVIDIA_VISIBLE_DEVICES=.*/NVIDIA_VISIBLE_DEVICES=0/g' docker-compose.yml
-	mv docker-compose.yml .devcontainer
+	cp docker-compose.GPU.yml ./.devcontainer/docker-compose.yml
+	cp zed.Dockerfile .devcontainer/zed.Dockerfile
+	sed -i 's/NVIDIA_VISIBLE_DEVICES=.*/NVIDIA_VISIBLE_DEVICES=0/g' .devcontainer/docker-compose.yml
+	
+	if [ -f "/etc/nv_tegra_release" ]; then \
+		sed -i 's/zed:.*/zed:4.0-tools-devel-jetson-jp4.6.1/g' .devcontainer/zed.Dockerfile; \
+	else \
+		echo "Not jetson";\
+	fi
+
 #	docker run -d \
 #	--gpus all \
 #	--env DISPLAY \

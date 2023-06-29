@@ -3,6 +3,7 @@ build
 install
 log
 .devcontainer/docker-compose.yml
+.devcontainer/zed.Dockerfile
 .vscode/settings.json
 .gitignore
 .vscode/c_cpp_properties.json
