@@ -13,7 +13,6 @@
   <test_depend>python3-pytest</test_depend>
 
   <exec_depend>ros2launch</exec_depend>
-  <exec_depend>foxglove_bridge</exec_depend>
   <exec_depend>scrutineering</exec_depend>
   
   <export>

@@ -33,5 +33,5 @@ def generate_launch_description():
             package='foxglove_bridge',
             executable='foxglove_bridge',
             name='foxglove_bridge',
-            parameters=[{'address':'0.0.0.0','port':8765}]),
+            parameters=[{'port':8765}]),
   ])
