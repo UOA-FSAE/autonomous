@@ -1,16 +1,17 @@
 <?xml version='1.0'?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-<!--WHERE THERE IS 'ABC' IT MEANS THE VALUE OR FIELD IS NOT DETERMINED YET-->
-
     <!--wheel macro-->
     <xacro:macro name="tyre_link" params="name *origin">
         <link name="${name}">
             <visual>
                 <xacro:insert_block name='origin'/>
                 <geometry>
-                    <mesh filename='package://moa_description/meshes/wheel.stl'/>
+                    <mesh filename='package://moa_description/meshes/Wheel.stl'/>
                 </geometry>
+                <material name='black'>
+                    <color rgba='0 0 0 1'/>
+                </material> 
             </visual>
         </link> 
     </xacro:macro> 
@@ -21,7 +22,7 @@
             <visual>
                 <xacro:insert_block name='origin'/>
                 <geometry>
-                    <sphere radius='3'/>
+                    <cylinder radius='${kingpin_radius}' length='${kingpin_length}'/>
                 </geometry>
             </visual>
         </link>

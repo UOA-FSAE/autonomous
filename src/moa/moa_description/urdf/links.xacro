@@ -1,7 +1,6 @@
 <?xml version='1.0'?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-<!--WHERE THERE IS 'ABC' IT MEANS THE VALUE OR FIELD IS NOT DETERMINED YET-->
     <!--base link-->
     <link name='base_link'/>
 
@@ -9,28 +8,31 @@
     <link name='chassis_link'>
         <visual>
             <geometry>
-                <mesh filename='package://src/moa/moa_description/meshes/Body23.stl'/>
-                <!-- <box size='50 50 50'/> -->
+                <mesh filename='package://moa_description/meshes/Chassis.stl'/>
             </geometry>
-            <origin  xyz='0 0 0' rpy='0 0 0'/>
+            <material name='grey'>
+                <color rgba='0.4 0.4 0.4 1'/>
+            </material> 
+            <!--chassis link origin should be center of mass-->
+            <origin  xyz='0.281 0 0.133' rpy='${-pi/2} 0 0'/>
         </visual>
     </link>
     
     <!--Wheel/Tyre link-->
     <xacro:tyre_link name='front_right_wheel_link'>
-        <origin xyz='0 0 0' rpy='0 0 0'/>
+        <origin xyz='0 0 0' rpy='${pi/2} 0 0'/>
     </xacro:tyre_link>
 
     <xacro:tyre_link name='front_left_wheel_link'>
-        <origin xyz='0 0 0' rpy='0 0 0'/>
+        <origin xyz='0 0 0' rpy='${-pi/2} 0 0'/>
     </xacro:tyre_link>
 
     <xacro:tyre_link name='rear_right_wheel_link'>
-        <origin xyz='0 0 0' rpy='0 0 0'/>
+        <origin xyz='0 0 0' rpy='${pi/2} 0 0'/>
     </xacro:tyre_link>
 
     <xacro:tyre_link name='rear_left_wheel_link'>
-        <origin xyz='0 0 0' rpy='0 0 0'/>
+        <origin xyz='0 0 0' rpy='${-pi/2} 0 0'/>
     </xacro:tyre_link>
 
     <!--kingpin link-->

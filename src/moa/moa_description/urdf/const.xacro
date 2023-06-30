@@ -3,7 +3,11 @@
 
 	<!--robot name-->
 	<xacro:property name='robot_name' value='moa23'/>
-
-	<!-- quick edit to set all origins/rpy-->
+	<!-- kingpin dimensions-->
+	<xacro:property name='kingpin_radius' value='0.003175'/>
+	<xacro:property name='kingpin_length' value='0.038213'/>
+	<!-- steering angles based on ackerman steering-->
+	<xacro:property name='steering_in' value='${25*pi/180}'/>
+	<xacro:property name='steering_out' value='${38*pi/180}'/>
 	
 </robot>

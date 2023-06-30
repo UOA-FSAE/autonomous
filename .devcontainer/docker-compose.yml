@@ -31,6 +31,7 @@ services:
             - driver: nvidia
               device_ids: []
               capabilities: [gpu]
+    
 
   zed_sdk:
     image: stereolabs/zed:3.8-runtime-cuda11.7-ubuntu22.04
