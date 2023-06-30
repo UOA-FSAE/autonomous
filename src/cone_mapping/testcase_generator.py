@@ -130,7 +130,7 @@ head_for_cone_list = "List of cones" + "\n" + "x, y\n"
 head_for_sensor_data = "List of real time data" + "\n" + "t, x, y, theta, (distance(unit), theta(rad)) lists\n"
 
 # Initialize world and car 
-CAR = car(5,0,0,1,np.pi/180,100);  #It is setted such that for each second, the rotation is one degree, and the translation is one unit
+CAR = car(5,0,0,1,np.pi/180,1000);  #It is setted such that for each second, the rotation is one degree, and the translation is one unit
 left_boundary = 0;
 right_boundary = 100;
 top_boundary = 100;
@@ -177,12 +177,12 @@ point_detected_cones = ax2.plot(initial_detected_cone[0], initial_detected_cone[
 # List of explicit command provided by t and command
 # Car instructions
 ##
-CAR.change_translation(10);
-time_lapsing(cart_symbol, point_detected_cones, CAR, 1, animation_scale, cone_list);
+#CAR.change_translation(10);
+#time_lapsing(cart_symbol, point_detected_cones, CAR, 1, animation_scale, cone_list);
 CAR.change_rotation(45);
-time_lapsing(cart_symbol, point_detected_cones, CAR, 1, animation_scale, cone_list);
-CAR.change_translation(10);
-time_lapsing(cart_symbol, point_detected_cones, CAR, 10, animation_scale, cone_list);
+time_lapsing(cart_symbol, point_detected_cones, CAR, 2, animation_scale, cone_list);
+#CAR.change_translation(10);
+#time_lapsing(cart_symbol, point_detected_cones, CAR, 10, animation_scale, cone_list);
 ##
 ##
 ##
