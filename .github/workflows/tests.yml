@@ -28,4 +28,10 @@ jobs:
         run: |
           . /opt/ros/humble/setup.bash
           colcon build
+
+      - name: colcon test
+        shell: bash
+        run: |
+          . /opt/ros/humble/setup.bash
+          colcon test
       
