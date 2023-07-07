@@ -111,12 +111,12 @@ class Cone_Mapper(Node):
         self.get_measurement(msg) #Get measurement
 
         #Perform first prediction
-        first_prediction_state = self.cone_map_state;
-        print("First state prediction\n", first_prediction_state)
-
+        #first_prediction_state = self.cone_map_state;
+        first_prediction_state, existing_covariance = self.convert_cone_map_to_state(self.Cone_map);
+        print("checkpoint\n",existing_covariance)
         #Perform first prediction of covariance
-        covariance_predicted = self.covariance + self.Q_matrix;
-        #print("First covariance prediction", covariance_predicted);
+        #covariance_predicted = self.covariance + self.Q_matrix;
+        covariance_predicted = existing_covariance + self.Q_matrix;
         
         #Perform Kalman gain calculation
         measured_state, measured_covariance = self.convert_cone_map_to_state(self.Cone_map_measured) #Measured covariance is unused
@@ -124,24 +124,17 @@ class Cone_Mapper(Node):
         prefit_covariance = covariance_predicted + self.R_matrix;
         prefit_covariance_inversed = np.linalg.inv(prefit_covariance);
         self.Kalman_gain = np.matmul(covariance_predicted, prefit_covariance_inversed);
-        #print("Kalman gain", self.Kalman_gain)
 
         #Perform opttimized prediction of state calculation
-        #print("Measured state", self.convert_cone_map_to_state(self.Cone_map_measured))
-        #print("Predicted state", first_prediction_state)
         optimized_prediction_state = first_prediction_state + np.matmul(self.Kalman_gain, prefit_residual);
-        #print("Optimized prediction state", self.cone_map_state)
 
         #Perform opttimized prediction of covariance calculation
         optimized_covariance =  np.matmul((np.identity(self.matrix_size) - self.Kalman_gain), covariance_predicted);
-        #optimized_covariance =  np.identity(self.matrix_size) - np.matmul(self.Kalman_gain, covariance_predicted);
-        print("Optimized prediction covariance\n", self.covariance)
         postfit_residual = measured_state - optimized_prediction_state;
         
-        self.covariance = optimized_covariance;
-        self.cone_map_state = optimized_prediction_state;
+        #self.covariance = optimized_covariance;
+        #self.cone_map_state = optimized_prediction_state;
         self.Cone_map = self.convert_state_to_cone_map(optimized_prediction_state, optimized_covariance);
-
         #Update array for plot
         x, y, theta, self.cone_map_array = self.convert_message_to_data(self.Cone_map);
 
@@ -150,6 +143,7 @@ class Cone_Mapper(Node):
         list_of_cones = cone_map.cones[1::1];
         cart_info = cone_map.cones[0];
         number_of_cones = len(cone_map.cones) - 1;
+        print(number_of_cones)
         covariance_size = number_of_cones * 2 + 3;
         output_covariance = np.zeros((covariance_size, covariance_size));
         
@@ -189,7 +183,7 @@ class Cone_Mapper(Node):
                 individual_cone_covariance = cone_covariance[index:index+2, index:index+2];
                 individual_cone_covariance_vector = self.convert_covariance_to_covariance_vector(individual_cone_covariance);
                 individual_cone = self.pack_cone_message(list_of_cones[index][0],list_of_cones[index + 1][0],0.0,index + 1,individual_cone_covariance_vector);
-            output_conemap.cones.append(individual_cone);
+                output_conemap.cones.append(individual_cone);
 
         return output_conemap;
 
