@@ -12,7 +12,8 @@ K := $(foreach exec,$(PREREQS),\
 	$(if $(shell where $(exec)),some string,$(error "No $(exec) in PATH")))
 pwd := $(strip $(shell cd))
 else
-
+	ifeq ($(shell grep "Jetson" /proc/device-tree/model -ao), Jetson)
+GPU := true
 PREREQS = docker compose code
 GPU := $(shell lspci | grep -i "NVIDIA")
 	ifneq ($(strip $(GPU)),)
