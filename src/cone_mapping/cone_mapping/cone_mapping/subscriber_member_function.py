@@ -15,6 +15,7 @@
 # Cone mapping node
 
 import rclpy
+import random
 from rclpy.node import Node
 
 from std_msgs.msg import String
@@ -88,11 +89,45 @@ class Cone_Mapper(Node):
         self.counter += 1;
 
         if self.counter % 50 == 0:
-            plt.scatter(self.cone_map_array[0], self.cone_map_array[1], marker="x")
-            #plt.scatter(self.cone_map_array_measured_all[0], self.cone_map_array_measured_all[1], marker="x")
-            plt.scatter([76.5979, 96.1476, 92.0906, 62.8596, 26.6301],[76.2157, 90.4749, 16.2427, 74.0812, 17.7761])
+            plt.scatter(self.cone_map_array[0], self.cone_map_array[1], marker="o") #o marker for cone mapping
+            plt.scatter(self.cone_map_array_measured_all[0], self.cone_map_array_measured_all[1], marker=".") #. marker for all measurements taken
+            plt.scatter([76.5979, 96.1476, 92.0906, 62.8596, 26.6301],[76.2157, 90.4749, 16.2427, 74.0812, 17.7761], marker = "x") #x marker for true position
             plt.show();
             time.sleep(1)
+##############################
+    def sort_and_add_cones(self, cone_map_measurement_input):
+        output = ConeMap();
+        output.cones.append(cone_map_measurement_input.cones[0]); #Include cart info first
+        
+        predicted_cones = self.Cone_map.cones[1:];  #Choose all cone object except for first one which is measurement of cart
+        measured_cones = cone_map_measurement_input.cones[1:];
+
+        if self.counter == 0:
+            return cone_map_measurement_input;
+        
+        #Sort existing cones
+        matching_flag = False;
+        for cone in predicted_cones:
+            matching_flag = False;
+            predict_x, predict_y, predict_theta, predict_covaraince = self.extract_data_from_cone(cone)
+            for measured_cone in measured_cones:
+                measure_x, measure_y, measure_theta, measure_covariance = self.extract_data_from_cone(measured_cone)
+                if self.is_same_cone(predict_x, predict_y, measure_x, measure_y, 10):
+                    output.cones.append(measured_cone);
+                    measured_cones.remove(measured_cone);
+                    matching_flag = True;
+                    break;
+            if not(matching_flag):
+                output.cones.append(cone);
+        
+        print("predicted", self.convert_message_to_data(self.Cone_map)[3])
+        print("measured", self.convert_message_to_data(cone_map_measurement_input)[3])
+        print("output", self.convert_message_to_data(output)[3])
+
+        #Add new cones that is not appeared
+        
+            
+        return output;
 
     def get_measurement(self, msg):
         x, y, theta, list_of_cones = self.convert_message_to_data(msg)
@@ -101,7 +136,13 @@ class Cone_Mapper(Node):
 
         self.cone_map_array_measured = new_cone_columns;  #Produce latest measurement
         #print(self.cone_map_array_measured)
-        self.Cone_map_measured = self.produce_cone_map_message(x, y, theta, self.cone_map_array_measured) #Produce map message
+        cone_map_measurement_unsorted = self.produce_cone_map_message(x, y, theta, self.cone_map_array_measured) #Produce map message
+        
+        #Cone map measurement rearrangement function
+        self.Cone_map_measured = self.sort_and_add_cones(cone_map_measurement_unsorted);
+
+        #self.Cone_map_measured = cone_map_measurement_unsorted;
+        
         #print(self.Cone_map_measured.cones)
         self.cone_map_array_measured_all = np.concatenate((self.cone_map_array_measured_all, new_cone_columns), axis=1)
         self.cone_map_array_measured_all = self.produce_unique_cone_list()
@@ -113,7 +154,7 @@ class Cone_Mapper(Node):
         #Perform first prediction
         #first_prediction_state = self.cone_map_state;
         first_prediction_state, existing_covariance = self.convert_cone_map_to_state(self.Cone_map);
-        print("checkpoint\n",existing_covariance)
+        #print("checkpoint\n",existing_covariance)
         #Perform first prediction of covariance
         #covariance_predicted = self.covariance + self.Q_matrix;
         covariance_predicted = existing_covariance + self.Q_matrix;
@@ -143,7 +184,7 @@ class Cone_Mapper(Node):
         list_of_cones = cone_map.cones[1::1];
         cart_info = cone_map.cones[0];
         number_of_cones = len(cone_map.cones) - 1;
-        print(number_of_cones)
+        #print(number_of_cones)
         covariance_size = number_of_cones * 2 + 3;
         output_covariance = np.zeros((covariance_size, covariance_size));
         
@@ -279,7 +320,7 @@ class Cone_Mapper(Node):
         unique_cones_y = [];
         
         for index in range(0, number_of_cones, 1):
-            if not(self.is_repeating(cone_x_positions[index], cone_y_positions[index], unique_cones_x, unique_cones_y)):
+            if not(self.is_repeating(cone_x_positions[index], cone_y_positions[index], unique_cones_x, unique_cones_y, 0)):
                 unique_cones_x.append(cone_x_positions[index])
                 unique_cones_y.append(cone_y_positions[index])
         return np.array([unique_cones_x, unique_cones_y])
@@ -297,10 +338,10 @@ class Cone_Mapper(Node):
             output_map.cones.append(cone_input);
         return output_map;
 
-    def is_repeating(self, cone_x, cone_y, target_cone_x_list, target_cone_y_list):
+    def is_repeating(self, cone_x, cone_y, target_cone_x_list, target_cone_y_list, tolerance):
         number_of_cones = len(target_cone_x_list);
         for index in range(0, number_of_cones, 1):
-            if self.is_same_cone(target_cone_x_list[index], target_cone_y_list[index], cone_x, cone_y, 0.5):
+            if self.is_same_cone(target_cone_x_list[index], target_cone_y_list[index], cone_x, cone_y, tolerance):
                 return True;
         return False
             
