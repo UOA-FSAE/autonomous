@@ -19,6 +19,39 @@ services:
       - ..:/ws
 
 
+    network_mode: host  
+    ipc: host
+    stdin_open: true
+    tty: true
+
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: []
+              capabilities: [gpu]
+
+  autonomous_zed:
+    image: zed_sdk
+  
+    build:
+      context: .
+      dockerfile: ./zed.Dockerfile
+
+    environment:
+      - DISPLAY
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      
+      - ROS_DOMAIN_ID=47
+
+    # command: "ros2 launch zed_wrapper zed2.launch.py"
+
+    volumes:
+      - ..:/ws
+
     network_mode: host
     ipc: host
     stdin_open: true
@@ -31,7 +64,3 @@ services:
             - driver: nvidia
               device_ids: []
               capabilities: [gpu]
-    
-
-  zed_sdk:
-    image: stereolabs/zed:3.8-runtime-cuda11.7-ubuntu22.04
