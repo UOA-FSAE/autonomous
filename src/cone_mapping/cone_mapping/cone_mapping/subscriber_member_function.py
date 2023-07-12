@@ -75,7 +75,7 @@ class Cone_Mapper(Node):
         result_matrix = np.eye(self.matrix_size) * 99999 - expanded_matrix * 99999
         self.covariance = result_matrix
 
-        self.Kalman_gain = 1;
+        #self.Kalman_gain = 1;
         self.counter = 0
 
     def listener_callback(self, msg):
@@ -125,7 +125,9 @@ class Cone_Mapper(Node):
         print("output", self.convert_message_to_data(output)[3])
 
         #Add new cones that is not appeared
-        
+        for left_cone in measured_cones:
+            output.cones.append(left_cone);
+            self.Cone_map.cones.append(left_cone);
             
         return output;
 
@@ -164,13 +166,13 @@ class Cone_Mapper(Node):
         prefit_residual = measured_state - first_prediction_state;
         prefit_covariance = covariance_predicted + self.R_matrix;
         prefit_covariance_inversed = np.linalg.inv(prefit_covariance);
-        self.Kalman_gain = np.matmul(covariance_predicted, prefit_covariance_inversed);
+        Kalman_gain = np.matmul(covariance_predicted, prefit_covariance_inversed);
 
         #Perform opttimized prediction of state calculation
-        optimized_prediction_state = first_prediction_state + np.matmul(self.Kalman_gain, prefit_residual);
+        optimized_prediction_state = first_prediction_state + np.matmul(Kalman_gain, prefit_residual);
 
         #Perform opttimized prediction of covariance calculation
-        optimized_covariance =  np.matmul((np.identity(self.matrix_size) - self.Kalman_gain), covariance_predicted);
+        optimized_covariance =  np.matmul((np.identity(self.matrix_size) - Kalman_gain), covariance_predicted);
         postfit_residual = measured_state - optimized_prediction_state;
         
         #self.covariance = optimized_covariance;
