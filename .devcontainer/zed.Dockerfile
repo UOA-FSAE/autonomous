@@ -21,7 +21,8 @@ RUN apt-get update && apt-get install -q -y --no-install-recommends \
     python3-colcon-common-extensions \
     python3-colcon-mixin \
     python3-rosdep \
-    python3-vcstool 
+    python3-vcstool \
+    ros-humble-foxglove-bridge
 
 # setup environment
 ENV LANG C.UTF-8
@@ -39,14 +40,13 @@ RUN rosdep init && \
       https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
     colcon metadata update
 
-# install ros2 packages
-RUN mkdir /ws/src/ && cd "$_" && \
-    git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
-    cd .. && \
-    source /opt/ros/humble/setup.bash && \ 
-    rosdep update && \
-    rosdep install --from-paths src --ignore-src -r -y
-    #   && \
+# # install ros2 packages
+# RUN mkdir /ws/src/ && cd "$_" && \
+#     git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
+#     cd .. && \
+#     source /opt/ros/humble/setup.bash && \ 
+#     rosdep update && \
+#     rosdep install --from-paths src --ignore-src -r -y && \
 #     colcon build --parallel-workers $(nproc) --symlink-install \
 #     --event-handlers console_direct+ --base-paths src \
 #     --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
@@ -56,5 +56,5 @@ RUN mkdir /ws/src/ && cd "$_" && \
 #     echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
 #     echo "source /ws/install/setup.bash" >> ~/.bashrc
 
-# ENTRYPOINT ["/ros_entrypoint.sh"]
+# ENTRYPOINT ["../ros_entrypoint.sh"]
 # CMD ["bash"]
