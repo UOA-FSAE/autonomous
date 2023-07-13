@@ -11,7 +11,7 @@ def generate_launch_description():
 
     # get urdf file path
     path = os.path.join(get_package_share_directory('moa_description'))
-    xacro_file = os.path.join(path,'urdf','robot.urdf.xacro')
+    xacro_file = os.path.join(path,'urdf','moa_robot.urdf.xacro')
     # process xacro file
     robot_description = xacro.process_file(xacro_file)
 
@@ -20,16 +20,7 @@ def generate_launch_description():
             package='robot_state_publisher',
             executable='robot_state_publisher',
             output='screen',
-            parameters=[{
-                'robot_description': robot_description.toxml()
-            }]
+            parameters=[{'robot_description': robot_description.toxml()}]
         )
-    
-    # joint state publisher node
-    # joint_state_pub_node = Node(
-    #         package='joint_state_publisher',
-    #         executable='joint_state_publisher',
-    #         remappings=[('joint_states','/joint_states')]
-    #     )
 
     return LaunchDescription([robot_state_pub_node])
