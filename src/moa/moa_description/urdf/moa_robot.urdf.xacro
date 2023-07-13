@@ -3,8 +3,6 @@
     
     <!-- camera urdf -->
     <xacro:include filename='$(find zed_wrapper)/urdf/zed_descr.urdf.xacro'/>
-    <!--change camera model-->
-    <xacro:arg name='camera_model' default='zed2i'/>
 
     <!-- Contestants and stuff -->
     <xacro:include filename="$(find moa_description)/urdf/moa_const.xacro" />
