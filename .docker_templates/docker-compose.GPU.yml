@@ -11,14 +11,14 @@ services:
 
     environment:
       - DISPLAY
-      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=all
       
       - ROS_DOMAIN_ID=47  # Its 47 for obvious reasons
 
     volumes:
       - ..:/ws
-
+      - zed_wrapper:/ws/src/hardware_drivers/zed-ros2-wrapper
 
     network_mode: host
     ipc: host
@@ -42,7 +42,7 @@ services:
 
     environment:
       - DISPLAY
-      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=all
       
       - ROS_DOMAIN_ID=47
@@ -51,6 +51,7 @@ services:
 
     volumes:
       - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
+      - zed_wrapper:/ws/src/zed-ros2-wrapper
 
     network_mode: host
     ipc: host
@@ -64,3 +65,6 @@ services:
             - driver: nvidia
               device_ids: []
               capabilities: [gpu]
+
+volumes:
+  zed_wrapper:
