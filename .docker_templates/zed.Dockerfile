@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -q -y --no-install-recommends \
     dirmngr \
     gnupg2 \
     git \
-    ros-humble-ros-core=0.10.0-1* \
+    ros-humble-ros-core \
     build-essential \
     python3-colcon-common-extensions \
     python3-colcon-mixin \
