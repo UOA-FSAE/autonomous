@@ -45,7 +45,7 @@ class Cone_Mapper(Node):
         self.subscription  # prevent unused variable warning
 
         #Static matrix size KF, need to change afterward
-        self.number_of_cones = 5; #Used for second iteration only, later on would need to have this number be dynamic
+        self.number_of_cones = 0; #Used for second iteration only, later on would need to have this number be dynamic
         self.matrix_size = 3 + self.number_of_cones * 2;
         self.default_cone_covariance = [99999.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 99999.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
@@ -57,7 +57,7 @@ class Cone_Mapper(Node):
         self.Cone_map_measured_all = ConeMap(); #Measured cone position in cone map that contains all data
 
         #Prediction and final output
-        self.cone_map_array = np.array([[0.0] * self.number_of_cones,[0.0] * self.number_of_cones]); #Predicted cone position (for plot)
+        self.cone_map_array = np.array([[],[]]); #Predicted cone position (for plot)
         self.Cone_map = self.produce_cone_map_message(0.0, 0.0, 0.0, self.cone_map_array)
         #self.Cone_map = ConeMap(); #Predicted cone position in cone map
         self.cone_map_state = np.array([[0]]* self.matrix_size);
@@ -78,6 +78,11 @@ class Cone_Mapper(Node):
         #self.Kalman_gain = 1;
         self.counter = 0
 
+        #For testing purpose:
+        self.real_x = [82.1083,73.7515,9.0773,31.9153,81.2393,8.3508,80.7517,83.43,12.1737,47.7871,7.479,83.9158,1.9508,11.3855,4.7073,59.0939,65.1652,90.6368,16.9003,68.6806,52.0282,59.4087,36.0385,1.7585,0.9228,83.9926,57.9914,75.4613,92.7,14.5266,95.7829,11.4884,20.9061,74.1405,93.9691,83.7772,78.7889,70.397,22.3445,28.8512,41.6785,64.9687,87.3374,12.886,90.214,61.7993,68.424,25.4803,77.7853,46.6661];
+        self.real_y = [76.7874,82.8784,46.5864,58.0599,87.4731,4.0306,10.7985,58.7769,51.3741,94.3413,77.7735,85.6395,11.6419,89.5402,24.4232,13.6685,49.5905,10.8732,55.7474,74.138,68.6508,29.8633,50.6046,16.4749,69.5756,97.1017,55.2692,14.7197,86.3029,88.0514,50.5742,39.2341,98.8817,61.6964,5.6302,79.0565,98.6239,60.8165,66.09,92.8519,56.3865,2.8416,84.5369,65.8161,83.0636,0.5386,3.0325,42.7649,39.8977,29.6688];
+
+
     def listener_callback(self, msg):
         #self.get_logger().info('Mapped result: "%s"' % msg.cones)
         print("Listened")
@@ -89,9 +94,9 @@ class Cone_Mapper(Node):
         self.counter += 1;
 
         if self.counter % 50 == 0:
-            plt.scatter(self.cone_map_array[0], self.cone_map_array[1], marker="o") #o marker for cone mapping
-            plt.scatter(self.cone_map_array_measured_all[0], self.cone_map_array_measured_all[1], marker=".") #. marker for all measurements taken
-            plt.scatter([76.5979, 96.1476, 92.0906, 62.8596, 26.6301],[76.2157, 90.4749, 16.2427, 74.0812, 17.7761], marker = "x") #x marker for true position
+            plt.scatter(self.cone_map_array[0], self.cone_map_array[1], marker="x") #x marker for cone mapping
+            #plt.scatter(self.cone_map_array_measured_all[0], self.cone_map_array_measured_all[1], marker=".") #. marker for all measurements taken
+            plt.scatter(self.real_x,self.real_y, marker = ".") #. marker for true position
             plt.show();
             time.sleep(1)
 ##############################
@@ -101,9 +106,6 @@ class Cone_Mapper(Node):
         
         predicted_cones = self.Cone_map.cones[1:];  #Choose all cone object except for first one which is measurement of cart
         measured_cones = cone_map_measurement_input.cones[1:];
-
-        if self.counter == 0:
-            return cone_map_measurement_input;
         
         #Sort existing cones
         matching_flag = False;
@@ -128,8 +130,17 @@ class Cone_Mapper(Node):
         for left_cone in measured_cones:
             output.cones.append(left_cone);
             self.Cone_map.cones.append(left_cone);
+
+        #Update Q and R matrix
+        self.update_matrix()
             
         return output;
+
+    def update_matrix(self):
+        self.number_of_cones = len(self.Cone_map.cones) - 1; #Used for second iteration only, later on would need to have this number be dynamic
+        self.matrix_size = 3 + self.number_of_cones * 2;
+        self.Q_matrix = np.eye(self.matrix_size) * self.Q_constant;
+        self.R_matrix = np.eye(self.matrix_size) * self.R_constant;
 
     def get_measurement(self, msg):
         x, y, theta, list_of_cones = self.convert_message_to_data(msg)
@@ -151,8 +162,9 @@ class Cone_Mapper(Node):
         self.Cone_map_measured_all = self.produce_cone_map_message(x, y, theta, self.cone_map_array_measured)
 
     def kalman_filter_update(self, msg):
+        print("Before", len(self.Cone_map.cones))
         self.get_measurement(msg) #Get measurement
-
+        print("After", len(self.Cone_map.cones))
         #Perform first prediction
         #first_prediction_state = self.cone_map_state;
         first_prediction_state, existing_covariance = self.convert_cone_map_to_state(self.Cone_map);

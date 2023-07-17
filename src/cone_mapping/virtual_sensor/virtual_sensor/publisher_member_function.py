@@ -70,17 +70,19 @@ class Virtual_Cone_Detection(Node):
 
         #Create cone object for recording cart position and rotation status
         list_of_cone_messages = list_of_messages[4::1];
+        print(list_of_cone_messages);
         #list_of_local_cones_x = [];
         #list_of_local_cones_y = [];
         
         for index in range(0,len(list_of_cone_messages),1):
             if index % 2 == 0:
-                individual_x = float(list_of_cone_messages[index].strip()[1::1]);
-                individual_y = float(list_of_cone_messages[index + 1].strip()[0:len(list_of_cone_messages[index + 1].strip()) - 1:1]);
-                #list_of_local_cones_x.append(float(individual_x));
-                #list_of_local_cones_y.append(float(individual_y));
-                individual_cone = self.pack_cone_message(individual_x,individual_y,0.00)
-                cones_list.append(individual_cone); #Add to cone messaage
+                if list_of_cone_messages[index] != "\n":
+                    individual_x = float(list_of_cone_messages[index].strip()[1::1]);
+                    individual_y = float(list_of_cone_messages[index + 1].strip()[0:len(list_of_cone_messages[index + 1].strip()) - 1:1]);
+                    #list_of_local_cones_x.append(float(individual_x));
+                    #list_of_local_cones_y.append(float(individual_y));
+                    individual_cone = self.pack_cone_message(individual_x,individual_y,0.00)
+                    cones_list.append(individual_cone); #Add to cone messaage
 
         #list_of_cones = np.array([list_of_local_cones_x, list_of_local_cones_y])
 

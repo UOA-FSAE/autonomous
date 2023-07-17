@@ -83,8 +83,9 @@ class car:
                 measured_cones_x.append(cones_in_car_frame[0][i]);
                 measured_cones_y.append(cones_in_car_frame[1][i])
         self.recorded_data.append([self.t, measured_cones_x, measured_cones_y, self.return_position()[0], self.return_position()[1], self.return_position()[2]])
-        
-        return cones_in_car_frame
+
+        cone_in_car_frame_filtered = np.array([measured_cones_x, measured_cones_y])
+        return cone_in_car_frame_filtered
 
     def return_recorded_data(self):
         return self.recorded_data;
@@ -120,7 +121,7 @@ def DCM(theta):
 #
 
 # Set file name for saving rosbag data
-file_name = "test-data-5-cones.txt"
+file_name = "test-data-50-cones.txt"
 test_data_output_string = ""
 
 # Clearing a file
@@ -130,15 +131,15 @@ head_for_cone_list = "List of cones" + "\n" + "x, y\n"
 head_for_sensor_data = "List of real time data" + "\n" + "t, x, y, theta, (distance(unit), theta(rad)) lists\n"
 
 # Initialize world and car 
-CAR = car(5,0,0,1,np.pi/180,1000);  #It is setted such that for each second, the rotation is one degree, and the translation is one unit
+CAR = car(5,0,0,1,np.pi/180,25);  #It is setted such that for each second, the rotation is one degree, and the translation is one unit
 left_boundary = 0;
 right_boundary = 100;
 top_boundary = 100;
 bottom_boundary = 0;
-number_of_cones  = 5;
+number_of_cones  = 50;
 cone_list, real_cone_x, real_cone_y = cone_arrangement_generation(number_of_cones, left_boundary, right_boundary, top_boundary, bottom_boundary);
-real_cone_x = [76.5979, 96.1476, 92.0906, 62.8596, 26.6301];
-real_cone_y = [76.2157, 90.4749, 16.2427, 74.0812, 17.7761];
+#real_cone_x = [76.5979, 96.1476, 92.0906, 62.8596, 26.6301];
+#real_cone_y = [76.2157, 90.4749, 16.2427, 74.0812, 17.7761];
 cone_list = np.array([real_cone_x, real_cone_y])
 
 # Write existing cone into the file
@@ -177,12 +178,12 @@ point_detected_cones = ax2.plot(initial_detected_cone[0], initial_detected_cone[
 # List of explicit command provided by t and command
 # Car instructions
 ##
-#CAR.change_translation(10);
-#time_lapsing(cart_symbol, point_detected_cones, CAR, 1, animation_scale, cone_list);
+CAR.change_translation(10);
+time_lapsing(cart_symbol, point_detected_cones, CAR, 1, animation_scale, cone_list);
 CAR.change_rotation(45);
 time_lapsing(cart_symbol, point_detected_cones, CAR, 2, animation_scale, cone_list);
-#CAR.change_translation(10);
-#time_lapsing(cart_symbol, point_detected_cones, CAR, 10, animation_scale, cone_list);
+CAR.change_translation(10);
+time_lapsing(cart_symbol, point_detected_cones, CAR, 10, animation_scale, cone_list);
 ##
 ##
 ##
