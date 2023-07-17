@@ -5,14 +5,14 @@
     <joint name='world_to_chassis_joint' type='fixed'>
         <parent link='world_link'/>
         <child link='chassis_link'/>
-        <origin xyz='-0.281 0 -0.133' rpy='0 0 0'/>
+        <origin xyz='-0.281 0 0.133' rpy='0 0 0'/>
     </joint>
 
     <!--Chassis to kingpin1 joint-->
     <joint name='chassis_to_kingpin1_joint' type='revolute'>
         <parent link='chassis_link'/>
         <child link='right_kingpin_link'/>
-        <origin xyz='0.288 0.571 -0.167' rpy='0 0 0'/>
+        <origin xyz='0.288 0.571 0.167' rpy='0 0 0'/>
         <axis xyz='0 0 1'/>
         <limit lower='${-steering_in}' upper='${steering_out}' velocity='1' effort='25'/>   
     </joint>
@@ -21,7 +21,7 @@
     <joint name='chassis_to_kingpin2_joint' type='revolute'>
         <parent link='chassis_link'/>
         <child link='left_kingpin_link'/>
-        <origin xyz='0.288 -0.571 -0.167' rpy='0 0 0'/>
+        <origin xyz='0.288 -0.571 0.167' rpy='0 0 0'/>
         <axis xyz='0 0 1'/>
         <limit lower='${-steering_out}' upper='${steering_in}' velocity='1' effort='25'/>   
     </joint>
@@ -30,7 +30,7 @@
     <joint name='kingpin1_to_front_right_wheel' type='continuous'>
         <parent link='right_kingpin_link'/>
         <child link='front_right_wheel_link'/>
-        <origin xyz='-0.007 0.065 0.087' rpy='0 0 0'/>
+        <origin xyz='-0.007 0.065 -0.087' rpy='0 0 0'/>
         <axis xyz='0 1 0'/>
     </joint>
 
@@ -38,7 +38,7 @@
     <joint name='kingpin2_to_front_left_wheel' type='continuous'>
         <parent link='left_kingpin_link'/>
         <child link='front_left_wheel_link'/>
-        <origin xyz='-0.007 -0.065 0.087' rpy='0 0 0'/>
+        <origin xyz='-0.007 -0.065 -0.087' rpy='0 0 0'/>
         <axis xyz='0 1 0'/>
     </joint>
 
@@ -46,7 +46,7 @@
     <joint name='chassis_to_rear_right_wheel' type='continuous'>
         <parent link='chassis_link'/>
         <child link='rear_right_wheel_link'/>
-        <origin xyz='-1.249 0.589 -0.077' rpy='0 0 0'/>
+        <origin xyz='-1.249 0.589 0.077' rpy='0 0 0'/>
         <axis xyz='0 1 0'/>
     </joint>
 
@@ -54,7 +54,7 @@
     <joint name='chassis_to_rear_left_wheel' type='continuous'>
         <parent link='chassis_link'/>
         <child link='rear_left_wheel_link'/>
-        <origin xyz='-1.249 -0.589 -0.077' rpy='0 0 0'/>
+        <origin xyz='-1.249 -0.589 0.077' rpy='0 0 0'/>
         <axis xyz='0 1 0'/>
     </joint>
 
@@ -62,7 +62,7 @@
     <joint name='chassis_to_zed_base' type='fixed'>
         <parent link='chassis_link'/>
         <child link='base_link'/>
-        <origin xyz='-0.741 -0.002 -1.029' rpy='${-pi/2} 0 0'/>
+        <origin xyz='-0.741 -0.002 1.029' rpy='${-pi/2} 0 0'/>
     </joint>
 
 </robot>

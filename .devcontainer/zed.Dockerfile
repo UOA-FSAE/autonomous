@@ -52,9 +52,9 @@ RUN rosdep init && \
 #     --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
 #     ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
 #     ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' && \
-#     rm -rf /var/lib/apt/lists/* && \
-#     echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
-#     echo "source /ws/install/setup.bash" >> ~/.bashrc
+    # rm -rf /var/lib/apt/lists/* && \
+    # echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
+    # echo "source /ws/install/setup.bash" >> ~/.bashrc
 
 # ENTRYPOINT ["../ros_entrypoint.sh"]
 # CMD ["bash"]
