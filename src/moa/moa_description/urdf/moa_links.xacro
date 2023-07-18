@@ -1,0 +1,46 @@
+<?xml version='1.0'?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!--world link-->
+    <link name='world_link'/>
+
+    <!--chassis link-->
+    <link name='chassis_link'>
+        <visual>
+            <geometry>
+                <mesh filename='package://moa_description/meshes/Chassis.stl'/>
+            </geometry>
+            <material name='grey'>
+                <color rgba='0.4 0.4 0.4 1'/>
+            </material> 
+            <origin  xyz='0.281 0 -0.133' rpy='${pi/2} 0 0'/>
+        </visual>
+    </link>
+    
+    <!--Wheel/Tyre link-->
+    <xacro:tyre_link name='front_right_wheel_link'>
+        <origin xyz='0 0 0' rpy='${pi/2} 0 0'/>
+    </xacro:tyre_link>
+
+    <xacro:tyre_link name='front_left_wheel_link'>
+        <origin xyz='0 0 0' rpy='${-pi/2} 0 0'/>
+    </xacro:tyre_link>
+
+    <xacro:tyre_link name='rear_right_wheel_link'>
+        <origin xyz='0 0 0' rpy='${pi/2} 0 0'/>
+    </xacro:tyre_link>
+
+    <xacro:tyre_link name='rear_left_wheel_link'>
+        <origin xyz='0 0 0' rpy='${-pi/2} 0 0'/>
+    </xacro:tyre_link>
+
+    <!--kingpin link-->
+    <xacro:kingpin_link name='right_kingpin_link'>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
+    </xacro:kingpin_link>
+
+    <xacro:kingpin_link name='left_kingpin_link'>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
+    </xacro:kingpin_link>
+
+</robot>

@@ -23,6 +23,11 @@ def generate_launch_description():
         #     executable='can_interface_jnano',
         #     name='can_interface_jnano'),
 
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([os.path.join(
+                get_package_share_directory('moa_description'), 'launch'),
+                            '/urdf_model.py'])),
+
         launch_ros.actions.Node(
             package='moa_controllers',
             executable='as_status_node',
