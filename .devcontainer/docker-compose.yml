@@ -6,7 +6,8 @@ services:
 
     build:
       context: .
-      dockerfile: ../ros2_ws.Dockerfile
+      dockerfile: ./ros2_ws.Dockerfile
+
 
     environment:
       - DISPLAY
@@ -19,11 +20,10 @@ services:
       - ..:/ws
 
 
-    network_mode: host  
+    network_mode: host
     ipc: host
     stdin_open: true
     tty: true
-
 
     deploy:
       resources:
@@ -47,10 +47,11 @@ services:
       
       - ROS_DOMAIN_ID=47
 
-    # command: "ros2 launch zed_wrapper zed2.launch.py"
+    command: "ros2 launch zed_wrapper zed2.launch.py"
 
     volumes:
-      - ..:/ws
+      - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
+      
 
     network_mode: host
     ipc: host
