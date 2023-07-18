@@ -18,7 +18,6 @@ services:
 
     volumes:
       - ..:/ws
-      - zed_wrapper:/ws/src/hardware_drivers/zed-ros2-wrapper
 
     network_mode: host
     ipc: host
@@ -32,6 +31,8 @@ services:
             - driver: nvidia
               device_ids: []
               capabilities: [gpu]
+
+
 
   autonomous_zed:
     image: zed_sdk
@@ -51,7 +52,6 @@ services:
 
     volumes:
       - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
-      - zed_wrapper:/ws/src/zed-ros2-wrapper
 
     network_mode: host
     ipc: host
@@ -65,5 +65,3 @@ services:
             - driver: nvidia
               device_ids: []
               capabilities: [gpu]
-volumes:
-  zed_wrapper:
