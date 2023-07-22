@@ -143,20 +143,29 @@ class Cone_Mapper(Node):
         self.R_matrix = np.eye(self.matrix_size) * self.R_constant;
 
     def get_measurement(self, msg):
-        x, y, theta, list_of_cones = self.convert_message_to_data(msg)
-        position_vector, rotation_matrix, list_of_cones = self.convert_to_input_matrix(x, y, theta - np.pi/2, list_of_cones);
-        new_cone_columns = self.create_cone_map(position_vector, rotation_matrix, list_of_cones)
+        """Extract measurement state from the Cone Map message subscription
 
+        Args:
+          msg: Input Cone Map message from Cone detection
+
+        Raises:
+          
+        """
+        #Convert Cone Map message into position (x and y), orientation (theta) and list of cones
+        x, y, theta, list_of_cones = self.convert_message_to_data(msg)
+        #Use list of cones and states (x, y and theta) to get the position vector and rotation matrix
+        position_vector, rotation_matrix, list_of_cones = self.convert_to_input_matrix(x, y, theta - np.pi/2, list_of_cones);
+        #Conversion from local reference frame to global reference frame
+        new_cone_columns = self.create_cone_map(position_vector, rotation_matrix, list_of_cones)
         self.cone_map_array_measured = new_cone_columns;  #Produce latest measurement
-        #print(self.cone_map_array_measured)
+        
+        #Get unsorted Cone Map that contains all measured cone map at moment
         cone_map_measurement_unsorted = self.produce_cone_map_message(x, y, theta, self.cone_map_array_measured) #Produce map message
         
-        #Cone map measurement rearrangement function
+        #Sort cones that is measured into the cones that are logged into the map. If the cone is new, add new logged cone.
         self.Cone_map_measured = self.sort_and_add_cones(cone_map_measurement_unsorted);
 
-        #self.Cone_map_measured = cone_map_measurement_unsorted;
-        
-        #print(self.Cone_map_measured.cones)
+        #For Debug: Add the measured cone to the collection of all measurements (using this for debug purpose only)
         self.cone_map_array_measured_all = np.concatenate((self.cone_map_array_measured_all, new_cone_columns), axis=1)
         self.cone_map_array_measured_all = self.produce_unique_cone_list()
         self.Cone_map_measured_all = self.produce_cone_map_message(x, y, theta, self.cone_map_array_measured)
@@ -216,6 +225,9 @@ class Cone_Mapper(Node):
         return output_vector, output_covariance
 
     def convert_state_to_cone_map(self, state_vector, covariance):
+        '''
+        
+        '''
         cart_info = state_vector[0:3:1];
         list_of_cones = state_vector[3::1];
         
@@ -270,6 +282,21 @@ class Cone_Mapper(Node):
             return full_covariance_matrix[:2,:2];
             
     def convert_message_to_data(self, data):
+        """Convert cone map message into useable data
+
+        Args:
+          data: Input Cone Map message from Cone detection
+
+        Returns:
+          Tuple consists of:
+          x: float for x position
+          y: float for y position
+          theta: float for orientation
+          list_of_cones: 2 x n numpy list that contains the position of the cones.
+
+        Raises:
+          
+        """
         #Convert from Cone Map to data that is processed in the node
         list_of_cones = data.cones[1::1];
         cart_info = data.cones[0];
