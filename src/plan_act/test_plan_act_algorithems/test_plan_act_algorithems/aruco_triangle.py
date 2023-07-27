@@ -51,6 +51,37 @@ def detect_center_of_markers(corners, ids):
     return closest_pair
 
 
+def get_angle_from_number(num):
+    return (num + 1) * 45
+
+
+def draw_line(image, angle_degrees):
+    angle_radians = np.deg2rad(angle_degrees)
+    center_x = image.shape[1] // 2
+    end_x = int(center_x + image.shape[1] / 2 * np.tan(angle_radians))
+    end_y = image.shape[0]
+    print(center_x, image.shape[0], end_x, end_y)
+    cv2.line(image, (center_x, image.shape[0]), (end_x, end_y), color=(0, 0, 255), thickness=10)
+
+
+def debug_show(image, markers):
+    if markers[0] is not None and markers[1] is not None:
+        cv2.aruco.drawDetectedMarkers(image, markers[0], markers[1])
+
+        closest_pair = detect_center_of_markers(markers[0], markers[1])
+        # Add a cirlce to the image in the center of the two images
+        if closest_pair is not None:
+            center_x = int((closest_pair[0][0][0] + closest_pair[1][0][0]) / 2)
+            center_y = int((closest_pair[0][0][1] + closest_pair[1][0][1]) / 2)
+            cv2.circle(image, (center_x, center_y), radius=5, color=(0, 0, 255), thickness=-1)
+
+            middle_x = image.shape[1] // 2
+            cv2.line(image, (middle_x, image.shape[0]), (center_x, center_y), color=(0, 0, 255), thickness=10)
+
+    cv2.imshow('Aruco Markers', image)
+    cv2.waitKey(1)
+
+
 class ArucoTriangleNode(Node):
     def __init__(self):
         """
