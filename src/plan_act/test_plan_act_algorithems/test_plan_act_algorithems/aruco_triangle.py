@@ -69,7 +69,7 @@ class ArucoTriangleNode(Node):
 
         self.steering_pub = self.create_publisher(
             Float32,
-            '/moa/target_steering',
+            '/set_steering',
             10)
 
         self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
@@ -92,20 +92,26 @@ class ArucoTriangleNode(Node):
         # Detect ArUco markers in image.
         corners, ids, _ = self.detector.detectMarkers(cv_image)
 
+        debug_show(cv_image, (corners, ids))
+
+        if corners is None or ids is None:
+            return
         # Detect center of closest pair of markers.
         closest_pair = detect_center_of_markers(corners, ids)
 
         if closest_pair is not None:
             # Calculate steering command based on position of center of closest pair of markers.
             self.current_target = np.mean(closest_pair, axis=0)[0]
-            self.steering_percentage = ((self.current_target[0] / cv_image.shape[
-                1]) - 0.5) * 200  # normalize to [-100, 100]
+            self.steering_percentage = ((self.current_target[0] / cv_image.shape[1]) - 0.5) * -2
+            print(self.steering_percentage)
 
             # Publish steering command.
-            self.steering_pub.publish(f"Float32(data={self.steering_percentage})")
-        else:
-            # Log message if no ArUco markers detected.
-            self.get_logger().info('No ArUco markers set detected')
+            msg = Float32()
+            msg.data = float(self.steering_percentage)
+            self.steering_pub.publish(msg)
+        # else:
+        # Log message if no ArUco markers detected.
+        # self.get_logger().info('No ArUco markers set detected')
 
 
 def main(args=None):
