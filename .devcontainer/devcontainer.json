@@ -1,0 +1,35 @@
+{
+	"name": "Autonomous Devcontainer",
+	
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "autonomous_ros2",
+	"shutdownAction": "none",
+
+	"postCreateCommand": "rosdep install --from-paths src -y --ignore-src && colcon build --symlink-install",
+	
+	"workspaceFolder": "/ws",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"donjayamanne.githistory",
+				"eamodio.gitlens",
+				"GitHub.vscode-pull-request-github",
+				"ms-iot.vscode-ros",
+				"ms-python.isort",
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-toolsai.jupyter",
+				"ms-toolsai.jupyter-keymap",
+				"ms-toolsai.jupyter-renderers",
+				"ms-toolsai.vscode-jupyter-cell-tags",
+				"ms-toolsai.vscode-jupyter-slideshow",
+				"ms-vscode.cmake-tools",
+				"ms-vscode.cpptools",
+				"redhat.vscode-xml",
+				"twxs.cmake",
+				"VisualStudioExptTeam.intellicode-api-usage-examples",
+				"VisualStudioExptTeam.vscodeintellicode"
+			]
+		}
+	}
+}
