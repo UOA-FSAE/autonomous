@@ -93,12 +93,12 @@ class Cone_Mapper(Node):
         #print(self.cone_map_array_measured);
         self.counter += 1;
 
-        if self.counter % 50 == 0:
-            plt.scatter(self.cone_map_array[0], self.cone_map_array[1], marker="x") #x marker for cone mapping
+        #if self.counter % 50 == 0:
+            #plt.scatter(self.cone_map_array[0], self.cone_map_array[1], marker="x") #x marker for cone mapping
             #plt.scatter(self.cone_map_array_measured_all[0], self.cone_map_array_measured_all[1], marker=".") #. marker for all measurements taken
-            plt.scatter(self.real_x,self.real_y, marker = ".") #. marker for true position
-            plt.show();
-            time.sleep(1)
+            #plt.scatter(self.real_x,self.real_y, marker = ".") #. marker for true position
+            #plt.show();
+            #time.sleep(1)
 ##############################
     def sort_and_add_cones(self, cone_map_measurement_input):
         output = ConeMap();
