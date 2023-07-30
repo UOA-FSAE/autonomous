@@ -101,6 +101,9 @@ class ArucoMiddleNode(Node):
         super().__init__('aruco_middle_node')
         self.bridge = CvBridge()
         self.debug = True
+        self.Kp_controller = PController(1)
+        self.current_point = (300, 100)
+        self.image_shape = None
 
         self.create_subscription(
             Image,
@@ -121,8 +124,16 @@ class ArucoMiddleNode(Node):
         self.current_target = [0, 0]
 
     def image_callback(self, msg):
+
         # Convert ROS image message to OpenCV image.
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+
+        self.current_point = (
+            int(1 * (cv_image.shape[1] / 2)),
+            int(5 * (cv_image.shape[0] / 6)),
+        )
+
+        self.image_shape = cv_image.shape
 
         # Detect ArUco markers in image.
         corners, ids, _ = self.detector.detectMarkers(cv_image)
@@ -163,10 +174,22 @@ class ArucoMiddleNode(Node):
 
         middle_trig_points = get_mid_trig_sets(even_boundary, odd_boundary, cv_image)
 
+        # calculate the target point and then get the error to correct for
+        error = self.get_target_error(target_point=(int(middle_points[0][0]), int(middle_points[0][1])),
+                                      debug_img=cv_image)
+
+        if error:
+            error = error[0]
+            change_steering = self.Kp_controller.process(error, self.current_point[0])
+            steering_msg = Float32()
+            steering_msg.data = change_steering
+            self.steering_pub.publish(steering_msg)
+
         if not self.debug:
             return
 
         print("------------------------------")
+        print(cv_image.shape)
         for middle_point in middle_points:
             print(middle_point)
 
@@ -209,11 +232,63 @@ class ArucoMiddleNode(Node):
                          (0, 122, 122), 2)
                 prev_point = (int(middle_trig_point[0]), int(middle_trig_point[1]))
 
+        cv2.circle(cv_image, self.current_point, radius=5, color=(0, 255, 0), thickness=-1)
+
         # cv2.circle(cv_image, (int(cv_image.shape[1]/2), int(cv_image.shape[0]/2)),
         #            radius=15, color=(0, 0, 255), thickness=-1)
 
         cv2.imshow("Aruco Middle ", cv_image)
         cv2.waitKey(1)
+
+    def get_target_error(self, target_point, debug_img=None):
+        # draws a line across the screen and gets the intersect at that point
+        def line(p1, p2):
+            A = (p1[1] - p2[1])
+            B = (p2[0] - p1[0])
+            C = (p1[0] * p2[1] - p2[0] * p1[1])
+            return A, B, -C
+
+        def intersection(L1, L2):
+            D = L1[0] * L2[1] - L1[1] * L2[0]
+            Dx = L1[2] * L2[1] - L1[1] * L2[2]
+            Dy = L1[0] * L2[2] - L1[2] * L2[0]
+            if D != 0:
+                x = Dx / D
+                y = Dy / D
+                return x, y
+            else:
+                return False
+
+        L1 = line(target_point,
+                  (self.image_shape[1] // 2,
+                   self.image_shape[0]))
+        L2 = line((0, self.current_point[1]), (self.image_shape[1], self.current_point[1]))
+        R = intersection(L1, L2)
+
+        if debug_img is not None and R:
+            cv2.line(debug_img,
+                     (0, self.current_point[1]),
+                     (self.image_shape[1], self.current_point[1]),
+                     (255, 0, 0), 1)
+            cv2.line(
+                debug_img,
+                (int(R[0]), int(R[1])),
+                self.current_point,
+                (0, 255, 0), 2
+            )
+
+            print(f'{R=}')
+
+        return R
+
+
+class PController:
+    def __init__(self, Kp):
+        self.Kp = Kp
+
+    def process(self, target, current):
+        control_effort = target - current
+        return control_effort * self.Kp
 
 
 def main(args=None):
