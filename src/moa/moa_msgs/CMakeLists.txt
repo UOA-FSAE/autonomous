@@ -20,6 +20,9 @@ set(msg_files
   "msg/ConeStamped.msg"
   "msg/ConeMap.msg"
   "msg/ConeMapStamped.msg"
+  "msg/CandidateState.msg"
+  "msg/CandidateStates.msg"
+  "msg/OccupancyGrid.msg"
 )
 set(srv_files
   "srv/CANSendReq.srv"
