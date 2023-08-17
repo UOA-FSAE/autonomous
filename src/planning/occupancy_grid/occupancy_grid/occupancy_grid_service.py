@@ -4,10 +4,10 @@ import rclpy
 from rclpy.node import Node
 
 
-class MinimalService(Node):
+class Occupancy_grid(Node):
 
     def __init__(self):
-        super().__init__('minimal_service')
+        super().__init__('Occupancy_grid')
         self.srv = self.create_service(AddTwoInts, 'add_two_ints', self.add_two_ints_callback)
 
     def add_two_ints_callback(self, request, response):
@@ -20,7 +20,7 @@ class MinimalService(Node):
 def main():
     rclpy.init()
 
-    minimal_service = MinimalService()
+    minimal_service = Occupancy_grid()
 
     rclpy.spin(minimal_service)
 
