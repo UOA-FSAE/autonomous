@@ -15,22 +15,21 @@
 # Cone mapping node
 
 import rclpy
-import random
 from rclpy.node import Node
 
-from std_msgs.msg import String
+from mapping_interfaces.srv import ConeMappingService
 from mapping_interfaces.msg import ConeMap
 from mapping_interfaces.msg import Cone
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
-from geometry_msgs.msg import PoseWithCovariance;
-from geometry_msgs.msg import Pose;
+from geometry_msgs.msg import PoseWithCovariance
+from geometry_msgs.msg import Pose
 
 #Plotting and mathematic related
 import math
 import numpy as np
-import matplotlib.pyplot as plt 
-import time
+#import matplotlib.pyplot as plt
+#import time
 
 class Cone_Mapper(Node):
 
@@ -44,29 +43,32 @@ class Cone_Mapper(Node):
             10)
         self.subscription  # prevent unused variable warning
 
+        #Start service for extracting cone map
+        self.srv = self.create_service(ConeMappingService, 'retrieve_cone_map', self.retrieve_cone_map_callback)
+
         #Static matrix size KF, need to change afterward
-        self.number_of_cones = 0; #Used for second iteration only, later on would need to have this number be dynamic
-        self.matrix_size = 3 + self.number_of_cones * 2;
-        self.default_cone_covariance = [99999.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 99999.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        self.number_of_cones = 0 #Used for second iteration only, later on would need to have this number be dynamic
+        self.matrix_size = 3 + self.number_of_cones * 2
+        self.default_cone_covariance = [99999.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 99999.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         #Measurement and measurement collection
-        self.cone_map_array_measured = np.array([[],[]]); #Measured cone position that contains latest data only (for plot)
-        self.Cone_map_measured = ConeMap(); #Measured cone position in cone map that contains latest data only
+        self.cone_map_array_measured = np.array([[],[]]) #Measured cone position that contains latest data only (for plot)
+        self.Cone_map_measured = ConeMap() #Measured cone position in cone map that contains latest data only
 
-        self.cone_map_array_measured_all = np.array([[],[]]); #Measured cone position that contains all data (for plot)
-        self.Cone_map_measured_all = ConeMap(); #Measured cone position in cone map that contains all data
+        self.cone_map_array_measured_all = np.array([[],[]]) #Measured cone position that contains all data (for plot)
+        self.Cone_map_measured_all = ConeMap() #Measured cone position in cone map that contains all data
 
         #Prediction and final output
-        self.cone_map_array = np.array([[],[]]); #Predicted cone position (for plot)
+        self.cone_map_array = np.array([[],[]]) #Predicted cone position (for plot)
         self.Cone_map = self.produce_cone_map_message(0.0, 0.0, 0.0, self.cone_map_array)
         #self.Cone_map = ConeMap(); #Predicted cone position in cone map
-        self.cone_map_state = np.array([[0]]* self.matrix_size);
+        self.cone_map_state = np.array([[0]]* self.matrix_size)
         #ing measured cones and adding new cones to the map
         #Kalman filter constants
-        self.Q_constant = 0.00025; # Processing noise (need to be tuned)
-        self.R_constant = 0.01; # Measurement noise
-        self.Q_matrix = np.eye(self.matrix_size) * self.Q_constant;
-        self.R_matrix = np.eye(self.matrix_size) * self.R_constant;
+        self.Q_constant = 0.00025 # Processing noise (need to be tuned)
+        self.R_constant = 0.01 # Measurement noise
+        self.Q_matrix = np.eye(self.matrix_size) * self.Q_constant
+        self.R_matrix = np.eye(self.matrix_size) * self.R_constant
 
         #Generate covariance matrix
         identity_3x3 = np.eye(3)
@@ -79,26 +81,30 @@ class Cone_Mapper(Node):
         self.counter = 0
 
         #For testing purpose:
-        self.real_x = [82.1083,73.7515,9.0773,31.9153,81.2393,8.3508,80.7517,83.43,12.1737,47.7871,7.479,83.9158,1.9508,11.3855,4.7073,59.0939,65.1652,90.6368,16.9003,68.6806,52.0282,59.4087,36.0385,1.7585,0.9228,83.9926,57.9914,75.4613,92.7,14.5266,95.7829,11.4884,20.9061,74.1405,93.9691,83.7772,78.7889,70.397,22.3445,28.8512,41.6785,64.9687,87.3374,12.886,90.214,61.7993,68.424,25.4803,77.7853,46.6661];
-        self.real_y = [76.7874,82.8784,46.5864,58.0599,87.4731,4.0306,10.7985,58.7769,51.3741,94.3413,77.7735,85.6395,11.6419,89.5402,24.4232,13.6685,49.5905,10.8732,55.7474,74.138,68.6508,29.8633,50.6046,16.4749,69.5756,97.1017,55.2692,14.7197,86.3029,88.0514,50.5742,39.2341,98.8817,61.6964,5.6302,79.0565,98.6239,60.8165,66.09,92.8519,56.3865,2.8416,84.5369,65.8161,83.0636,0.5386,3.0325,42.7649,39.8977,29.6688];
+        #self.real_x = [82.1083,73.7515,9.0773,31.9153,81.2393,8.3508,80.7517,83.43,12.1737,47.7871,7.479,83.9158,1.9508,11.3855,4.7073,59.0939,65.1652,90.6368,16.9003,68.6806,52.0282,59.4087,36.0385,1.7585,0.9228,83.9926,57.9914,75.4613,92.7,14.5266,95.7829,11.4884,20.9061,74.1405,93.9691,83.7772,78.7889,70.397,22.3445,28.8512,41.6785,64.9687,87.3374,12.886,90.214,61.7993,68.424,25.4803,77.7853,46.6661]
+        #self.real_y = [76.7874,82.8784,46.5864,58.0599,87.4731,4.0306,10.7985,58.7769,51.3741,94.3413,77.7735,85.6395,11.6419,89.5402,24.4232,13.6685,49.5905,10.8732,55.7474,74.138,68.6508,29.8633,50.6046,16.4749,69.5756,97.1017,55.2692,14.7197,86.3029,88.0514,50.5742,39.2341,98.8817,61.6964,5.6302,79.0565,98.6239,60.8165,66.09,92.8519,56.3865,2.8416,84.5369,65.8161,83.0636,0.5386,3.0325,42.7649,39.8977,29.6688]
 
+    def retrieve_cone_map_callback(self, request, response):
+        response.cone_map = self.Cone_map
+        self.get_logger().info('Incoming request for cone map')
+        return response
 
     def listener_callback(self, msg):
         #self.get_logger().info('Mapped result: "%s"' % msg.cones)
-        print("Listened")
+        #print("Listened")
         self.kalman_filter_update(msg)
         #self.get_measurement(msg) #For testing rev 0 function
         
         #self.get_logger().info('Mapped result: "%s"' % self.cone_map)
         #print(self.cone_map_array_measured);
-        self.counter += 1;
+        self.counter += 1
 
-        if self.counter % 50 == 0:
-            plt.scatter(self.cone_map_array[0], self.cone_map_array[1], marker="x") #x marker for cone mapping
-            plt.scatter(self.cone_map_array_measured_all[0], self.cone_map_array_measured_all[1], marker=".") #. marker for all measurements taken
-            plt.scatter(self.real_x,self.real_y, marker = ".") #. marker for true position
-            plt.show();
-            time.sleep(1)
+        #if self.counter % 50 == 0:
+        #    plt.scatter(self.cone_map_array[0], self.cone_map_array[1], marker="x") #x marker for cone mapping
+        #    plt.scatter(self.cone_map_array_measured_all[0], self.cone_map_array_measured_all[1], marker=".") #. marker for all measurements taken
+        #    plt.scatter(self.real_x,self.real_y, marker = ".") #. marker for true position
+        #    plt.show();
+        #    time.sleep(1)
 
 ####SLAM fucntion below################################################################################################################################
 
@@ -115,52 +121,52 @@ class Cone_Mapper(Node):
             None
         """
         
-        output = ConeMap();
+        output = ConeMap()
         #Include cart localization info first
-        output.cones.append(cone_map_measurement_input.cones[0]); 
+        output.cones.append(cone_map_measurement_input.cones[0])
         
         #Collect existing cones
-        predicted_cones = self.Cone_map.cones[1:]; 
+        predicted_cones = self.Cone_map.cones[1:]
         #Collect upcoming measurement of the cones
-        measured_cones = cone_map_measurement_input.cones[1:];
+        measured_cones = cone_map_measurement_input.cones[1:]
         
         #Sort existing cones
-        matching_flag = False;
+        matching_flag = False
         for cone in predicted_cones:
             #For each existing cone, check whether there is any measurement that is within the specified radius match_radius, and append the measurement if there is any and remove the measurement from measured_cones to avoid this measurement to be checked again
-            match_radius = 3;
-            matching_flag = False;
+            match_radius = 3
+            matching_flag = False
             predict_x, predict_y, predict_theta, predict_covaraince = self.extract_data_from_cone(cone)
             for measured_cone in measured_cones:
                 measure_x, measure_y, measure_theta, measure_covariance = self.extract_data_from_cone(measured_cone)
                 if self.is_same_cone(predict_x, predict_y, measure_x, measure_y, match_radius):
-                    output.cones.append(measured_cone);
-                    measured_cones.remove(measured_cone);
-                    matching_flag = True;
-                    break;
+                    output.cones.append(measured_cone)
+                    measured_cones.remove(measured_cone)
+                    matching_flag = True
+                    break
             #If there is no measurement matches with the existing cone that is checking, the existing cone's reading will be appended to the output.
             if not(matching_flag):
-                output.cones.append(cone);
+                output.cones.append(cone)
         
-        print("predicted", self.convert_message_to_data(self.Cone_map)[3])
-        print("measured", self.convert_message_to_data(cone_map_measurement_input)[3])
-        print("output", self.convert_message_to_data(output)[3])
+        #print("predicted", self.convert_message_to_data(self.Cone_map)[3])
+        #print("measured", self.convert_message_to_data(cone_map_measurement_input)[3])
+        #print("output", self.convert_message_to_data(output)[3])
 
         #If there are measurements that is not classified into the existing cones, the measurement will be added into the existing cones list as the new cones found.
         for left_cone in measured_cones:
-            output.cones.append(left_cone);
-            self.Cone_map.cones.append(left_cone);
+            output.cones.append(left_cone)
+            self.Cone_map.cones.append(left_cone)
 
         #Update Q and R matrix for change of number of cones.
         self.update_matrix()
             
-        return output;
+        return output
 
     def update_matrix(self):
-        self.number_of_cones = len(self.Cone_map.cones) - 1; #Used for second iteration only, later on would need to have this number be dynamic
-        self.matrix_size = 3 + self.number_of_cones * 2;
-        self.Q_matrix = np.eye(self.matrix_size) * self.Q_constant;
-        self.R_matrix = np.eye(self.matrix_size) * self.R_constant;
+        self.number_of_cones = len(self.Cone_map.cones) - 1 #Used for second iteration only, later on would need to have this number be dynamic
+        self.matrix_size = 3 + self.number_of_cones * 2
+        self.Q_matrix = np.eye(self.matrix_size) * self.Q_constant
+        self.R_matrix = np.eye(self.matrix_size) * self.R_constant
 
     def get_measurement(self, msg : ConeMap):
         """Extract measurement state from the Cone Map message subscription
@@ -177,16 +183,16 @@ class Cone_Mapper(Node):
         #Convert Cone Map message into position (x and y), orientation (theta) and list of cones
         x, y, theta, list_of_cones = self.convert_message_to_data(msg)
         #Use list of cones and states (x, y and theta) to get the position vector and rotation matrix
-        position_vector, rotation_matrix, list_of_cones = self.convert_to_input_matrix(x, y, theta - np.pi/2, list_of_cones);
+        position_vector, rotation_matrix, list_of_cones = self.convert_to_input_matrix(x, y, theta - np.pi/2, list_of_cones)
         #Conversion from local reference frame to global reference frame
         new_cone_columns = self.create_cone_map(position_vector, rotation_matrix, list_of_cones)
-        self.cone_map_array_measured = new_cone_columns;  #Produce latest measurement
+        self.cone_map_array_measured = new_cone_columns  #Produce latest measurement
         
         #Get unsorted Cone Map that contains all measured cone map at moment
         cone_map_measurement_unsorted = self.produce_cone_map_message(x, y, theta, self.cone_map_array_measured) #Produce map message
         
         #Sort cones that is measured into the cones that are logged into the map. If the cone is new, add new logged cone.
-        self.Cone_map_measured = self.sort_and_add_cones(cone_map_measurement_unsorted);
+        self.Cone_map_measured = self.sort_and_add_cones(cone_map_measurement_unsorted)
 
         #For Debug: Add the measured cone to the collection of all measurements (using this for debug purpose only)
         self.cone_map_array_measured_all = np.concatenate((self.cone_map_array_measured_all, new_cone_columns), axis=1)
@@ -210,30 +216,30 @@ class Cone_Mapper(Node):
         self.get_measurement(msg)
 
         #Perform first prediction (Step 1 on doc)
-        first_prediction_state, existing_covariance = self.convert_cone_map_to_state(self.Cone_map);
+        first_prediction_state, existing_covariance = self.convert_cone_map_to_state(self.Cone_map)
 
         #Perform first prediction of covariance (Step 2 on doc)
-        covariance_predicted = existing_covariance + self.Q_matrix;
+        covariance_predicted = existing_covariance + self.Q_matrix
         
         #Perform Kalman gain calculation (Step 3 on doc)
         measured_state, measured_covariance = self.convert_cone_map_to_state(self.Cone_map_measured) #Measured covariance is unused
-        prefit_residual = measured_state - first_prediction_state;
-        prefit_covariance = covariance_predicted + self.R_matrix;
-        prefit_covariance_inversed = np.linalg.inv(prefit_covariance);
-        Kalman_gain = np.matmul(covariance_predicted, prefit_covariance_inversed);
+        prefit_residual = measured_state - first_prediction_state
+        prefit_covariance = covariance_predicted + self.R_matrix
+        prefit_covariance_inversed = np.linalg.inv(prefit_covariance)
+        Kalman_gain = np.matmul(covariance_predicted, prefit_covariance_inversed)
 
         #Perform opttimized prediction of state calculation (Step 4 on doc)
-        optimized_prediction_state = first_prediction_state + np.matmul(Kalman_gain, prefit_residual);
+        optimized_prediction_state = first_prediction_state + np.matmul(Kalman_gain, prefit_residual)
 
         #Perform opttimized prediction of covariance calculation (Step 5 on doc)
-        optimized_covariance =  np.matmul((np.identity(self.matrix_size) - Kalman_gain), covariance_predicted);
-        postfit_residual = measured_state - optimized_prediction_state;
-        
+        optimized_covariance =  np.matmul((np.identity(self.matrix_size) - Kalman_gain), covariance_predicted)
+        postfit_residual = measured_state - optimized_prediction_state
+
         #Update the finalized cone map with the finalized state and covariance
-        self.Cone_map = self.convert_state_to_cone_map(optimized_prediction_state, optimized_covariance);
+        self.Cone_map = self.convert_state_to_cone_map(optimized_prediction_state, optimized_covariance)
 
         #Update array for plotting (Debug only)
-        x, y, theta, self.cone_map_array = self.convert_message_to_data(self.Cone_map);
+        x, y, theta, self.cone_map_array = self.convert_message_to_data(self.Cone_map)
 
     def convert_cone_map_to_state(self, cone_map : ConeMap) -> (np.array, np.array):
         """Convert cone map to vector and matrix form 
@@ -249,23 +255,23 @@ class Cone_Mapper(Node):
             None
         """
 
-        list_of_cones = cone_map.cones[1::1];
-        cart_info = cone_map.cones[0];
-        number_of_cones = len(cone_map.cones) - 1;
+        list_of_cones = cone_map.cones[1::1]
+        cart_info = cone_map.cones[0]
+        number_of_cones = len(cone_map.cones) - 1
 
-        covariance_size = number_of_cones * 2 + 3;
-        output_covariance = np.zeros((covariance_size, covariance_size));
+        covariance_size = number_of_cones * 2 + 3
+        output_covariance = np.zeros((covariance_size, covariance_size))
         
         x, y, theta, covariance_vector = self.extract_data_from_cone(cart_info)
 
-        output_covariance[:3,:3] = self.convert_covariance_vector_to_matrix(covariance_vector, True);
+        output_covariance[:3,:3] = self.convert_covariance_vector_to_matrix(covariance_vector, True)
 
-        output_vector = np.array([[x], [y], [theta]]);
+        output_vector = np.array([[x], [y], [theta]])
 
         for index in range(0,len(list_of_cones),1):
             individual_x, individual_y, individual_theta, individual_covariance_vector = self.extract_data_from_cone(list_of_cones[index])
-            output_vector = np.append(output_vector, [[individual_x], [individual_y]], axis = 0);
-            matrix_index = 3 + 2 * index;
+            output_vector = np.append(output_vector, [[individual_x], [individual_y]], axis = 0)
+            matrix_index = 3 + 2 * index
             output_covariance[matrix_index : matrix_index + 2, matrix_index : matrix_index + 2] = self.convert_covariance_vector_to_matrix(individual_covariance_vector, False)
         return output_vector, output_covariance
 
@@ -283,54 +289,54 @@ class Cone_Mapper(Node):
             None
         """
 
-        cart_info = state_vector[0:3:1];
-        list_of_cones = state_vector[3::1];
+        cart_info = state_vector[0:3:1]
+        list_of_cones = state_vector[3::1]
         
         #Covariance matrix
-        cart_covariance = covariance[:3, :3];
-        cone_covariance = covariance[3:, 3:];
+        cart_covariance = covariance[:3, :3]
+        cone_covariance = covariance[3:, 3:]
 
         cart_covariance_vector = self.convert_covariance_to_covariance_vector(cart_covariance)
         
-        output_conemap = ConeMap();
-        localization_cone = self.pack_cone_message(cart_info[0][0],cart_info[1][0],cart_info[2][0],0, cart_covariance_vector);
-        output_conemap.cones.append(localization_cone);
+        output_conemap = ConeMap()
+        localization_cone = self.pack_cone_message(cart_info[0][0],cart_info[1][0],cart_info[2][0],0, cart_covariance_vector)
+        output_conemap.cones.append(localization_cone)
 
         for index in range(0, len(list_of_cones), 1):
             if index % 2 == 0:
-                individual_cone_covariance = cone_covariance[index:index+2, index:index+2];
-                individual_cone_covariance_vector = self.convert_covariance_to_covariance_vector(individual_cone_covariance);
-                individual_cone = self.pack_cone_message(list_of_cones[index][0],list_of_cones[index + 1][0],0.0,index + 1,individual_cone_covariance_vector);
-                output_conemap.cones.append(individual_cone);
+                individual_cone_covariance = cone_covariance[index:index+2, index:index+2]
+                individual_cone_covariance_vector = self.convert_covariance_to_covariance_vector(individual_cone_covariance)
+                individual_cone = self.pack_cone_message(list_of_cones[index][0],list_of_cones[index + 1][0],0.0,index + 1,individual_cone_covariance_vector)
+                output_conemap.cones.append(individual_cone)
 
-        return output_conemap;
+        return output_conemap
 
     def convert_covariance_to_covariance_vector(self, covariance_matrix : np.array) -> list[float]:
         #Input: covariance_matrix: n x n numpy array matrix
         #Output: float64[36] array
-        matrix_size = len(covariance_matrix);
-        full_covariance_matrix = np.zeros((6, 6));
-        full_covariance_matrix[:matrix_size, :matrix_size] = covariance_matrix;
-        output_vector = [];
+        matrix_size = len(covariance_matrix)
+        full_covariance_matrix = np.zeros((6, 6))
+        full_covariance_matrix[:matrix_size, :matrix_size] = covariance_matrix
+        output_vector = []
         for row_vector in full_covariance_matrix:
             for element in row_vector:
-                output_vector.append(element);
-        return output_vector;
+                output_vector.append(element)
+        return output_vector
 
     def convert_covariance_vector_to_matrix(self, covariance_vector : list[float], is_cart : bool) -> np.array:
         #Input: covariance_vector: float[36] array;
         #Output: covariance_matrix: either 3x3 or 2x2 (if is cart then 3x3 otherwise 2x2)
-        full_covariance_matrix = np.zeros((6,6));
-        index = 0;
+        full_covariance_matrix = np.zeros((6,6))
+        index = 0
         for row_index in range(0, len(full_covariance_matrix), 1):
             for col_index in range(0, len(full_covariance_matrix), 1):
-                full_covariance_matrix[row_index, col_index] = covariance_vector[index];
-                index += 1;
+                full_covariance_matrix[row_index, col_index] = covariance_vector[index]
+                index += 1
 
         if is_cart:
-            return full_covariance_matrix[:3,:3];
+            return full_covariance_matrix[:3,:3]
         else:
-            return full_covariance_matrix[:2,:2];
+            return full_covariance_matrix[:2,:2]
             
     def convert_message_to_data(self, data : ConeMap) -> (float, float, float, np.array):
         """Convert cone map message into useable data
@@ -349,32 +355,32 @@ class Cone_Mapper(Node):
           
         """
         #Convert from Cone Map to data that is processed in the node
-        list_of_cones = data.cones[1::1];
+        list_of_cones = data.cones[1::1]
 
         #Extract the first cone in cone map as the cart localization data
-        cart_info = data.cones[0];
+        cart_info = data.cones[0]
         
         #Convert cart info to readable datas for cart
         x, y, theta, covariance = self.extract_data_from_cone(cart_info)
 
-        list_of_local_cones_x = [];
-        list_of_local_cones_y = [];
+        list_of_local_cones_x = []
+        list_of_local_cones_y = []
 
         #Convert message of cones to 2 by n matrix where n is the number of cones in the measurement message
         for index in range(0,len(list_of_cones),1):
             individual_x, individual_y, individual_theta, individual_covariance = self.extract_data_from_cone(list_of_cones[index])
-            list_of_local_cones_x.append(individual_x);
-            list_of_local_cones_y.append(individual_y);
+            list_of_local_cones_x.append(individual_x)
+            list_of_local_cones_y.append(individual_y)
 
         list_of_cones = np.array([list_of_local_cones_x, list_of_local_cones_y])
                 
-        return x, y, theta, list_of_cones;
+        return x, y, theta, list_of_cones
 
     def extract_data_from_cone(self, cone_input : Cone) -> (float, float, float, list[float]):
-        x = cone_input.pose.pose.position.x;
-        y = cone_input.pose.pose.position.y;
-        theta = cone_input.pose.pose.orientation.w;
-        covaraince = cone_input.pose.covariance;
+        x = cone_input.pose.pose.position.x
+        y = cone_input.pose.pose.position.y
+        theta = cone_input.pose.pose.orientation.w
+        covaraince = cone_input.pose.covariance
         return x, y, theta, covaraince
         
     def convert_to_input_matrix(self, x: float, y: float, theta: float, list_of_cones: np.array) -> (np.array, np.array, np.array):

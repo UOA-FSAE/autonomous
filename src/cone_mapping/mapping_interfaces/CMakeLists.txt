@@ -18,6 +18,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ConeMap.msg"
   "msg/ConeMapStamped.msg"
   "msg/ConeStamped.msg"
+  "srv/ConeMappingService.srv"
   DEPENDENCIES geometry_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
 )
 

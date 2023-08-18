@@ -21,6 +21,7 @@ setup(
 	entry_points={
 		    'console_scripts': [
 		            'listener = cone_mapping.subscriber_member_function:main',
+		            'client = cone_mapping.client_function_test:main',
 		    ],
 	},
 )
