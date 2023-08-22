@@ -203,7 +203,7 @@ class detection(Node):
         lock.release()
         self.zed.retrieve_objects(self.objects, self.obj_runtime_param)
 
-        all_cones = ConeMapStamped();
+        all_cones = ConeMap();
         single_cone = Cone();
         #Create messages and send
         for object in self.objects.object_list:
