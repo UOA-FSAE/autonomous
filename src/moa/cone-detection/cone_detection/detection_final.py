@@ -216,7 +216,7 @@ class detection(Node):
             single_cone.pose.pose.position.z = object.position[3]
             single_cone.radius = object.dimensions[1]/2
             single_cone.height = object.dimensions[2]
-            all_cones.append(single_cone)
+            all_cones.cones.append(single_cone)
 
         self.publisher.publish(all_cones)
 
