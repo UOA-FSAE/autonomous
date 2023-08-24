@@ -29,7 +29,7 @@ class Occupancy_grid(Node):
         #Output
         pass;
 
-    def get_cone_map_size(self, ConeMap cone_map):
+    def get_map_size(self):
         pass;
     ##############################Boundary mapping
 
