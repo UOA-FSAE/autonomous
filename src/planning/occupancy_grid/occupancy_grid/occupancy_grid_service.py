@@ -2,6 +2,7 @@ from example_interfaces.srv import AddTwoInts
 
 import rclpy
 from rclpy.node import Node
+from mapping_interfaces import ConeMap
 
 
 class Occupancy_grid(Node):
@@ -28,6 +29,8 @@ class Occupancy_grid(Node):
         #Output
         pass;
 
+    def get_cone_map_size(self, ConeMap cone_map):
+        pass;
     ##############################Boundary mapping
 
 
