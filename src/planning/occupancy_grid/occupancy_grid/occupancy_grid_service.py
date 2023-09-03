@@ -6,7 +6,8 @@ from mapping_interfaces.msg import ConeMap
 from mapping_interfaces.msg import Cone
 import math
 import numpy as np
-
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 class Occupancy_grid(Node):
 
@@ -39,7 +40,12 @@ class Occupancy_grid(Node):
         #Put high integer value on cone occupancy grid
         self.fill_occupancy_grid(cone_map, occupancy_grid_matrix, x_list, y_list)
 
+        #Occupancy grid has got row to x and column to y
+
+        self.plot_occupancy_grid(x_list, y_list, occupancy_grid_matrix);
         #Interpolate between cones to get full occupancy grid
+        #Zane~~~~~
+
         #Output
         return occupancy_grid_matrix;
 
@@ -146,6 +152,34 @@ class Occupancy_grid(Node):
         theta = cone_input.pose.pose.orientation.w;
         covaraince = cone_input.pose.covariance;
         return x, y, theta, covaraince
+
+    def plot_occupancy_grid(self, x_list, y_list, occupancy_grid_matrix):
+        #Transpose it for having column to x and row to y:
+        occupancy_grid_matrix = np.transpose(occupancy_grid_matrix);
+
+        #Grid plotting
+        X,Y = np.meshgrid(x_list, y_list);
+        Z = np.sin(np.sqrt(X ** 2 + Y ** 2))
+        print(Z.shape);
+        print(occupancy_grid_matrix.shape);
+
+        # Create a figure and a 3D axis
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+
+        # Plot the surface
+        surface = ax.plot_surface(X, Y, occupancy_grid_matrix, cmap=plt.cm.coolwarm)
+
+        # Add color bar
+        fig.colorbar(surface, shrink=0.5, aspect=10)
+
+        # Set labels
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Cone appearance')
+
+        # Show the plot
+        plt.show()
 
     ##############################Boundary mapping
 
