@@ -2,8 +2,8 @@ from example_interfaces.srv import AddTwoInts
 
 import rclpy
 from rclpy.node import Node
-from mapping_interfaces import ConeMap
-from mapping_interfaces inport Cone
+from mapping_interfaces.msg import ConeMap
+from mapping_interfaces.msg import Cone
 import math
 import numpy as np
 
@@ -16,6 +16,8 @@ class Occupancy_grid(Node):
         self.srv = self.create_service(AddTwoInts, 'add_two_ints', self.add_two_ints_callback)
     
     def add_two_ints_callback(self, request, response):
+        print("Testing occupancy grid function");
+        print(self.populating_occupancy_grid());
         response.sum = request.a + request.b
         self.get_logger().info('Incoming request\na: %d b: %d' % (request.a, request.b))
 
@@ -69,7 +71,7 @@ class Occupancy_grid(Node):
         return x,y
 
     def fill_occupancy_grid(self, cone_map, occupancy_grid_matrix, x_list, y_list):
-        for cone in cone_map.Cones:
+        for cone in cone_map.cones:
             x,y = self.find_cone_coordinate(x_list, y_list, cone);
             occupancy_grid_matrix[x][y] = 255;
 
@@ -77,9 +79,9 @@ class Occupancy_grid(Node):
         resolution = 0.1;  # In meters
         width = int(math.ceil((x2 - x1) / resolution));
         height = int(math.ceil((y2 - y1) / resolution));
-        matrix_output = np.empty(width, height);
-        x_list = range(x1, x2, resolution);
-        y_list = range(y1, y2, resolution);
+        matrix_output = np.empty((width, height), dtype = float);
+        x_list = np.arange(x1, x2, resolution);
+        y_list = np.arange(y1, y2, resolution);
         return matrix_output, x_list, y_list;
 
     def generate_cone_map_for_test(self):
@@ -93,30 +95,30 @@ class Occupancy_grid(Node):
         cone6 = Cone();
         cone7 = Cone();
         cone8 = Cone();
-        cone1.pose.pose.position.x = -1;
-        cone2.pose.pose.position.x = -1;
-        cone3.pose.pose.position.x = -1;
-        cone4.pose.pose.position.x = -1;
-        cone5.pose.pose.position.x = 1;
-        cone6.pose.pose.position.x = 1;
-        cone7.pose.pose.position.x = 1;
-        cone8.pose.pose.position.x = 1;
-        cone1.pose.pose.position.y = 4;
-        cone2.pose.pose.position.y = 2;
-        cone3.pose.pose.position.y = -2;
-        cone4.pose.pose.position.y = -4;
-        cone5.pose.pose.position.y = 4;
-        cone6.pose.pose.position.y = 2;
-        cone7.pose.pose.position.y = -2;
-        cone8.pose.pose.position.y = -4;
-        cone_map_test.Cones.append(cone1);
-        cone_map_test.Cones.append(cone2);
-        cone_map_test.Cones.append(cone3);
-        cone_map_test.Cones.append(cone4);
-        cone_map_test.Cones.append(cone5);
-        cone_map_test.Cones.append(cone6);
-        cone_map_test.Cones.append(cone7);
-        cone_map_test.Cones.append(cone8);
+        cone1.pose.pose.position.x = -1.0;
+        cone2.pose.pose.position.x = -1.0;
+        cone3.pose.pose.position.x = -1.0;
+        cone4.pose.pose.position.x = -1.0;
+        cone5.pose.pose.position.x = 1.0;
+        cone6.pose.pose.position.x = 1.0;
+        cone7.pose.pose.position.x = 1.0;
+        cone8.pose.pose.position.x = 1.0;
+        cone1.pose.pose.position.y = 4.0;
+        cone2.pose.pose.position.y = 2.0;
+        cone3.pose.pose.position.y = -2.0;
+        cone4.pose.pose.position.y = -4.0;
+        cone5.pose.pose.position.y = 4.0;
+        cone6.pose.pose.position.y = 2.0;
+        cone7.pose.pose.position.y = -2.0;
+        cone8.pose.pose.position.y = -4.0;
+        cone_map_test.cones.append(cone1);
+        cone_map_test.cones.append(cone2);
+        cone_map_test.cones.append(cone3);
+        cone_map_test.cones.append(cone4);
+        cone_map_test.cones.append(cone5);
+        cone_map_test.cones.append(cone6);
+        cone_map_test.cones.append(cone7);
+        cone_map_test.cones.append(cone8);
         return cone_map_test
 
     def get_map_size(self, cone_map:ConeMap):
@@ -125,7 +127,7 @@ class Occupancy_grid(Node):
         x2 = 0;
         y1 = 0;
         y2 = 0;
-        for cone in cone_map.Cones:
+        for cone in cone_map.cones:
             x, y, theta, covariance = self.extract_data_from_cone(cone)
             if x < x1:
                 x1 = x;
