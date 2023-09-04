@@ -87,7 +87,7 @@ class detection(Node):
         self.obj_runtime_param = sl.ObjectDetectionRuntimeParameters()
 
         # ... [Initialize the ROS 2 publisher for DetectedObject message]
-        self.publisher_ = self.create_publisher(ConeMapStamped, 'cone', 10)
+        self.publisher_ = self.create_publisher(ConeMap, 'cone', 10)
         self.timer = self.create_timer(0.5, self.run_detection)
 
     def img_preprocess(self, img, device, half, net_size):
