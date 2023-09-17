@@ -8,7 +8,7 @@ class CANNode(Node):
         super().__init__('CANNode')
 
         self.curr_throtle = '00'
-        self.curr_steering_angle = '00'
+        self.curr_steering_angle = '64' # 100 in hex so that it sets the defult steering position to stright
 
         self.can_dapter = CANDapter(port="/dev/ttyUSB0")
 
@@ -30,9 +30,12 @@ class CANNode(Node):
     def steering_cb(self, msg):
         angle = min(max(msg.data, -100.0), 100)
         self.curr_steering_angle = hex(int((angle + 100)))[2:]
-        print(self.curr_throtle)
-        can_msg = CANFrame(250, 2, [self.curr_throtle, self.curr_steering_angle])
+        print(self.curr_steering_angle)
+        if len(self.curr_throtle) != 2:
+            self.curr_throtle = "0" + self.curr_throtle
 
+        can_msg = CANFrame(250, 2, [self.curr_throtle, self.curr_steering_angle])
+        self.can_dapter.send_can_message(can_msg)
 
 
 def main():

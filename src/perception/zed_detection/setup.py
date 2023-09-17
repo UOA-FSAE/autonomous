@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'moa_controllers'
+package_name = 'zed_detection'
 
 setup(
     name=package_name,
@@ -13,15 +13,14 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='Adam Keating',
-    maintainer_email='adam.keating@fsae.co.nz',
-    description='Contains all the controllers for the car that integrate hardware and software',
-    license='MIT',
+    maintainer='chris',
+    maintainer_email='chrisgraham908@gmail.com',
+    description='TODO: Package description',
+    license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'ack_to_can_node = moa_controllers.ack_to_can:main',
-            'CANDapter_node = moa_controllers.CANNode:main',
+            'aruco_detection = zed_detection.aruco:main',
         ],
     },
 )

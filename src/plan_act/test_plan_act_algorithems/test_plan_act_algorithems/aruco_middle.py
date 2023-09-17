@@ -101,8 +101,8 @@ class ArucoMiddleNode(Node):
         super().__init__('aruco_middle_node')
         self.bridge = CvBridge()
         self.debug = True
-        self.Kp_controller = PController(1)
-        self.current_point = (300, 100)
+        self.Kp_controller = PController(2)
+        self.current_point = None
         self.image_shape = None
 
         self.create_subscription(
@@ -116,7 +116,7 @@ class ArucoMiddleNode(Node):
             '/set_steering',
             10)
 
-        self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
+        self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
         self.parameters = aruco.DetectorParameters()
         self.detector = aruco.ArucoDetector(self.aruco_dict, self.parameters)
 
@@ -144,16 +144,67 @@ class ArucoMiddleNode(Node):
         if not 0 == len(corners):
             even_markers = [
                 np.mean(marker, axis=1)[0]
-                for (marker_id, marker) in zip(ids, corners) if not marker_id % 2
+                for (marker_id, marker) in zip(ids, corners) if  marker_id == 2
             ]
 
         if not 0 == len(corners):
             odd_markers = [
                 np.mean(marker, axis=1)[0]
-                for (marker_id, marker) in zip(ids, corners) if marker_id % 2
+                for (marker_id, marker) in zip(ids, corners) if marker_id == 1
             ]
 
-        if 0 == len(even_markers) or 0 == len(odd_markers):
+        if 0 == len(even_markers) and 0 != len(odd_markers):
+            odd_boundary = create_boundary(odd_markers)
+            error = self.get_target_error(target_point=(int(odd_boundary[0][0]), int(odd_boundary[0][1])),
+                                          debug_img=cv_image)
+            if error:
+                error = error[0]
+                change_steering = -100.0 - self.Kp_controller.process(error, self.current_point[0])
+                steering_msg = Float32()
+                steering_msg.data = change_steering
+                self.steering_pub.publish(steering_msg)
+
+            prev_point = np.array([int(odd_boundary[0][0]), cv_image.shape[0]])
+            for odd_boundary_point in odd_boundary:
+                cv2.line(cv_image, prev_point,
+                         (int(odd_boundary_point[0]), int(odd_boundary_point[1])),
+                         (0, 122, 255), 2)
+                prev_point = (int(odd_boundary_point[0]), int(odd_boundary_point[1]))
+
+            cv2.aruco.drawDetectedMarkers(cv_image, corners, ids)
+            cv2.imshow("Aruco Middle ", cv_image)
+            cv2.waitKey(1)
+
+            return
+
+        elif 0 != len(even_markers) and 0 == len(odd_markers):
+            even_boundary = create_boundary(even_markers)
+            error = self.get_target_error(target_point=(int(even_boundary[0][0]), int(even_boundary[0][1])),
+                                          debug_img=cv_image)
+
+            print(f'{error=}')
+            if error:
+                error = error[0]
+                change_steering = -100.0 - self.Kp_controller.process(error, self.current_point[0])
+                print(change_steering)
+                steering_msg = Float32()
+                steering_msg.data = change_steering
+                self.steering_pub.publish(steering_msg)
+
+            prev_point = np.array([int(even_boundary[0][0]), cv_image.shape[0]])
+            for even_boundary_point in even_boundary:
+                cv2.line(cv_image, prev_point,
+                         (int(even_boundary_point[0]), int(even_boundary_point[1])),
+                         (0, 122, 255), 2)
+                prev_point = (int(even_boundary_point[0]), int(even_boundary_point[1]))
+
+            cv2.aruco.drawDetectedMarkers(cv_image, corners, ids)
+            cv2.imshow("Aruco Middle ", cv_image)
+            cv2.waitKey(1)
+
+            return
+
+        elif 0 == len(even_markers) and 0 == len(odd_markers):
             return
 
         even_boundary = create_boundary(even_markers)
