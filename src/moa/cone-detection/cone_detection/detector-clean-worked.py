@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+#This is a working version
 import sys
 import numpy as np
 from OpenGL.GLUT import *
@@ -17,9 +17,6 @@ from utils.datasets import letterbox
 
 from threading import Lock, Thread
 from time import sleep
-
-import ogl_viewer.viewer as gl
-import cv_viewer.tracking_viewer as cv_viewer
 
 lock = Lock()
 run_signal = False
@@ -65,23 +62,23 @@ def xywh2abcd(xywh, im_shape):
 	return output
 
 def detections_to_custom_box(detections, im, im0):
-		output = []
-		for i, det in enumerate(detections):
-			if len(det):
-				det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
-				gn = torch.tensor(im0.shape)[[1, 0, 1, 0]] # normalization gain whwh
+	output = []
+	for i, det in enumerate(detections):
+		if len(det):
+			det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+			gn = torch.tensor(im0.shape)[[1, 0, 1, 0]] # normalization gain whwh
 
-				for *xyxy, conf, cls in reversed(det):
-					xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+			for *xyxy, conf, cls in reversed(det):
+				xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
 
-					# Creating ingestable objects for the ZED SDK
-					obj = sl.CustomBoxObjectData()
-					obj.bounding_box_2d = xywh2abcd(xywh, im0.shape)
-					obj.label = cls
-					obj.probability = conf
-					obj.is_grounded = False
-					output.append(obj)
-		return output
+				# Creating ingestable objects for the ZED SDK
+				obj = sl.CustomBoxObjectData()
+				obj.bounding_box_2d = xywh2abcd(xywh, im0.shape)
+				obj.label = cls
+				obj.probability = conf
+				obj.is_grounded = False
+				output.append(obj)
+	return output
 
 def torch_thread(weights, img_size, conf_thres=0.2, iou_thres=0.45):
 	global image_net, exit_signal, run_signal, detections
@@ -120,8 +117,7 @@ def torch_thread(weights, img_size, conf_thres=0.2, iou_thres=0.45):
 def main():
 	global image_net, exit_signal, run_signal, detections
 	
-	capture_thread = Thread(target=torch_thread,
-	                        kwargs={'weights': opt.weights, 'img_size': opt.img_size, "conf_thres": opt.conf_thres})
+	capture_thread = Thread(target=torch_thread,kwargs={'weights': opt.weights, 'img_size': opt.img_size, "conf_thres": opt.conf_thres})
 	capture_thread.start()
 	
 	print("Initializing Camera...")
