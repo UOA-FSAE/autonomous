@@ -1,7 +1,7 @@
-import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import splprep, splev
+import cv2 as cv
 from example_interfaces.srv import AddTwoInts
 
 import rclpy
@@ -45,6 +45,13 @@ class Occupancy_grid(Node):
         self.fill_occupancy_grid(cone_map, occupancy_grid_matrix, x_list, y_list)
 
         #Occupancy grid has got row to x and column to y
+
+        # interpolate between cones
+        self.interpolate_bound(occupancy_grid_matrix, x_list, y_list)
+
+        bodyfit_adj = self.bodyfit_adjust(occupancy_grid_matrix)
+
+        left, right = self.separate_l_r(bodyfit_adj)
 
         self.plot_occupancy_grid(x_list, y_list, occupancy_grid_matrix);
         #Interpolate between cones to get full occupancy grid
@@ -186,92 +193,80 @@ class Occupancy_grid(Node):
         plt.show()
 
     ##############################Boundary mapping
-    def interpolate_grid(self, points):
-        """
-        Description:
+    def interpolate_bound(self, occ_grid : np.ndarray, x_list, y_list):
+        spline_tck, u = splprep([x_list,y_list], s=175, per=True) # can modify s (possibly need to tune parameter)
+        
+        #evaluate spline at given point
+        xi, yi = splev(u, spline_tck)
 
-        output: 
-        Matrix of occupancy grid
-        Resolution as float
-        Left boundary
-        -	pointArray
-        Right boundary
-        -	pointArray
-
-        """
-        num_points = len(points)
-        resolution = 5
-
-        # Calculate pairwise distances between points
-        distances = np.linalg.norm(points[:, np.newaxis, :] - points[np.newaxis, :, :], axis=-1)
-
-        print(distances)
-
-        # Create a graph with distances as weights
-        G = nx.Graph()
-        for i in range(num_points):
-            for j in range(i + 1, num_points):
-                G.add_edge(i, j, weight=distances[i, j])
-
-        # Approximate the TSP using a minimal spanning tree
-        tsp_tree = nx.minimum_spanning_tree(G)
-        tsp_path = list(nx.dfs_preorder_nodes(tsp_tree, source=0))
-
-        #======================== 
-        #convery tsp_path to control_points
-        control_points = np.array(tsp_path)
-
-        #========================
-        # Fit a spline to the control points
-        tck, u = splprep([control_points[:, 0], control_points[:, 1]], s=0)
-
-        # Generate a finer parameter grid for interpolation
-        u_fine = np.linspace(0, 1, len(control_points)*resolution)
-
-        # Evaluate the spline at the parameter values to get interpolated points
-        interpolated_path = np.column_stack(splev(u_fine, tck))
-
-        # Plot the original control points
-        plt.plot(control_points[:, 0], control_points[:, 1], 'ro', label='Control Points')
-
-        # Plot the interpolated points along the winding loop
-        plt.plot(interpolated_path[:, 0], interpolated_path[:, 1], 'b-', label='Interpolated Points')
-
-        plt.xlabel('X')
-        plt.ylabel('Y')
-        plt.title('Interpolation of Points along a Winding Loop')
-        plt.legend()
-        plt.grid(True)
-        plt.axis('equal')
+        # plot the result
+        fig, ax = plt.subplots(1, 1)
+        ax.plot(x_list, y_list, 'or')
+        ax.plot(xi, yi, '-b')
         plt.show()
 
+        return 
 
-        # =======================================
-        # Define bitmap dimensions
-        width, height = 400, 400
-        occupancy_grid = np.ones((height, width, 3), dtype=np.uint8) * 255  # Initialize with white background
+    def bodyfit_adjust(self, occ_grid : np.ndarray) -> np.ndarray:
+        '''
+            Inputs: 
+            occ_grid = Occupancy grid with interpolated boundary
+            resolution = distance per pixel
 
-        # Mark intersecting pixels
-        for point in interpolated_path:
-            x, y = points[int(point)]
-            x_pixel = int(x * (width - 1))
-            y_pixel = int(y * (height - 1))
-            occupancy_grid[y_pixel, x_pixel, :] = [0, 0, 0]  # Mark with black color
+            Output:
+            - shrunken_track = Occupancy grid that depicts drivable area and accounts 
+            for width of the car
+        '''
+        
+        shrinkage_amount = 15 # TODO need to account for resolution to check how many pixels to shrink by
+        kernel_size = (shrinkage_amount // 2, shrinkage_amount // 2)
+        kernel = np.ones(kernel_size, np.uint8)
 
-        # Display the bitmap
-        plt.imshow(bitmap)
-        plt.axis('off')
-        plt.title('Bitmap of Intersecting Path')
-        plt.show()
+        shrunken_track = cv.erode(occ_grid, kernel)
+        
+        return shrunken_track
 
-        return occupancy_grid, left_boundary, right_boundary, resolution
+    def separate_l_r(occ_grid : np.ndarray):
+        '''
+            Inputs:
+            occ_grid = Eroded occupancy grid 
 
+            Output:
+            - left = list of arrays containing points of left boundary
+            - right = list of arrays containing points of right boundary
+        '''
+        #separate inside from outside
+        contours, hierarchy = cv.findContours(occ_grid, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE)
 
+        new = cv.cvtColor(occ_grid, cv.COLOR_GRAY2BGR)
 
-    ##############################Bodyfit adjustment
+        left, right = [],[]
 
+        for i in range(len(contours)):
+            # Draw the contour
+            if hierarchy[0][i][3] == -1:
+                # Outer contour, draw in red
+                cv.drawContours(new, contours, i, (0, 0, 255), 1)
 
-    ##############################Driveable region decision
+                # Outer contour, store its points
+                right.append(contours[i])
+            else:
+                # Inner contour, draw in blue
+                cv.drawContours(new, contours, i, (255, 0, 0), 1)
+
+                # Inner contour, store its points
+                left.append(contours[i])
+
+        cv.imshow('contours', new) # for testing 
+        
+        #clean boundary arrays
+        left = [inner.flatten() for inner in np.vstack(left)]
+        right = [inner.flatten() for inner in np.vstack(right)]
+
+        left, right = np.array(left), np.array(right)
+
+        return left, right
+
 
 
 
