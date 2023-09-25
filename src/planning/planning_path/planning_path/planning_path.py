@@ -13,6 +13,19 @@ class path_planning(Node):
 
     # ===========================================================
     # TRAJECTORY GENERATION
+    def base_trajectory_generator(self, steering_angle):
+        # https://dingyan89.medium.com/simple-understanding-of-kinematic-bicycle-model-81cac6420357 is used for
+        # bicycle steering
+        L = 1;
+        R = L / np.tan(steering_angle);
+        t_range = np.arange(0, np.pi/2, 0.01);
+        trajectory_output = PoseArray();
+        for individual_t in t_range:
+            pose_input = Pose();
+            pose_input.Point.x = np.cos(individual_t) * R
+            pose_input.Point.y = np.sin(individual_t) * R
+            trajectory_output.poses.append(pose_input)
+        return trajectory_output
 
     # ===========================================================
     # TRAJECTORY DELETION
