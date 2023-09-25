@@ -1,3 +1,6 @@
 [submodule "src/hardware_drivers/zed-ros2-wrapper"]
 	path = src/hardware_drivers/zed-ros2-wrapper
 	url = https://github.com/stereolabs/zed-ros2-wrapper.git
+[submodule "src/moa/cone-detection/cone_detection/yolov7"]
+	path = src/moa/cone-detection/cone_detection/yolov7
+	url = https://github.com/WongKinYiu/yolov7.git
