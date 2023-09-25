@@ -25,16 +25,12 @@ from utils.datasets import letterbox
 from threading import Lock, Thread
 from time import sleep
 
-import ogl_viewer.viewer as gl
-import cv_viewer.tracking_viewer as cv_viewer
-
 global image_net, exit_signal, run_signal, detections, weights, img_size, conf_thres
 
 #Basic arguments of the scripts
 weights = "yolov7m.pt"
 img_size = 416
 conf_thres = 0.4
-
 
 lock = Lock()
 run_signal = False
