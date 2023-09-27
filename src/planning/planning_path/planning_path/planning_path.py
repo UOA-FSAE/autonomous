@@ -35,6 +35,7 @@ class path_planning(Node):
         trajectories = []
         for steering_angle in candidate_steering_angle:
             added_trajectory = self.base_trajectory_generator(steering_angle)
+            # Add transformation
             trajectories.append(added_trajectory)
         return trajectories
     def get_current_position(self):
