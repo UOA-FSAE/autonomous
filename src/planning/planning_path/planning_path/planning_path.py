@@ -1,15 +1,18 @@
 #!/usr/bin/python3
 import numpy as np
-import matplotlib.pyplot as plt
 
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Pose, PoseArray
+from mapping_interfaces.msg import Cone, ConeMap
 
 class path_planning(Node):
     def __init__(self):
         super().__init__("path_planning")
-        self.optimisation()
+        # TANISH - DANIEL you can change the line below have put it there for now
+        trajectories = self.base_trajectory_generator()
+        self.trajectory_deletion(occupancy_grid, trajectories)
+        self.optimisation(trajectories, states)
 
     # ===========================================================
     # TRAJECTORY GENERATION
@@ -39,19 +42,100 @@ class path_planning(Node):
 
     # ===========================================================
     # TRAJECTORY DELETION
+    def trajectory_deletion(self, occupancy_grid, trajectories=None):
+        if trajectories is None:
+            # get trajectories
+            trajectories, _ = self.generate_trajectories(5)
+
+        # delete trajectories intersecting boundary
+        self.get_inbound_trajectories(occupancy_grid, trajectories)
+
+    def get_inbound_trajectories(self, occupancy_grid, trajectories):
+        # go through each trajectory
+        for i in range(len(trajectories)):
+            # go through each point of the trajectory
+            for j in range(len(trajectories[i].poses)):
+                # get the x and y index for this pose
+                cpose = trajectories[i].poses[j]
+                xlist, ylist = self.get_coordinate_list(cone_map)
+                x = self.search_list(xlist,cpose.position.x)
+                y = self.search_list(ylist,cpose.position.y)
+                # check value in occupancy grid
+                if occupancy_grid[x][y] == 0:
+                    # point on boundary - invalid trajectory
+                    trajectories.pop(i)
+                    break
+
+    def search_list(self, ls, val):
+        # binary search
+        # number of elements dropped in binary search
+        elem_dropped = 0
+        while True:
+            # get middle element
+            mid = (len(ls) // 2) - 1
+            # check middle element
+            if val == ls[mid]:
+                # index found, if list has one element increase mid-index by 1
+                if mid == -1: mid = 0
+                break
+            elif val > ls[mid]:
+                # count number elements to be dropped
+                elem_dropped += mid + 1
+                # update list
+                ls[:] = ls[(mid + 1):]
+            else:
+                # update list
+                ls[:] = ls[:mid]
+
+        return elem_dropped + mid
+
+    def get_coordinate_list(self, cone_map):
+        # get min and max x and y values
+        x1, x2, y1, y2 = self.get_map_size(cone_map)
+
+        # create list
+        resolution = 0.1
+        xlist = np.arange(x1,x2,resolution)
+        ylist = np.arange(y1,y2,resolution)
+
+        return xlist, ylist
+
+    def get_map_size(self, cone_map:ConeMap):
+        #Get maximum andd minimum x and y
+        x1 = 0
+        x2 = 0
+        y1 = 0
+        y2 = 0
+        for cone in cone_map.cones:
+            x = cone.pose.pose.position.x
+            y = cone.pose.pose.position.y
+            theta = cone.pose.pose.orientation.w
+            covariance = cone.pose.covariance
+            if x < x1:
+                x1 = x
+            elif x > x2:
+                x2 = x
+            if y < y1:
+                y1 = y
+            elif y > y2:
+                y2 = y
+
+        return x1, x2, y1, y2
 
     # ===========================================================
     # OPTIMISATION
-    def optimisation(self):
-        # get trajectories
-        all_traj, all_states = self.generate_trajectories(5)
-        # get best trajectory states
-        opt_traj_state = self.get_best_trajectory_states(all_traj, all_states)
+    def optimisation(self, trajectories=None, states=None):
+        if trajectories is None:
+            # get trajectories
+            trajectories, states = self.generate_trajectories(5)
 
-        return opt_traj_state
+        # get best trajectory state
+        best_state = self.get_best_trajectory_state(trajectories, states)
 
-    def get_best_trajectory_states(self, trajectories, trajectories_states):
-        # create an array of all trajectory lengths
+        return best_state
+
+    def get_best_trajectory_state(self, trajectories, trajectories_states):
+        # create an array of trajectory lengths
         tlens = np.zeros(len(trajectories))
         # loop through each trajectory
         for i in range(len(trajectories)):
