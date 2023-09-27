@@ -10,13 +10,14 @@ class path_planning(Node):
     def __init__(self):
         super().__init__("path_planning")
         # TANISH - DANIEL you can change the line below have put it there for now
+        cone_map = ConeMap()
         trajectories = self.base_trajectory_generator()
         self.trajectory_deletion(occupancy_grid, trajectories)
         self.optimisation(trajectories, states)
 
     # ===========================================================
     # TRAJECTORY GENERATION
-    def base_trajectory_generator(self, steering_angle):
+    def single_trajectory_generator(self, steering_angle, position_vector, rotation_matrix):
         # https://dingyan89.medium.com/simple-understanding-of-kinematic-bicycle-model-81cac6420357 is used for
         # bicycle steering
         L = 1;
@@ -25,21 +26,46 @@ class path_planning(Node):
         trajectory_output = PoseArray();
         for individual_t in t_range:
             pose_input = Pose();
-            pose_input.Point.x = np.cos(individual_t) * R
-            pose_input.Point.y = np.sin(individual_t) * R
+            x_pre_trans = np.cos(individual_t) * R
+            y_pre_trans = np.sin(individual_t) * R
+            post_trans_point = self.apply_transformation(position_vector, rotation_matrix, x_pre_trans, y_pre_trans);
+            pose_input.Point.x = post_trans_point[0]
+            pose_input.Point.y = post_trans_point[1]
             trajectory_output.poses.append(pose_input)
         return trajectory_output
 
-    def trajectory_generator(self):
+    def trajectory_generator(self, cone_map):
         candidate_steering_angle = np.deg2rad(np.arange(-10, 10, 0.5))
         trajectories = []
+        position_and_orientation = self.get_position_of_cart(cone_map)
+        position_vector, rotation_matrix = self.get_transformation_matrix(position_and_orientation)
         for steering_angle in candidate_steering_angle:
-            added_trajectory = self.base_trajectory_generator(steering_angle)
+            added_trajectory = self.single_trajectory_generator(steering_angle, position_vector, rotation_matrix)
             # Add transformation
             trajectories.append(added_trajectory)
         return trajectories
-    def get_current_position(self):
-        pass;
+
+    def get_position_of_cart(self, cone_map):
+        localization_data = cone_map.cones[0]
+        x = localization_data.pose.pose.position.x
+        y = localization_data.pose.pose.position.y
+        theta = localization_data.pose.pose.orientation.w
+        return x, y, theta
+
+    def get_transformation_matrix(self, position_and_orientation):
+        theta = position_and_orientation[2]
+        cart_x = position_and_orientation[0]
+        cart_y = position_and_orientation[1]
+
+        rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]])
+        position_vector = np.array([cart_x], [cart_y])
+
+        return position_vector, rotation_matrix
+
+    def apply_transformation(self, position_vector, rotation_matrix, point_x, point_y):
+        point = np.array([point_x], [point_y])
+        transformed_point = np.matmul(rotation_matrix, point) + position_vector
+        return transformed_point
 
     # ===========================================================
     # TRAJECTORY DELETION
