@@ -6,13 +6,15 @@ from rclpy.node import Node
 from geometry_msgs.msg import Pose, PoseArray
 from mapping_interfaces.msg import Cone, ConeMap
 
-class path_planning(Node):
+from ...occupancy_grid.occupancy_grid.occupancy_grid_service import Occupancy_grid
+
+class path_planning(Node, Occupancy_grid):
     def __init__(self):
         super().__init__("path_planning")
-        # TANISH - DANIEL you can change the line below have put it there for now
         cone_map = ConeMap()
         trajectories = self.base_trajectory_generator()
-        self.trajectory_deletion(occupancy_grid, trajectories)
+        occupancy_grid = self.populating_occupancy_grid()
+        self.trajectory_deletion(occupancy_grid, cone_map, trajectories)
         self.optimisation(trajectories, states)
 
     # ===========================================================
@@ -69,26 +71,26 @@ class path_planning(Node):
 
     # ===========================================================
     # TRAJECTORY DELETION
-    def trajectory_deletion(self, occupancy_grid, trajectories=None):
+    def trajectory_deletion(self, occupancy_grid, cone_map, trajectories=None):
         if trajectories is None:
             # get trajectories
             trajectories, _ = self.generate_trajectories(5)
 
         # delete trajectories intersecting boundary
-        self.get_inbound_trajectories(occupancy_grid, trajectories)
+        self.get_inbound_trajectories(occupancy_grid, cone_map, trajectories)
 
-    def get_inbound_trajectories(self, occupancy_grid, trajectories):
+    def get_inbound_trajectories(self, occupancy_grid, cone_map, trajectories):
+        # get cone map size
+        _, xlist, ylist = self.get_matrix_from_size(self.get_map_size(cone_map))
         # go through each trajectory
         for i in range(len(trajectories)):
             # go through each point of the trajectory
-            for j in range(len(trajectories[i].poses)):
+            for cpose in trajectories[i].poses:
                 # get the x and y index for this pose
-                cpose = trajectories[i].poses[j]
-                xlist, ylist = self.get_coordinate_list(cone_map)
                 x = self.search_list(xlist,cpose.position.x)
                 y = self.search_list(ylist,cpose.position.y)
                 # check value in occupancy grid
-                if occupancy_grid[x][y] == 0:
+                if occupancy_grid[x][y] != 0:
                     # point on boundary - invalid trajectory
                     trajectories.pop(i)
                     break
@@ -115,40 +117,6 @@ class path_planning(Node):
                 ls[:] = ls[:mid]
 
         return elem_dropped + mid
-
-    def get_coordinate_list(self, cone_map):
-        # get min and max x and y values
-        x1, x2, y1, y2 = self.get_map_size(cone_map)
-
-        # create list
-        resolution = 0.1
-        xlist = np.arange(x1,x2,resolution)
-        ylist = np.arange(y1,y2,resolution)
-
-        return xlist, ylist
-
-    def get_map_size(self, cone_map:ConeMap):
-        #Get maximum andd minimum x and y
-        x1 = 0
-        x2 = 0
-        y1 = 0
-        y2 = 0
-        for cone in cone_map.cones:
-            x = cone.pose.pose.position.x
-            y = cone.pose.pose.position.y
-            theta = cone.pose.pose.orientation.w
-            covariance = cone.pose.covariance
-            if x < x1:
-                x1 = x
-            elif x > x2:
-                x2 = x
-            if y < y1:
-                y1 = y
-            elif y > y2:
-                y2 = y
-
-        return x1, x2, y1, y2
-
     # ===========================================================
     # OPTIMISATION
     def optimisation(self, trajectories=None, states=None):
