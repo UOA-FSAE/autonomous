@@ -48,17 +48,16 @@ class Occupancy_grid(Node):
 
         # interpolate between cones
         self.interpolate_bound(occupancy_grid_matrix, x_list, y_list)
-
+        
+        # apply bodyfit adjustment
         bodyfit_adj = self.bodyfit_adjust(occupancy_grid_matrix)
 
+        # extract left and right edges from occupancy grid
         left, right = self.separate_l_r(bodyfit_adj)
 
         self.plot_occupancy_grid(x_list, y_list, occupancy_grid_matrix);
-        #Interpolate between cones to get full occupancy grid
-        #Zane~~~~~
 
-        #Output
-        return occupancy_grid_matrix;
+        return bodyfit_adj;
 
     def binary_search(self, x_list, x):
         total_length = len(x_list);
@@ -193,21 +192,35 @@ class Occupancy_grid(Node):
         plt.show()
 
     ##############################Boundary mapping
-    def interpolate_bound(self, occ_grid : np.ndarray, x_list, y_list):
-        spline_tck, u = splprep([x_list,y_list], s=175, per=True) # can modify s (possibly need to tune parameter)
-        
-        #evaluate spline at given point
-        xi, yi = splev(u, spline_tck)
+    def interpolate_bounds(occ_grid : np.ndarray, left : np.ndarray, right : np.ndarray):
+        '''
+            Inputs: 
+            occ_grid = Occupancy grid with cones inputted
+            left = list cone coordinates for left boundary
+            right = list cone coordinates for right boundary
 
-        # plot the result
-        fig, ax = plt.subplots(1, 1)
-        ax.plot(x_list, y_list, 'or')
-        ax.plot(xi, yi, '-b')
-        plt.show()
+            Output:
+            
+        '''
+        
+        x_l, y_l = left[::,0], left[::,1]
+        x_r, y_r = right[::,0], right[::,1] 
+        
+        spline_tck_l, u_l = splprep([x_l, y_l], s=2, per=True) # can tune s
+        spline_tck_r, u_r = splprep([x_r, y_r], s=2, per=True) # can tune s
+
+        #evaluate spline at given point
+        xi_l, yi_l = splev(np.linspace(0,1,1000), spline_tck_l)
+        xi_r, yi_r = splev(np.linspace(0,1,1000), spline_tck_r)
+
+        interp_left, interp_right = np.column_stack((xi_l, yi_l)), np.column_stack((xi_r, yi_r))
+
+        for pt in np.vstack((interp_left, interp_right)):
+            occ_grid[round(pt[1])][round(pt[0])] = 255
 
         return 
 
-    def bodyfit_adjust(self, occ_grid : np.ndarray) -> np.ndarray:
+    def bodyfit_adjust(self, occ_grid : np.ndarray, width) -> np.ndarray:
         '''
             Inputs: 
             occ_grid = Occupancy grid with interpolated boundary
@@ -218,7 +231,7 @@ class Occupancy_grid(Node):
             for width of the car
         '''
         
-        shrinkage_amount = 15 # TODO need to account for resolution to check how many pixels to shrink by
+        shrinkage_amount = width # TODO need to account for resolution to check how many pixels to shrink by
         kernel_size = (shrinkage_amount // 2, shrinkage_amount // 2)
         kernel = np.ones(kernel_size, np.uint8)
 
@@ -244,6 +257,8 @@ class Occupancy_grid(Node):
 
         for i in range(len(contours)):
             # Draw the contour
+            if cv.contourArea(contours[i]) < 100:
+                continue
             if hierarchy[0][i][3] == -1:
                 # Outer contour, draw in red
                 cv.drawContours(new, contours, i, (0, 0, 255), 1)
@@ -257,8 +272,9 @@ class Occupancy_grid(Node):
                 # Inner contour, store its points
                 left.append(contours[i])
 
-        cv.imshow('contours', new) # for testing 
-        
+        cv.imshow('contours', new)
+        cv.imwrite('contours.png', new)
+
         #clean boundary arrays
         left = [inner.flatten() for inner in np.vstack(left)]
         right = [inner.flatten() for inner in np.vstack(right)]
@@ -266,8 +282,6 @@ class Occupancy_grid(Node):
         left, right = np.array(left), np.array(right)
 
         return left, right
-
-
 
 
 def main():
