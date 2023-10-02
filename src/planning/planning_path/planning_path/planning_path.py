@@ -5,17 +5,31 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Pose, PoseArray
 from mapping_interfaces.msg import Cone, ConeMap
+from ackermann_msgs.msg import AckermannDrive
 
 from ...occupancy_grid.occupancy_grid.occupancy_grid_service import Occupancy_grid
 
 class path_planning(Node, Occupancy_grid):
     def __init__(self):
         super().__init__("path_planning")
+        self.publisher = self.create_publisher(AckermannDrive, "/cmd_vel", 3)
+        self.subscriber = self.create_subscription(AckermannDrive, "/cmd_vel", self.publish_best_state, 3)
+
+    # BEST TRAJECTORY PUBLISHER
+    def publish_best_state(self, msg: AckermannDrive):
         cone_map = ConeMap()
-        trajectories = self.base_trajectory_generator()
+        trajectories, states = self.trajectory_generator()
         occupancy_grid = self.populating_occupancy_grid()
         self.trajectory_deletion(occupancy_grid, cone_map, trajectories)
-        self.optimisation(trajectories, states)
+        self.best_state = self.optimisation(trajectories, states)
+
+        args = {"steering_angle": self.best_state,
+                "steering_angle_velocity": msg.steering_angle_velocity,
+                "speed": msg.speed,
+                "acceleration": msg.acceleration,
+                "jerk": msg.jerk}
+        self.msg = AckermannDrive(**args)
+        self.publisher.publish(self.msg)
 
     # ===========================================================
     # TRAJECTORY GENERATION
@@ -45,7 +59,7 @@ class path_planning(Node, Occupancy_grid):
             added_trajectory = self.single_trajectory_generator(steering_angle, position_vector, rotation_matrix)
             # Add transformation
             trajectories.append(added_trajectory)
-        return trajectories
+        return trajectories, candidate_steering_angle
 
     def get_position_of_cart(self, cone_map):
         localization_data = cone_map.cones[0]
