@@ -21,8 +21,8 @@ class Occupancy_grid(Node):
         self.srv = self.create_service(AddTwoInts, 'add_two_ints', self.add_two_ints_callback)
     
     def add_two_ints_callback(self, request, response):
-        print("Testing occupancy grid function");
-        print(self.populating_occupancy_grid());
+        print("Testing occupancy grid function")
+        print(self.populating_occupancy_grid())
         response.sum = request.a + request.b
         self.get_logger().info('Incoming request\na: %d b: %d' % (request.a, request.b))
 
@@ -33,145 +33,153 @@ class Occupancy_grid(Node):
     def populating_occupancy_grid(self):
         #Debug only: create a custom cone map
         #To do: get cone map from cone_mapping service
-        cone_map = self.generate_cone_map_for_test(); #Generate dataset for test
+        cone_map = self.generate_cone_map_for_test() #Generate dataset for test
 
         #Get cone map size
-        x1, x2, y1, y2 = self.get_map_size(cone_map);
+        max_x, min_x, max_y, min_y = self.get_map_size(cone_map)
 
         #Initialize matrix with size of map
-        occupancy_grid_matrix, x_list, y_list = self.get_matrix_from_size(x1, x2, y1, y2);
+        occupancy_grid_matrix, x_list, y_list = self.get_matrix_from_size(max_x, min_x, max_y, min_y)
 
         #Put high integer value on cone occupancy grid
-        self.fill_occupancy_grid(cone_map, occupancy_grid_matrix, x_list, y_list)
+        bound_l, bound_r = self.fill_occupancy_grid(cone_map, occupancy_grid_matrix, x_list, y_list)
 
+        cv.imwrite('occ_grid.png', occupancy_grid_matrix)
         #Occupancy grid has got row to x and column to y
 
         # interpolate between cones
-        self.interpolate_bound(occupancy_grid_matrix, x_list, y_list)
-        
+        self.interpolate_bounds(occupancy_grid_matrix, bound_l, bound_r, x_list, y_list)
+        cv.imwrite('interpolated.png', occupancy_grid_matrix)
+
         # apply bodyfit adjustment
-        bodyfit_adj = self.bodyfit_adjust(occupancy_grid_matrix)
+        bodyfit_adj = self.bodyfit_adjust(occupancy_grid_matrix, 2)
+        cv.imwrite('shrunken.png', bodyfit_adj)
 
         # extract left and right edges from occupancy grid
-        left, right = self.separate_l_r(bodyfit_adj)
+        adj_bound_l, adj_bound_r = self.separate_l_r(bodyfit_adj)
 
-        self.plot_occupancy_grid(x_list, y_list, occupancy_grid_matrix);
+        self.plot_occupancy_grid(x_list, y_list, occupancy_grid_matrix)
 
-        return bodyfit_adj;
+        return bodyfit_adj, adj_bound_l, adj_bound_r
 
     def binary_search(self, x_list, x):
-        total_length = len(x_list);
-        # print(total_length);
-        start_index = 0;
-        end_index = total_length - 1;
-        mid_index = (start_index + end_index) // 2;
+        total_length = len(x_list)
+        # print(total_length)
+        start_index = 0
+        end_index = total_length - 1
+        mid_index = (start_index + end_index) // 2
         while not (start_index == mid_index or mid_index == end_index):
-            # print(start_index);
-            # print(mid_index);
-            # print(end_index);
+            # print(start_index)
+            # print(mid_index)
+            # print(end_index)
             # print("------")
             if x >= x_list[mid_index]:
-                start_index = mid_index;
+                start_index = mid_index
                 mid_index = (start_index + end_index) // 2
             elif x < x_list[mid_index]:
-                end_index = mid_index;
+                end_index = mid_index
                 mid_index = (start_index + end_index) // 2
 
         # Select box that contains the value inclusively
-        return start_index;
+        return start_index
 
     def find_cone_coordinate(self, x_list, y_list, cone):
-        x, y, theta, covariance = self.extract_data_from_cone(cone)
-        x = self.binary_search(x_list, x);
-        y = self.binary_search(y_list, y);
-        return x,y
+        # TODO change var names
+        x, y, theta, covariance, colour = self.extract_data_from_cone(cone)
+        x = self.binary_search(x_list, x)
+        y = self.binary_search(y_list, y)
+
+        return x, y, colour
 
     def fill_occupancy_grid(self, cone_map, occupancy_grid_matrix, x_list, y_list):
-        for cone in cone_map.cones:
-            x,y = self.find_cone_coordinate(x_list, y_list, cone);
-            occupancy_grid_matrix[x][y] = 255;
+        bound_l, bound_r = [], []
 
-    def get_matrix_from_size(self, x1, x2, y1, y2):
-        resolution = 0.1;  # In meters
-        width = int(math.ceil((x2 - x1) / resolution));
-        height = int(math.ceil((y2 - y1) / resolution));
-        matrix_output = np.empty((width, height), dtype = float);
-        x_list = np.arange(x1, x2, resolution);
-        y_list = np.arange(y1, y2, resolution);
-        return matrix_output, x_list, y_list;
+        for cone in cone_map.cones:
+            x, y, colour = self.find_cone_coordinate(x_list, y_list, cone)
+            occupancy_grid_matrix[y][x] = 255
+        
+            if not colour:
+                bound_l.append(np.array((x,y)))
+            else:
+                bound_r.append(np.array((x,y)))
+        
+        return np.array(bound_l), np.array(bound_r)
+                
+
+    def get_matrix_from_size(self, max_x, min_x, max_y, min_y):
+        resolution = 1  # TODO In meters/pixel
+
+        width = math.ceil((max_x - min_x) / resolution)
+        height = math.ceil((max_y - min_y) / resolution)
+        
+        matrix_output = np.zeros((height, width), dtype = np.uint8)
+        
+        x_list = np.arange(min_x, max_x, resolution)
+        y_list = np.arange(min_y, max_y, resolution)
+        return matrix_output, x_list, y_list
 
     def generate_cone_map_for_test(self):
         #For debug only: Generate a 10 x 10 cone:
-        cone_map_test = ConeMap();
-        cone1 = Cone();
-        cone2 = Cone();
-        cone3 = Cone();
-        cone4 = Cone();
-        cone5 = Cone();
-        cone6 = Cone();
-        cone7 = Cone();
-        cone8 = Cone();
-        cone1.pose.pose.position.x = -1.0;
-        cone2.pose.pose.position.x = -1.0;
-        cone3.pose.pose.position.x = -1.0;
-        cone4.pose.pose.position.x = -1.0;
-        cone5.pose.pose.position.x = 1.0;
-        cone6.pose.pose.position.x = 1.0;
-        cone7.pose.pose.position.x = 1.0;
-        cone8.pose.pose.position.x = 1.0;
-        cone1.pose.pose.position.y = 4.0;
-        cone2.pose.pose.position.y = 2.0;
-        cone3.pose.pose.position.y = -2.0;
-        cone4.pose.pose.position.y = -4.0;
-        cone5.pose.pose.position.y = 4.0;
-        cone6.pose.pose.position.y = 2.0;
-        cone7.pose.pose.position.y = -2.0;
-        cone8.pose.pose.position.y = -4.0;
-        cone_map_test.cones.append(cone1);
-        cone_map_test.cones.append(cone2);
-        cone_map_test.cones.append(cone3);
-        cone_map_test.cones.append(cone4);
-        cone_map_test.cones.append(cone5);
-        cone_map_test.cones.append(cone6);
-        cone_map_test.cones.append(cone7);
-        cone_map_test.cones.append(cone8);
+        cone_map_test = ConeMap()
+
+        left_arr = np.loadtxt('src/planning/occupancy_grid/occupancy_grid/testcase_L.csv', delimiter=',')
+        right_arr = np.loadtxt('src/planning/occupancy_grid/occupancy_grid/testcase_R.csv', delimiter=',')
+        
+        for pt in left_arr:
+            cone = Cone()
+            cone.pose.pose.position.x = pt[0]
+            cone.pose.pose.position.y = pt[1]
+            cone.colour = 0
+            cone_map_test.cones.append(cone)
+
+        for pt in right_arr:
+            cone = Cone()
+            cone.pose.pose.position.x = pt[0]
+            cone.pose.pose.position.y = pt[1]
+            cone.colour = 1
+            cone_map_test.cones.append(cone)
+
         return cone_map_test
 
     def get_map_size(self, cone_map:ConeMap):
         #Get maximum andd minimum x and y
-        x1 = 0;
-        x2 = 0;
-        y1 = 0;
-        y2 = 0;
+        max_x = float('-inf')
+        min_x = float('inf')
+        max_y = float('-inf')
+        min_y = float('inf')
+        
         for cone in cone_map.cones:
-            x, y, theta, covariance = self.extract_data_from_cone(cone)
-            if x < x1:
-                x1 = x;
-            elif x > x2:
-                x2 = x;
-            if y < y1:
-                y1 = y;
-            elif y > y2:
-                y2 = y;
+            x, y, theta, covariance, _ = self.extract_data_from_cone(cone)
+            if x > max_x:
+                max_x = x
+            elif x < min_x:
+                min_x = x
+            
+            if y > max_y:
+                max_y = y
+            elif y < min_y:
+                min_y = y
 
-        return x1, x2, y1, y2
+        return max_x, min_x, max_y, min_y
 
-    def extract_data_from_cone(self, cone_input : Cone) -> (float, float, float, list[float]):
-        x = cone_input.pose.pose.position.x;
-        y = cone_input.pose.pose.position.y;
-        theta = cone_input.pose.pose.orientation.w;
-        covaraince = cone_input.pose.covariance;
-        return x, y, theta, covaraince
+    def extract_data_from_cone(self, cone_input : Cone) -> (float, float, float, list[float], int):
+        x = cone_input.pose.pose.position.x
+        y = cone_input.pose.pose.position.y
+        theta = cone_input.pose.pose.orientation.w
+        covaraince = cone_input.pose.covariance
+        colour = cone_input.colour
+        
+        return x, y, theta, covaraince, colour
 
     def plot_occupancy_grid(self, x_list, y_list, occupancy_grid_matrix):
         #Transpose it for having column to x and row to y:
-        occupancy_grid_matrix = np.transpose(occupancy_grid_matrix);
+        occupancy_grid_matrix = np.transpose(occupancy_grid_matrix)
 
         #Grid plotting
-        X,Y = np.meshgrid(x_list, y_list);
+        X,Y = np.meshgrid(x_list, y_list)
         Z = np.sin(np.sqrt(X ** 2 + Y ** 2))
-        print(Z.shape);
-        print(occupancy_grid_matrix.shape);
+        print(Z.shape)
+        print(occupancy_grid_matrix.shape)
 
         # Create a figure and a 3D axis
         fig = plt.figure()
@@ -192,7 +200,7 @@ class Occupancy_grid(Node):
         plt.show()
 
     ##############################Boundary mapping
-    def interpolate_bounds(occ_grid : np.ndarray, left : np.ndarray, right : np.ndarray):
+    def interpolate_bounds(self, occ_grid : np.ndarray, left : np.ndarray, right : np.ndarray, x_list, y_list):
         '''
             Inputs: 
             occ_grid = Occupancy grid with cones inputted
@@ -209,14 +217,16 @@ class Occupancy_grid(Node):
         spline_tck_l, u_l = splprep([x_l, y_l], s=2, per=True) # can tune s
         spline_tck_r, u_r = splprep([x_r, y_r], s=2, per=True) # can tune s
 
-        #evaluate spline at given point
-        xi_l, yi_l = splev(np.linspace(0,1,1000), spline_tck_l)
-        xi_r, yi_r = splev(np.linspace(0,1,1000), spline_tck_r)
+        #evaluate spline at given point #TODO set to eval over size of matrix (change 1000 to width/height)
+        xi_l, yi_l = splev(np.linspace(0,1,500), spline_tck_l) 
+        xi_r, yi_r = splev(np.linspace(0,1,500), spline_tck_r)
 
         interp_left, interp_right = np.column_stack((xi_l, yi_l)), np.column_stack((xi_r, yi_r))
 
         for pt in np.vstack((interp_left, interp_right)):
-            occ_grid[round(pt[1])][round(pt[0])] = 255
+            x = round(pt[0])
+            y = round(pt[1])
+            occ_grid[y][x] = 255
 
         return 
 
@@ -230,7 +240,11 @@ class Occupancy_grid(Node):
             - shrunken_track = Occupancy grid that depicts drivable area and accounts 
             for width of the car
         '''
-        
+    
+        start = (52,3) # TODO probably just use start position of car becuase guaranteed to be in drivable area
+        cv.floodFill(occ_grid, None, start, 255)
+        cv.imwrite('filled.png', occ_grid)
+
         shrinkage_amount = width # TODO need to account for resolution to check how many pixels to shrink by
         kernel_size = (shrinkage_amount // 2, shrinkage_amount // 2)
         kernel = np.ones(kernel_size, np.uint8)
@@ -239,7 +253,7 @@ class Occupancy_grid(Node):
         
         return shrunken_track
 
-    def separate_l_r(occ_grid : np.ndarray):
+    def separate_l_r(self, occ_grid : np.ndarray) -> (np.ndarray, np.ndarray):
         '''
             Inputs:
             occ_grid = Eroded occupancy grid 
