@@ -86,49 +86,54 @@ class path_planning(Node, Occupancy_grid):
     # ===========================================================
     # TRAJECTORY DELETION
     def trajectory_deletion(self, occupancy_grid, cone_map, trajectories=None):
-        if trajectories is None:
-            # get trajectories
-            trajectories, _ = self.generate_trajectories(5)
-
-        # delete trajectories intersecting boundary
-        self.get_inbound_trajectories(occupancy_grid, cone_map, trajectories)
-
+        if trajectories is not None:
+            # delete trajectories intersecting boundary
+            self.get_inbound_trajectories(occupancy_grid, cone_map, trajectories) 
+        return 
+        
     def get_inbound_trajectories(self, occupancy_grid, cone_map, trajectories):
-        # get cone map size
-        _, xlist, ylist = self.get_matrix_from_size(self.get_map_size(cone_map))
         # go through each trajectory
-        for i in range(len(trajectories)):
+        for T in trajectories:
             # go through each point of the trajectory
-            for cpose in trajectories[i].poses:
+            for cpose in T.poses:
+                # get cone map size - each iteration as search lists updates it
+                _, xlist, ylist = self.get_matrix_from_size(self.get_map_size(cone_map))
                 # get the x and y index for this pose
                 x = self.search_list(xlist,cpose.position.x)
                 y = self.search_list(ylist,cpose.position.y)
-                # check value in occupancy grid
-                if occupancy_grid[x][y] != 0:
-                    # point on boundary - invalid trajectory
-                    trajectories.pop(i)
-                    break
+                # check value in occupancy grid   
+                if x is not None and y is not None: 
+                    if occupancy_grid[x][y] != 0:   
+                        # point on boundary - invalid trajectory
+                        trajectories.pop([i for i in range(len(trajectories)) if T==trajectories[i]][0])
+                        break
 
     def search_list(self, ls, val):
-        # binary search
+        ls = list(ls)
+        val = np.round(val,4)
+        # binary search - assumes a sorted search list
         # number of elements dropped in binary search
         elem_dropped = 0
         while True:
             # get middle element
-            mid = (len(ls) // 2) - 1
-            # check middle element
-            if val == ls[mid]:
-                # index found, if list has one element increase mid-index by 1
-                if mid == -1: mid = 0
-                break
-            elif val > ls[mid]:
-                # count number elements to be dropped
-                elem_dropped += mid + 1
-                # update list
-                ls[:] = ls[(mid + 1):]
-            else:
-                # update list
-                ls[:] = ls[:mid]
+            mid = int(np.ceil(len(ls) / 2)) - 1
+            try:
+                # check middle element
+                if val == ls[mid]:
+                    # index found, if list has one element increase mid-index by 1
+                    if mid == -1: mid = 0
+                    break
+                elif val > ls[mid]:
+                    # count number elements to be dropped
+                    elem_dropped += mid + 1
+                    # update list
+                    ls[:] = ls[(mid + 1):]
+                else:
+                    # update list
+                    ls[:] = ls[:mid]
+            except IndexError:
+                # value doesn't exist
+                return None
 
         return elem_dropped + mid
     # ===========================================================
