@@ -9,46 +9,62 @@ from rclpy.node import Node
 from mapping_interfaces.msg import ConeMap
 from mapping_interfaces.msg import Cone
 import math
-import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 class Occupancy_grid(Node):
-
-    #Example codes
     def __init__(self):
         super().__init__('Occupancy_grid')
         self.srv = self.create_service(AddTwoInts, 'add_two_ints', self.add_two_ints_callback)
-    
+        
+        self.occ_grid_publisher = self.create_publisher(
+            OccupancyGrid,
+            'track',
+            10
+        )
+
+        self.subscription = self.create_subscription(
+            ConeMap,
+            'cone_map',
+            self.publish_occ_grid,
+            10
+        )
+
+        self.resolution = 1 # in m/pixel
+
+
     def add_two_ints_callback(self, request, response):
         print("Testing occupancy grid function")
-        print(self.populating_occupancy_grid())
+        print(self.gen_occ_grid())
         response.sum = request.a + request.b
         self.get_logger().info('Incoming request\na: %d b: %d' % (request.a, request.b))
 
         return response
     
-    #Actual coding happening from here
-    ##############################Populating occupancy grid
-    def populating_occupancy_grid(self):
-        #Debug only: create a custom cone map
+    def publish_occ_grid(self, msg):
+        bound_l, bound_r, occ_grid = self.gen_occ_grid(msg)
+
+        self.occ_grid_publisher.publish(occ_grid)
+        
+
+
+    def gen_occ_grid(self, cone_map):
+        #Debug only: generate test cone map
         #To do: get cone map from cone_mapping service
         cone_map = self.generate_cone_map_for_test() #Generate dataset for test
 
         #Get cone map size
-        max_x, min_x, max_y, min_y = self.get_map_size(cone_map)
+        max_x, min_x, max_y, min_y = self.get_map_boundary(cone_map)
 
         #Initialize matrix with size of map
-        occupancy_grid_matrix, x_list, y_list = self.get_matrix_from_size(max_x, min_x, max_y, min_y)
+        occupancy_grid_matrix, x_list, y_list = self.create_matrix(max_x, min_x, max_y, min_y)
 
         #Put high integer value on cone occupancy grid
-        bound_l, bound_r = self.fill_occupancy_grid(cone_map, occupancy_grid_matrix, x_list, y_list)
-
+        cones_l, cones_r = self.fill_occupancy_grid(cone_map, occupancy_grid_matrix, x_list, y_list)
         cv.imwrite('occ_grid.png', occupancy_grid_matrix)
-        #Occupancy grid has got row to x and column to y
-
+        
         # interpolate between cones
-        self.interpolate_bounds(occupancy_grid_matrix, bound_l, bound_r, x_list, y_list)
+        self.interpolate_bounds(occupancy_grid_matrix, cones_l, cones_r, x_list, y_list)
         cv.imwrite('interpolated.png', occupancy_grid_matrix)
 
         # apply bodyfit adjustment
@@ -84,12 +100,11 @@ class Occupancy_grid(Node):
         return start_index
 
     def find_cone_coordinate(self, x_list, y_list, cone):
-        # TODO change var names
-        x, y, theta, covariance, colour = self.extract_data_from_cone(cone)
-        x = self.binary_search(x_list, x)
-        y = self.binary_search(y_list, y)
+        cone_x, cone_y, theta, covariance, colour = self.extract_cone_data(cone)
+        mapped_x = self.binary_search(x_list, cone_x)
+        mapped_y = self.binary_search(y_list, cone_y)
 
-        return x, y, colour
+        return  mapped_x, mapped_y, colour
 
     def fill_occupancy_grid(self, cone_map, occupancy_grid_matrix, x_list, y_list):
         bound_l, bound_r = [], []
@@ -105,17 +120,14 @@ class Occupancy_grid(Node):
         
         return np.array(bound_l), np.array(bound_r)
                 
-
-    def get_matrix_from_size(self, max_x, min_x, max_y, min_y):
-        resolution = 1  # TODO In meters/pixel
-
-        width = math.ceil((max_x - min_x) / resolution)
-        height = math.ceil((max_y - min_y) / resolution)
+    def create_matrix(self, max_x, min_x, max_y, min_y):
+        width = math.ceil((max_x - min_x) / self.resolution)
+        height = math.ceil((max_y - min_y) / self.resolution)
         
         matrix_output = np.zeros((height, width), dtype = np.uint8)
         
-        x_list = np.arange(min_x, max_x, resolution)
-        y_list = np.arange(min_y, max_y, resolution)
+        x_list = np.arange(min_x, max_x, self.resolution)
+        y_list = np.arange(min_y, max_y, self.resolution)
         return matrix_output, x_list, y_list
 
     def generate_cone_map_for_test(self):
@@ -141,7 +153,7 @@ class Occupancy_grid(Node):
 
         return cone_map_test
 
-    def get_map_size(self, cone_map:ConeMap):
+    def get_map_boundary(self, cone_map:ConeMap):
         #Get maximum andd minimum x and y
         max_x = float('-inf')
         min_x = float('inf')
@@ -149,7 +161,7 @@ class Occupancy_grid(Node):
         min_y = float('inf')
         
         for cone in cone_map.cones:
-            x, y, theta, covariance, _ = self.extract_data_from_cone(cone)
+            x, y, theta, covariance, _ = self.extract_cone_data(cone)
             if x > max_x:
                 max_x = x
             elif x < min_x:
@@ -162,7 +174,7 @@ class Occupancy_grid(Node):
 
         return max_x, min_x, max_y, min_y
 
-    def extract_data_from_cone(self, cone_input : Cone) -> (float, float, float, list[float], int):
+    def extract_cone_data(self, cone_input : Cone) -> (float, float, float, list[float], int):
         x = cone_input.pose.pose.position.x
         y = cone_input.pose.pose.position.y
         theta = cone_input.pose.pose.orientation.w
@@ -199,7 +211,6 @@ class Occupancy_grid(Node):
         # Show the plot
         plt.show()
 
-    ##############################Boundary mapping
     def interpolate_bounds(self, occ_grid : np.ndarray, left : np.ndarray, right : np.ndarray, x_list, y_list):
         '''
             Inputs: 
@@ -253,7 +264,7 @@ class Occupancy_grid(Node):
         
         return shrunken_track
 
-    def separate_l_r(self, occ_grid : np.ndarray) -> (np.ndarray, np.ndarray):
+    def sep_l_r_bounds(self, occ_grid : np.ndarray) -> (np.ndarray, np.ndarray):
         '''
             Inputs:
             occ_grid = Eroded occupancy grid 
