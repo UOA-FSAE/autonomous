@@ -20,19 +20,19 @@ class Occupancy_grid(Node):
         
         self.occ_grid_publisher = self.create_publisher(
             OccupancyGrid,
-            'track',
+            'track/occ_grid',
             10
         )
 
         self.bound_l_publisher = self.create_publisher(
             OccupancyGrid,
-            'track_l',
+            'track/bound_l',
             10
         )
 
         self.bound_r_publisher = self.create_publisher(
             OccupancyGrid,
-            'track_r',
+            'track/bound_r',
             10
         )
 
@@ -44,7 +44,8 @@ class Occupancy_grid(Node):
             10
         )
 
-        self.resolution = 1 # in m/pixel
+        self.resolution = 0.1 # in m/pixel
+        self.car_width = 1.5
 
 
     def add_two_ints_callback(self, request, response):
@@ -72,7 +73,9 @@ class Occupancy_grid(Node):
         # #Debug only: generate test cone map
         # #To do: get cone map from cone_mapping service
         # cone_map = self.generate_cone_map_for_test() #Generate dataset for test
-
+        self.start_pos = cone_map[0]
+        cone_map = cone_map[1:]
+        
         #Get cone map size
         max_x, min_x, max_y, min_y = self.get_map_boundary(cone_map)
 
@@ -81,18 +84,18 @@ class Occupancy_grid(Node):
 
         #Put high integer value on cone occupancy grid
         cones_l, cones_r = self.fill_occupancy_grid(cone_map, occupancy_grid_matrix, x_list, y_list)
-        cv.imwrite('occ_grid.png', occupancy_grid_matrix)
+        # cv.imwrite('occ_grid.png', occupancy_grid_matrix)
         
         # interpolate between cones
         self.interpolate_bounds(occupancy_grid_matrix, cones_l, cones_r, x_list, y_list)
-        cv.imwrite('interpolated.png', occupancy_grid_matrix)
+        # cv.imwrite('interpolated.png', occupancy_grid_matrix)
 
         # apply bodyfit adjustment
-        bodyfit_adj = self.bodyfit_adjust(occupancy_grid_matrix, 2)
-        cv.imwrite('shrunken.png', bodyfit_adj)
+        bodyfit_adj = self.bodyfit_adjust(occupancy_grid_matrix, self.car_width)
+        # cv.imwrite('shrunken.png', bodyfit_adj)
 
         # extract left and right edges from occupancy grid
-        adj_bound_l, adj_bound_r = self.separate_l_r(bodyfit_adj)
+        adj_bound_l, adj_bound_r = self.sep_l_r_bounds(bodyfit_adj)
 
         self.plot_occupancy_grid(x_list, y_list, occupancy_grid_matrix)
 
@@ -141,10 +144,10 @@ class Occupancy_grid(Node):
         return np.array(bound_l), np.array(bound_r)
                 
     def create_matrix(self, max_x, min_x, max_y, min_y):
-        width = math.ceil((max_x - min_x) / self.resolution)
-        height = math.ceil((max_y - min_y) / self.resolution)
+        mat_width = math.ceil((max_x - min_x) / self.resolution)
+        mat_height = math.ceil((max_y - min_y) / self.resolution)
         
-        matrix_output = np.zeros((height, width), dtype = np.uint8)
+        matrix_output = np.zeros((mat_height, mat_width), dtype = np.uint8)
         
         x_list = np.arange(min_x, max_x, self.resolution)
         y_list = np.arange(min_y, max_y, self.resolution)
@@ -231,8 +234,10 @@ class Occupancy_grid(Node):
         # Show the plot
         plt.show()
 
-    def interpolate_bounds(self, occ_grid : np.ndarray, left : np.ndarray, right : np.ndarray, x_list, y_list):
+    def interpolate_bounds(self, occ_grid : np.ndarray, left : np.ndarray, right : np.ndarray, x_list : np.ndarray, y_list : np.ndarray):
         '''
+            Interpolates points between cones to complete the track boundary
+            
             Inputs: 
             occ_grid = Occupancy grid with cones inputted
             left = list cone coordinates for left boundary
@@ -261,22 +266,24 @@ class Occupancy_grid(Node):
 
         return 
 
-    def bodyfit_adjust(self, occ_grid : np.ndarray, width) -> np.ndarray:
+    def bodyfit_adjust(self, occ_grid : np.ndarray, width : float) -> np.ndarray:
         '''
+            Fills and shrinks the track boundary by half the width of the car on each side (left/right) 
+            of the track    
+        
             Inputs: 
             occ_grid = Occupancy grid with interpolated boundary
-            resolution = distance per pixel
+            width = width of car in metres
 
             Output:
             - shrunken_track = Occupancy grid that depicts drivable area and accounts 
             for width of the car
         '''
     
-        start = (52,3) # TODO probably just use start position of car becuase guaranteed to be in drivable area
-        cv.floodFill(occ_grid, None, start, 255)
+        cv.floodFill(occ_grid, None, self.start_pos, 255)
         cv.imwrite('filled.png', occ_grid)
 
-        shrinkage_amount = width # TODO need to account for resolution to check how many pixels to shrink by
+        shrinkage_amount = width / self.resolution
         kernel_size = (shrinkage_amount // 2, shrinkage_amount // 2)
         kernel = np.ones(kernel_size, np.uint8)
 
@@ -286,6 +293,8 @@ class Occupancy_grid(Node):
 
     def sep_l_r_bounds(self, occ_grid : np.ndarray) -> (np.ndarray, np.ndarray):
         '''
+            Extracts the left and right edges of the track from the occupancy grid 
+            
             Inputs:
             occ_grid = Eroded occupancy grid 
 
