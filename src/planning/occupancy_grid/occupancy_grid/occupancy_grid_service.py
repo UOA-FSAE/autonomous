@@ -8,6 +8,7 @@ import rclpy
 from rclpy.node import Node
 from mapping_interfaces.msg import ConeMap
 from mapping_interfaces.msg import Cone
+from moa_msgs import OccupancyGrid
 import math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -22,6 +23,19 @@ class Occupancy_grid(Node):
             'track',
             10
         )
+
+        self.bound_l_publisher = self.create_publisher(
+            OccupancyGrid,
+            'track_l',
+            10
+        )
+
+        self.bound_r_publisher = self.create_publisher(
+            OccupancyGrid,
+            'track_r',
+            10
+        )
+
 
         self.subscription = self.create_subscription(
             ConeMap,
@@ -43,15 +57,21 @@ class Occupancy_grid(Node):
     
     def publish_occ_grid(self, msg):
         bound_l, bound_r, occ_grid = self.gen_occ_grid(msg)
+        msg = OccupancyGrid()
 
-        self.occ_grid_publisher.publish(occ_grid)
+        msg.occupancyGrid = occ_grid
+        self.occ_grid_publisher.publish(msg)     
         
-
+        msg.occupancyGrid = bound_l
+        self.bound_l_publisher.publish(msg) 
+        
+        msg.occupancyGrid = bound_r
+        self.bound_r_publisher.publish(msg) 
 
     def gen_occ_grid(self, cone_map):
-        #Debug only: generate test cone map
-        #To do: get cone map from cone_mapping service
-        cone_map = self.generate_cone_map_for_test() #Generate dataset for test
+        # #Debug only: generate test cone map
+        # #To do: get cone map from cone_mapping service
+        # cone_map = self.generate_cone_map_for_test() #Generate dataset for test
 
         #Get cone map size
         max_x, min_x, max_y, min_y = self.get_map_boundary(cone_map)
