@@ -30,6 +30,8 @@ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5m.pt
 *NOTE: The ZED v1 is not compatible with this module*
 
 ```
+python detector.py --weights yolov5m.pt
+or 
 python detector.py --weights yolov5m.pt # [--img_size 512 --conf_thres 0.1 --svo path/to/file.svo]
 ```
 
