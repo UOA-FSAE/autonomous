@@ -1,11 +1,15 @@
+#!/usr/bin/env python3
+# Python imports
 import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
 from rclpy.executors import SingleThreadedExecutor
-from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 from math import radians as to_rads
 from math import sin
 import time
+
+# Ros Imports
+from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 
 class inspection_mission_node(Node):
     def __init__(self):
