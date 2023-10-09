@@ -20,6 +20,7 @@ set(msg_files
   "msg/ConeStamped.msg"
   "msg/ConeMap.msg"
   "msg/ConeMapStamped.msg"
+  "msg/BoundaryStamped.msg"
 )
 set(srv_files
   "srv/CANSendReq.srv"

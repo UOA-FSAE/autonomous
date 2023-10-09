@@ -6,8 +6,8 @@ from example_interfaces.srv import AddTwoInts
 
 import rclpy
 from rclpy.node import Node
-from moa_msgs.msg import ConeMap
-from moa_msgs.msg import Cone
+from moa_msgs.msg import Cone, ConeMap, BoundaryStamped
+from std_msgs.msg import Header
 # from moa_msgs.msg import OccupancyGrid
 import math
 import matplotlib.pyplot as plt
@@ -25,18 +25,18 @@ class Occupancy_grid(Node):
         # )
 
         # self.bound_l_publisher = self.create_publisher(
-        #     OccupancyGrid,
+        #     BoundaryStamped,
         #     'track/bound_l',
         #     10
         # )
 
         # self.bound_r_publisher = self.create_publisher(
-        #     OccupancyGrid,
+        #     BoundaryStamped,
         #     'track/bound_r',
         #     10
         # )
 
-
+        # TODO change to service
         # self.subscription = self.create_subscription(
         #     ConeMap,
         #     'cone_map',
@@ -44,7 +44,7 @@ class Occupancy_grid(Node):
         #     10
         # )
 
-        self.resolution = 1 # in m/pixel TODO fix for resolutions other than 1
+        self.resolution = 0.1 # in m/pixel 
         self.car_width = 1.5 # in m TODO change to acutal width
 
     def add_two_ints_callback(self, request, response):
@@ -56,24 +56,23 @@ class Occupancy_grid(Node):
 
         return response
     
-    # def publish_occ_grid(self, msg):
-    #     bound_l, bound_r, occ_grid = self.gen_occ_grid(msg)
-    #     msg = OccupancyGrid()
-
-    #     msg.occupancyGrid = occ_grid
-    #     self.occ_grid_publisher.publish(msg)     
+    def publish_occ_grid(self, msg):
+        bound_l, bound_r, occ_grid = self.gen_occ_grid(msg)
         
-    #     msg.occupancyGrid = bound_l
-    #     self.bound_l_publisher.publish(msg) 
+        # msg_out = OccupancyGrid(occupancyGrid = occ_grid, header = Header())
+        # self.occ_grid_publisher.publish(msg_out)     
         
-    #     msg.occupancyGrid = bound_r
-    #     self.bound_r_publisher.publish(msg) 
+        msg_out = BoundaryStamped(coords = bound_l, header = Header())
+        self.bound_l_publisher.publish(msg_out) 
+        
+        msg_out = BoundaryStamped(coords = bound_r, header = Header())
+        self.bound_r_publisher.publish(msg_out) 
 
     def gen_occ_grid(self, cone_map):
         # #Debug only: generate test cone map
         # #To do: get cone map from cone_mapping service
         # cone_map = self.generate_cone_map_for_test() #Generate dataset for test
-        self.start_pos = cone_map.cones[0]
+        start_pose = cone_map.cones[0]
         cone_map = cone_map.cones[1:]
         
         #Get cone map size
@@ -81,6 +80,8 @@ class Occupancy_grid(Node):
 
         #Initialize matrix with size of map
         occupancy_grid_matrix, x_list, y_list = self.create_matrix(max_x, min_x, max_y, min_y)
+
+        self.start_coord = self.find_cone_coordinate(x_list, y_list, start_pose)
 
         #Put high integer value on cone occupancy grid
         cones_l, cones_r = self.fill_occupancy_grid(cone_map, occupancy_grid_matrix, x_list, y_list)
@@ -95,9 +96,7 @@ class Occupancy_grid(Node):
         # cv.imwrite('shrunken.png', bodyfit_adj)
 
         # extract left and right edges from occupancy grid
-        adj_bound_l, adj_bound_r = self.sep_l_r_bounds(bodyfit_adj)
-
-        self.plot_occupancy_grid(x_list, y_list, occupancy_grid_matrix)
+        adj_bound_l, adj_bound_r = self.sep_l_r_bounds(bodyfit_adj, x_list, y_list)
 
         return bodyfit_adj, adj_bound_l, adj_bound_r
 
@@ -144,13 +143,13 @@ class Occupancy_grid(Node):
         return np.array(bound_l), np.array(bound_r)
                 
     def create_matrix(self, max_x, min_x, max_y, min_y):
-        mat_width = math.ceil((max_x - min_x) / self.resolution)
-        mat_height = math.ceil((max_y - min_y) / self.resolution)
+        mat_width = math.ceil(((max_x+1) - (min_x-1)) / self.resolution)
+        mat_height = math.ceil(((max_y+1) - (min_y-1)) / self.resolution)
         
         matrix_output = np.zeros((mat_height, mat_width), dtype = np.uint8)
         
-        x_list = np.arange(min_x, max_x, self.resolution)
-        y_list = np.arange(min_y, max_y, self.resolution)
+        x_list = np.arange(min_x-1, max_x+1, self.resolution)
+        y_list = np.arange(min_y-1, max_y+1, self.resolution)
         return matrix_output, x_list, y_list
 
     def generate_cone_map_for_test(self):
@@ -162,7 +161,7 @@ class Occupancy_grid(Node):
         
         cone = Cone()
         cone.pose.pose.position.x = 52.0
-        cone.pose.pose.position.y = 3.0
+        cone.pose.pose.position.y = 90.0
         cone.colour = 0
         cone_map_test.cones.append(cone)
 
@@ -201,7 +200,7 @@ class Occupancy_grid(Node):
             elif y < min_y:
                 min_y = y
 
-        return max_x, min_x, max_y, min_y
+        return max_x+1, min_x-1, max_y+1, min_y-1
 
     def extract_cone_data(self, cone_input : Cone) -> (float, float, float, list[float], int):
         x = cone_input.pose.pose.position.x
@@ -263,7 +262,7 @@ class Occupancy_grid(Node):
 
         eval_points = 10**(math.ceil(math.log10(mat_w))+1)
 
-        # evaluate spline at given point #TODO fix 
+        # evaluate spline at given point 
         xi_l, yi_l = splev(np.linspace(0,1,eval_points), spline_tck_l) 
         xi_r, yi_r = splev(np.linspace(0,1,eval_points), spline_tck_r)
 
@@ -290,11 +289,10 @@ class Occupancy_grid(Node):
             for width of the car
         '''
     
-        start_x, start_y, theta, covaraince, colour = self.extract_cone_data(self.start_pos)
-        cv.imwrite('prefill.png', occ_grid)
-        cv.floodFill(occ_grid, None, (int(start_x), int(start_y)), 255)
-        cv.imwrite('filled.png', occ_grid)
+        start_x, start_y, colour = self.start_coord
 
+        cv.floodFill(occ_grid, None, (start_x, start_y), 255)
+        cv.imwrite('filled.png', occ_grid)
         shrinkage_amount = width / self.resolution
         kernel_size = (math.ceil(shrinkage_amount / 2), math.ceil(shrinkage_amount / 2))
         kernel = np.ones(kernel_size, np.uint8)
@@ -303,7 +301,7 @@ class Occupancy_grid(Node):
         
         return shrunken_track
 
-    def sep_l_r_bounds(self, occ_grid : np.ndarray) -> (np.ndarray, np.ndarray):
+    def sep_l_r_bounds(self, occ_grid : np.ndarray, x_list, y_list) -> (np.ndarray, np.ndarray):
         '''
             Extracts the left and right edges of the track from the occupancy grid 
             
@@ -338,14 +336,14 @@ class Occupancy_grid(Node):
                 # Inner contour, store its points
                 left.append(contours[i])
 
-        cv.imshow('contours', new)
-        cv.imwrite('contours.png', new)
-
         #clean boundary arrays
         left = [inner.flatten() for inner in np.vstack(left)]
         right = [inner.flatten() for inner in np.vstack(right)]
 
-        left, right = np.array(left), np.array(right)
+        left = [(x_list[i[0]], y_list[i[1]]) for i in left]
+        right = [(x_list[i[0]], y_list[i[1]]) for i in right]
+        
+        left, right = np.array(left, dtype=np.float32), np.array(right, dtype=np.float32)
 
         return left, right
 
