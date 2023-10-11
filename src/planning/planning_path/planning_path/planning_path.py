@@ -4,32 +4,48 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Pose, PoseArray
-from mapping_interfaces.msg import Cone, ConeMap
+from mapping_interfaces.msg import ConeMap
+from nav_msgs.msg import OccupancyGrid
 from ackermann_msgs.msg import AckermannDrive
+from message_filters import ApproximateTimeSynchronizer
 
-from ...occupancy_grid.occupancy_grid.occupancy_grid_service import Occupancy_grid
 
-class path_planning(Node, Occupancy_grid):
+
+class path_planning(Node):
     def __init__(self):
         super().__init__("path_planning")
-        self.publisher = self.create_publisher(AckermannDrive, "/cmd_vel", 3)
-        self.subscriber = self.create_subscription(AckermannDrive, "/cmd_vel", self.publish_best_state, 3)
+
+        self.ackermann.pub = self.create_publisher(AckermannDrive, "/cmd_vel", 5)
+        self.boundl.sub = self.create_subscription(OccupancyGrid, "track/bound_l", self.get_left_boundary, 5)
+        self.boundr.sub = self.create_subscription(OccupancyGrid, "track/bound_r", self.get_right_boundary, 5)
+
+        self.timer = self.create_timer(5, self.publish_best_state)
 
     # BEST TRAJECTORY PUBLISHER
-    def publish_best_state(self, msg: AckermannDrive):
-        cone_map = ConeMap()
-        trajectories, states = self.trajectory_generator()
-        occupancy_grid = self.populating_occupancy_grid()
-        self.trajectory_deletion(occupancy_grid, cone_map, trajectories)
+    def publish_best_state(self):
+        self.get_logger().info("5 seconds up - generating trajectories")
+
+        # request cone map - client
+
+        # generate trajectories
+        trajectories, states = self.generate_trajectories(cone_map)
+        # delete trajectories
+        self.trajectory_deletion(trajectories)
+        # find best trajectory
         self.best_state = self.optimisation(trajectories, states)
 
-        args = {"steering_angle": self.best_state,
-                "steering_angle_velocity": msg.steering_angle_velocity,
-                "speed": msg.speed,
-                "acceleration": msg.acceleration,
-                "jerk": msg.jerk}
-        self.msg = AckermannDrive(**args)
-        self.publisher.publish(self.msg)
+        # publish msg
+        args = {"steering_angle": float(self.best_state),
+                "steering_angle_velocity": 0.0,
+                "speed": 5.0,
+                "acceleration": 0.0,
+                "jerk": 0.0}
+        msg = AckermannDrive(**args)
+        self.ackermann.pub(msg)
+
+    def get_left_boundary(self, msg: OccupancyGrid): self.leftbound = msg.data
+    
+    def get_right_boundary(self, msg: OccupancyGrid): self.rightbound = msg.data
 
     # ===========================================================
     # TRAJECTORY GENERATION
@@ -85,89 +101,84 @@ class path_planning(Node, Occupancy_grid):
 
     # ===========================================================
     # TRAJECTORY DELETION
-    def trajectory_deletion(self, occupancy_grid, cone_map, trajectories=None):
-        if trajectories is not None:
-            # delete trajectories intersecting boundary
-            self.get_inbound_trajectories(occupancy_grid, cone_map, trajectories) 
-        return 
+    def trajectory_deletion(self, trajectories=None) -> None:
+        if trajectories is None:
+            return 
+        self.get_logger().info("Trajectory Deletion Started")
+        self.get_inbound_trajectories(trajectories) 
+ 
         
-    def get_inbound_trajectories(self, occupancy_grid, cone_map, trajectories):
-        # go through each trajectory
+    def get_inbound_trajectories(self, trajectories):
         for T in trajectories:
-            # go through each point of the trajectory
             for cpose in T.poses:
-                # get cone map size - each iteration as search lists updates it
-                _, xlist, ylist = self.get_matrix_from_size(self.get_map_size(cone_map))
-                # get the x and y index for this pose
-                x = self.search_list(xlist,cpose.position.x)
-                y = self.search_list(ylist,cpose.position.y)
-                # check value in occupancy grid   
-                if x is not None and y is not None: 
-                    if occupancy_grid[x][y] != 0:   
-                        # point on boundary - invalid trajectory
-                        trajectories.pop([i for i in range(len(trajectories)) if T==trajectories[i]][0])
-                        break
-
-    def search_list(self, ls, val):
-        ls = list(ls)
-        val = np.round(val,4)
-        # binary search - assumes a sorted search list
-        # number of elements dropped in binary search
-        elem_dropped = 0
-        while True:
-            # get middle element
-            mid = int(np.ceil(len(ls) / 2)) - 1
-            try:
-                # check middle element
-                if val == ls[mid]:
-                    # index found, if list has one element increase mid-index by 1
-                    if mid == -1: mid = 0
+                x = cpose.position.x 
+                y = cpose.position.y
+                # TODO - STILL NEED TO CORRECT MAY NOT BE RIGHT
+                for i in range(len(self.leftbound)):
+                    blx, bly, brx, bry = self.get_boundary_points(i)
+                    lxyt = abs(x-blx) <= 1e-3 and abs(y-bly) <= 1e-3
+                    rxyt = abs(x-brx) <= 1e-3 and abs(y-bry) <= 1e-3
+                    if lxyt or rxyt:
+                        break  
+                if lxyt or rxyt:  
+                    trajectories.pop([i for i in range(len(trajectories)) if T==trajectories[i]][0])
                     break
-                elif val > ls[mid]:
-                    # count number elements to be dropped
-                    elem_dropped += mid + 1
-                    # update list
-                    ls[:] = ls[(mid + 1):]
-                else:
-                    # update list
-                    ls[:] = ls[:mid]
-            except IndexError:
-                # value doesn't exist
-                return None
+    
+    def get_boundary_points(self, i):
+        return self.leftbound[i], self.rightbound[i]
 
-        return elem_dropped + mid
+    # def search_list(self, ls, val):
+    #     ls = list(ls)
+    #     val = np.round(val,4)
+    #     # binary search - assumes a sorted search list
+    #     # number of elements dropped in binary search
+    #     elem_dropped = 0
+    #     while True:
+    #         # get middle element
+    #         mid = int(np.ceil(len(ls) / 2)) - 1
+    #         try:
+    #             # check middle element
+    #             if val == ls[mid]:
+    #                 # index found, if list has one element increase mid-index by 1
+    #                 if mid == -1: mid = 0
+    #                 break
+    #             elif val > ls[mid]:
+    #                 # count number elements to be dropped
+    #                 elem_dropped += mid + 1
+    #                 # update list
+    #                 ls[:] = ls[(mid + 1):]
+    #             else:
+    #                 # update list
+    #                 ls[:] = ls[:mid]
+    #         except IndexError:
+    #             # value doesn't exist
+    #             return None
+
+    #     return elem_dropped + mid
+
     # ===========================================================
     # OPTIMISATION
     def optimisation(self, trajectories=None, states=None):
         if trajectories is None:
-            # get trajectories
-            trajectories, states = self.generate_trajectories(5)
-
-        # get best trajectory state
+            return
+        self.get_logger().info("Optimisation Started")
         best_state = self.get_best_trajectory_state(trajectories, states)
 
         return best_state
 
     def get_best_trajectory_state(self, trajectories, trajectories_states):
-        # create an array of trajectory lengths
         tlens = np.zeros(len(trajectories))
-        # loop through each trajectory
         for i in range(len(trajectories)):
-            # get length of trajectory i
             tlens[i] = self.get_trajectory_length(trajectories[i])
-        # get state of largest trajectory
         states = self.get_trajectory_state(trajectories_states,np.argmax(tlens))
 
         return states
 
     def get_trajectory_length(self, trajectory: PoseArray):
-        # take any two points
         poses = trajectory.poses
         p0 = np.array([poses[0].position.x, poses[0].position.y])
         p1 = np.array([poses[1].position.x, poses[1].position.y])
-        # get linear distance between points
         intL = np.linalg.norm(p1-p0,ord=2)
-        # get arc length
         arc_length = (len(poses)-1) * intL
 
         return arc_length
