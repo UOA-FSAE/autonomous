@@ -8,7 +8,7 @@ import rclpy
 from rclpy.node import Node
 from moa_msgs.msg import Cone, ConeMap, BoundaryStamped
 from std_msgs.msg import Header
-# from moa_msgs.msg import OccupancyGrid
+from moa_msgs.msg import OccupancyGrid
 import math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -18,25 +18,25 @@ class Occupancy_grid(Node):
         super().__init__('Occupancy_grid')
         self.srv = self.create_service(AddTwoInts, 'add_two_ints', self.add_two_ints_callback)
         
-        # self.occ_grid_publisher = self.create_publisher(
-        #     OccupancyGrid,
-        #     'track/occ_grid',
-        #     10
-        # )
+        self.occ_grid_publisher = self.create_publisher(
+            OccupancyGrid,
+            'track/occ_grid',
+            10
+        )
 
-        # self.bound_l_publisher = self.create_publisher(
-        #     BoundaryStamped,
-        #     'track/bound_l',
-        #     10
-        # )
+        self.bound_l_publisher = self.create_publisher(
+            BoundaryStamped,
+            'track/bound_l',
+            10
+        )
 
-        # self.bound_r_publisher = self.create_publisher(
-        #     BoundaryStamped,
-        #     'track/bound_r',
-        #     10
-        # )
+        self.bound_r_publisher = self.create_publisher(
+            BoundaryStamped,
+            'track/bound_r',
+            10
+        )
 
-        # TODO change to service
+        # TODO change to service branch 31
         # self.subscription = self.create_subscription(
         #     ConeMap,
         #     'cone_map',
@@ -59,8 +59,8 @@ class Occupancy_grid(Node):
     def publish_occ_grid(self, msg):
         bound_l, bound_r, occ_grid = self.gen_occ_grid(msg)
         
-        # msg_out = OccupancyGrid(occupancyGrid = occ_grid, header = Header())
-        # self.occ_grid_publisher.publish(msg_out)     
+        msg_out = OccupancyGrid(occupancyGrid = occ_grid, header = Header())
+        self.occ_grid_publisher.publish(msg_out)     
         
         msg_out = BoundaryStamped(coords = bound_l, header = Header())
         self.bound_l_publisher.publish(msg_out) 
@@ -69,21 +69,20 @@ class Occupancy_grid(Node):
         self.bound_r_publisher.publish(msg_out) 
 
     def gen_occ_grid(self, cone_map):
-        # #Debug only: generate test cone map
-        # #To do: get cone map from cone_mapping service
-        # cone_map = self.generate_cone_map_for_test() #Generate dataset for test
+        # extract start position pose from conemap
         start_pose = cone_map.cones[0]
         cone_map = cone_map.cones[1:]
         
-        #Get cone map size
+        # Get cone map size
         max_x, min_x, max_y, min_y = self.get_map_boundary(cone_map)
 
-        #Initialize matrix with size of map
+        # Initialize matrix with size of map
         occupancy_grid_matrix, x_list, y_list = self.create_matrix(max_x, min_x, max_y, min_y)
 
+        # transform start pose to occupancy grid index
         self.start_coord = self.find_cone_coordinate(x_list, y_list, start_pose)
 
-        #Put high integer value on cone occupancy grid
+        # Put high integer value on cone occupancy grid and return cones that are left and cones that are right
         cones_l, cones_r = self.fill_occupancy_grid(cone_map, occupancy_grid_matrix, x_list, y_list)
         # cv.imwrite('occ_grid.png', occupancy_grid_matrix)
         
@@ -211,34 +210,6 @@ class Occupancy_grid(Node):
         
         return x, y, theta, covaraince, colour
 
-    def plot_occupancy_grid(self, x_list, y_list, occupancy_grid_matrix):
-        #Transpose it for having column to x and row to y:
-        occupancy_grid_matrix = np.transpose(occupancy_grid_matrix)
-
-        #Grid plotting
-        X,Y = np.meshgrid(x_list, y_list)
-        Z = np.sin(np.sqrt(X ** 2 + Y ** 2))
-        print(Z.shape)
-        print(occupancy_grid_matrix.shape)
-
-        # Create a figure and a 3D axis
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-
-        # Plot the surface
-        surface = ax.plot_surface(X, Y, occupancy_grid_matrix, cmap=plt.cm.coolwarm)
-
-        # Add color bar
-        fig.colorbar(surface, shrink=0.5, aspect=10)
-
-        # Set labels
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Cone appearance')
-
-        # Show the plot
-        plt.show()
-
     def interpolate_bounds(self, occ_grid : np.ndarray, left : np.ndarray, right : np.ndarray, x_list : np.ndarray, y_list : np.ndarray):
         '''
             Interpolates points between cones to complete the track boundary
@@ -268,6 +239,7 @@ class Occupancy_grid(Node):
 
         interp_left, interp_right = np.column_stack((xi_l, yi_l)), np.column_stack((xi_r, yi_r))
 
+        # fill in interpolated points in occupancy grid
         for pt in np.vstack((interp_left, interp_right)):
             x = round(pt[0])
             y = round(pt[1])
