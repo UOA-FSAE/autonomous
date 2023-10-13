@@ -4,10 +4,10 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Pose, PoseArray
-from mapping_interfaces.msg import ConeMap
-from nav_msgs.msg import OccupancyGrid
+from moa_msgs.msg import Cone, ConeMap
+from moa_msgs.msg import BoundaryStamped
 from ackermann_msgs.msg import AckermannDrive
-from message_filters import ApproximateTimeSynchronizer
+# from message_filters import ApproximateTimeSynchronizer
 
 
 
@@ -15,20 +15,23 @@ class path_planning(Node):
     def __init__(self):
         super().__init__("path_planning")
 
-        self.ackermann.pub = self.create_publisher(AckermannDrive, "/cmd_vel", 5)
-        self.boundl.sub = self.create_subscription(OccupancyGrid, "track/bound_l", self.get_left_boundary, 5)
-        self.boundr.sub = self.create_subscription(OccupancyGrid, "track/bound_r", self.get_right_boundary, 5)
+        self.ackermann_pub = self.create_publisher(AckermannDrive, "/cmd_vel", 5)
+        self.boundl_sub = self.create_subscription(BoundaryStamped, "track/bound_l", self.get_left_boundary, 5)
+        self.boundr_sub = self.create_subscription(BoundaryStamped, "track/bound_r", self.get_right_boundary, 5)
 
         self.timer = self.create_timer(5, self.publish_best_state)
 
     # BEST TRAJECTORY PUBLISHER
     def publish_best_state(self):
+        '''
+        Publishes the best trajectory state every n seconds
+        '''
         self.get_logger().info("5 seconds up - generating trajectories")
 
         # request cone map - client
-
+        
         # generate trajectories
-        trajectories, states = self.generate_trajectories(cone_map)
+        trajectories, states = self.trajectory_generator(cone_map)
         # delete trajectories
         self.trajectory_deletion(trajectories)
         # find best trajectory
@@ -41,11 +44,12 @@ class path_planning(Node):
                 "acceleration": 0.0,
                 "jerk": 0.0}
         msg = AckermannDrive(**args)
-        self.ackermann.pub(msg)
+        self.ackermann_pub(msg)
+        print(self.best_state)
 
-    def get_left_boundary(self, msg: OccupancyGrid): self.leftbound = msg.data
+    def get_left_boundary(self, msg: BoundaryStamped) -> None: self.leftbound = msg.coords
     
-    def get_right_boundary(self, msg: OccupancyGrid): self.rightbound = msg.data
+    def get_right_boundary(self, msg: BoundaryStamped) -> None: self.rightbound = msg.coords
 
     # ===========================================================
     # TRAJECTORY GENERATION
@@ -102,30 +106,58 @@ class path_planning(Node):
     # ===========================================================
     # TRAJECTORY DELETION
     def trajectory_deletion(self, trajectories=None) -> None:
+        '''
+        Caller for trajectory deletion if there are trajectories
+
+        Inputs
+            trajectories (1darray): a list of PoseArrays 
+        '''
         if trajectories is None:
             return 
         self.get_logger().info("Trajectory Deletion Started")
         self.get_inbound_trajectories(trajectories) 
- 
         
     def get_inbound_trajectories(self, trajectories):
+        '''
+        Deletes trajectories that are on track boundaries
+
+        Inputs
+            trajectories (1darray): a list of PoseArrays 
+        '''
         for T in trajectories:
             for cpose in T.poses:
                 x = cpose.position.x 
                 y = cpose.position.y
-                # TODO - STILL NEED TO CORRECT MAY NOT BE RIGHT
-                for i in range(len(self.leftbound)):
-                    blx, bly, brx, bry = self.get_boundary_points(i)
-                    lxyt = abs(x-blx) <= 1e-3 and abs(y-bly) <= 1e-3
-                    rxyt = abs(x-brx) <= 1e-3 and abs(y-bry) <= 1e-3
-                    if lxyt or rxyt:
-                        break  
-                if lxyt or rxyt:  
+                # compare points with boundaries
+                onBound = self.compare_with_boundary(x,y)
+                if onBound:  
                     trajectories.pop([i for i in range(len(trajectories)) if T==trajectories[i]][0])
                     break
     
-    def get_boundary_points(self, i):
-        return self.leftbound[i], self.rightbound[i]
+    def compare_with_boundary(self, x, y):
+        '''
+        Compares a coordinate with the left and right boundary coordinates of the track map
+
+        inputs
+            x (float): x position of coordinate
+            y (float): y position of coordinate
+        return
+            (boolean): True if point on either boundary
+        
+        * Assumes same number of points are given for left and right boundary
+        '''
+        for i in range(len(self.leftbound)):
+            blx, bly = self.leftbound[i]
+            brx, bry = self.rightbound[i]
+            # on left boundary
+            lxyt = abs(x-blx) <= 1e-3 and abs(y-bly) <= 1e-3
+            # on right boundary
+            rxyt = abs(x-brx) <= 1e-3 and abs(y-bry) <= 1e-3
+            # check if near boundary
+            if lxyt or rxyt:
+                return True
+        return False
+
 
     # def search_list(self, ls, val):
     #     ls = list(ls)
@@ -166,11 +198,11 @@ class path_planning(Node):
 
         return best_state
 
-    def get_best_trajectory_state(self, trajectories, trajectories_states):
+    def get_best_trajectory_state(self, trajectories, states):
         tlens = np.zeros(len(trajectories))
         for i in range(len(trajectories)):
             tlens[i] = self.get_trajectory_length(trajectories[i])
-        states = self.get_trajectory_state(trajectories_states,np.argmax(tlens))
+        states = self.get_trajectory_state(states,np.argmax(tlens))
 
         return states
 
@@ -183,42 +215,47 @@ class path_planning(Node):
 
         return arc_length
 
-    def get_trajectory_state(self,trajectories_states,max_length):
-        return trajectories_states[max_length]
+    def get_trajectory_state(self, states, idx):
+        return states[idx]
 
-    # FOR DEBUGGING
-    def generate_trajectories(self, n):
-        # list of all trajectories and states (for now just steering angle in rads)
-        all_traj = []
-        all_states = -np.random.random(n) + np.random.random(n)
-        # make n pose arrays
-        x = y = z = 0.0
-        for i in range(n):
-            # contains poses for ith pose array
-            temp = []
-            # make m poses with random coordinates
-            for j in range(3):
-                pose = Pose()
-                pose.position.x, pose.position.y, pose.position.z = x, y, z
-                # pose_array.poses = pose
-                temp.append(pose)
-                # calculate new x, y, z sqrt((x2-x1)^2+(y2-y1)^2) = length with x2 unknown
-                x = np.sqrt(0.1**2) + x
-            pose_array = PoseArray()
-            pose_array.poses = temp
-            # append pose array to all trajectories
-            all_traj.append(pose_array)
+    # # FOR DEBUGGING
+    # def generate_trajectories(self, n):
+    #     # list of all trajectories and states (for now just steering angle in rads)
+    #     all_traj = []
+    #     all_states = -np.random.random(n) + np.random.random(n)
+    #     # make n pose arrays
+    #     x = y = z = 0.0
+    #     for i in range(n):
+    #         # contains poses for ith pose array
+    #         temp = []
+    #         # make m poses with random coordinates
+    #         for j in range(3):
+    #             pose = Pose()
+    #             pose.position.x, pose.position.y, pose.position.z = x, y, z
+    #             # pose_array.poses = pose
+    #             temp.append(pose)
+    #             # calculate new x, y, z sqrt((x2-x1)^2+(y2-y1)^2) = length with x2 unknown
+    #             x = np.sqrt(0.1**2) + x
+    #         pose_array = PoseArray()
+    #         pose_array.poses = temp
+    #         # append pose array to all trajectories
+    #         all_traj.append(pose_array)
 
-        return all_traj, all_states
+    #     return all_traj, all_states
+
 
 def main():
     rclpy.init()
-    service = path_planning()
+
+    NDE = path_planning()
+
     try:
-        rclpy.spin_once(service)
+        rclpy.spin(NDE)
     except Exception as e:
         print(f"node spin error: {e}")
-    service.destroy_node()
+
+    NDE.destroy_node()
+
     rclpy.shutdown()
 
 if __name__ == "__main__":
