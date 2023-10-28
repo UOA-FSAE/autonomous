@@ -4,29 +4,25 @@ from typing import Optional
 import rclpy
 from rclpy.node import Node
 import numpy as np
-# import zlib
 from math import pi
+from rcl_interfaces.msg import ParameterDescriptor
 
 # Ros Imports
 from ackermann_msgs.msg import AckermannDriveStamped
 from moa_msgs.msg import CANStamped
-from std_msgs.msg import Header
-from builtin_interfaces.msg import Time
-
-
-# def compress_floats(values:np.ndarray) -> bytes:    
-#     # Compute the differences between consecutive values
-#     differences = np.diff(values)
-
-#     # Compress the differences using zlib
-#     compressed = zlib.compress(differences, level=9)
-
-#     return compressed
 
 
 class ack_to_can(Node):
     def __init__(self):
         super().__init__('ackermann_to_can') # node name (NB: MoTec listens to this)
+
+        # init ros_arg parameters
+        self.declare_parameter('can_id', 
+                               300, 
+                               ParameterDescriptor(description= 'The frame ID for the CAN messages sent to the car'))
+        
+        self.can_id = self.get_parameter('can_id').get_parameter_value().integer_value
+        self.get_logger().info(f'the value of can_id is {self.can_id}')
 
         # create subscriber for ackermann input
         self.subscription = self.create_subscription(
@@ -119,12 +115,6 @@ class ack_to_can(Node):
             dtype=np.uint8
             )
 
-        # #compress Ackermann values
-        # compressed_ack_vals = compress_floats(ackermann_vals)
-        
-        # #separate compressed ackermann values to list of bytes for CAN
-        # data_packets = [compressed_ack_vals[i:i+1] for i in range(0, len(compressed_ack_vals), 1)]
-
         return ackermann_vals
 
 
@@ -135,7 +125,7 @@ class ack_to_can(Node):
         can_msg.header.frame_id = 'ackermann_to_can'
 
         # set CAN header/data/id 
-        can_msg.can.id = 25 #TODO need to change to dynamic (between 0-20 accumulator/inverter/brake sensor)
+        can_msg.can.id = self.can_id
         can_msg.can.data = self.ackermann_to_can_parser(ack_msg)
 
         if can_msg.can.data is not None:

@@ -8,11 +8,8 @@ services:
       context: .
       dockerfile: ./ros2_ws.Dockerfile
 
-
     environment:
       - DISPLAY
-      - NVIDIA_VISIBLE_DEVICES=0
-      - NVIDIA_DRIVER_CAPABILITIES=all
       
       - ROS_DOMAIN_ID=47  # Its 47 for obvious reasons
 
@@ -24,27 +21,17 @@ services:
     stdin_open: true
     tty: true
 
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: []
-              capabilities: [gpu]
-
 
 
   autonomous_zed:
     image: zed_sdk
-  
+
     build:
       context: ..
       dockerfile: .devcontainer/zed.Dockerfile
 
     environment:
       - DISPLAY
-      - NVIDIA_VISIBLE_DEVICES=0
-      - NVIDIA_DRIVER_CAPABILITIES=all
       
       - ROS_DOMAIN_ID=47
 
@@ -57,11 +44,3 @@ services:
     ipc: host
     stdin_open: true
     tty: true
-
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: []
-              capabilities: [gpu]

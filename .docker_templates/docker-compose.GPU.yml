@@ -6,7 +6,8 @@ services:
 
     build:
       context: .
-      dockerfile: ../ros2_ws.Dockerfile
+      dockerfile: ./ros2_ws.Dockerfile
+
 
     environment:
       - DISPLAY
@@ -18,11 +19,21 @@ services:
     volumes:
       - ..:/ws
 
-
-    network_mode: host  
+    network_mode: host
     ipc: host
     stdin_open: true
     tty: true
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: []
+              capabilities: [gpu]
+
+
+
 
   autonomous_zed:
     image: zed_sdk
@@ -48,4 +59,10 @@ services:
     stdin_open: true
     tty: true
 
- 
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: []
+              capabilities: [gpu]
