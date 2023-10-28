@@ -4,3 +4,6 @@
 [submodule "src/moa/cone-detection/cone_detection/yolov7"]
 	path = src/moa/cone-detection/cone_detection/yolov7
 	url = https://github.com/WongKinYiu/yolov7.git
+[submodule "src/hardware_drivers/foxglove-bridge"]
+	path = src/hardware_drivers/foxglove-bridge
+	url = https://github.com/foxglove/ros-foxglove-bridge.git
