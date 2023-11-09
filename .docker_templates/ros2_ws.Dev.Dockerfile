@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     rm -rf /var/lib/apt/lists/*
 
 RUN source /opt/ros/humble/setup.bash && \
+    source source /ws/install/setup_local.bash && \
     rosdep update && apt-get update
     
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \

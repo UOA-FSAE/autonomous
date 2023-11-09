@@ -1,3 +1,4 @@
+# works only for CPU 
 FROM arm64v8/ros:humble
 LABEL Name=autonomous Version=0.0.1
 
@@ -19,3 +20,4 @@ RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD [ "bash" ]
+

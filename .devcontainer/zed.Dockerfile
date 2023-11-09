@@ -1,4 +1,4 @@
-FROM stereolabs/zed:4.0-devel-cuda12.1-ubuntu22.04
+FROM stereolabs/zed:4.0-tools-devel-l4t-r35.4
 LABEL Name=zed_sdk Version=0.0.1
 
 SHELL [ "/bin/bash", "-c" ]

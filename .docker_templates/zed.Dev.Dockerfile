@@ -49,7 +49,10 @@ RUN mkdir /ws/src/ && cd "$_" && \
     ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' && \
     rm -rf /var/lib/apt/lists/* && \
     echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
-    echo "source /ws/install/setup.bash" >> ~/.bashrc
+    echo "source /ws/install/setup.bash" >> ~/.bashrc && \
+    source /opt/ros/humble/setup.bash && \
+    source /ws/install/local_setup.bash
+
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["bash"]
