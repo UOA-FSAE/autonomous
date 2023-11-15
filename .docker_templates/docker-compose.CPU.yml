@@ -26,7 +26,7 @@ services:
 
   autonomous_zed:
     image: zed_sdk
-  
+    privileged: true
     build:
       context: .
       dockerfile: ./zed.Dockerfile
