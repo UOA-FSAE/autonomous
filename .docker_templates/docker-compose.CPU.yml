@@ -10,6 +10,8 @@ services:
 
     environment:
       - DISPLAY
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=all
       
       - ROS_DOMAIN_ID=47  # Its 47 for obvious reasons
 
@@ -22,23 +24,24 @@ services:
     tty: true
 
 
-
   autonomous_zed:
     image: zed_sdk
-
+  
     build:
-      context: ..
-      dockerfile: .devcontainer/zed.Dockerfile
+      context: .
+      dockerfile: ./zed.Dockerfile
 
     environment:
       - DISPLAY
-      
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=all
       - ROS_DOMAIN_ID=47
 
-    command: "ros2 launch zed_wrapper zed2.launch.py"
+    command: "ros2 launch zed_wrapper zed_camera.launch.py camera_model:='zed2i'"
 
     volumes:
       - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
+      
 
     network_mode: host
     ipc: host
