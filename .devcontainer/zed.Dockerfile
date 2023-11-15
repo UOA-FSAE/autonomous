@@ -4,7 +4,9 @@ LABEL Name=zed_sdk Version=0.0.1
 SHELL [ "/bin/bash", "-c" ]
 
 WORKDIR /ws
-COPY ../ /
+COPY . .
+#COPY ../ /
+#COPY .. /ws
 
 # setup sources.list and keys
 RUN echo "deb http://packages.ros.org/ros2/ubuntu jammy main" > /etc/apt/sources.list.d/ros2-latest.list && \
