@@ -6,9 +6,23 @@ SHELL [ "/bin/bash", "-c" ]
 WORKDIR /ws
 COPY ../ /
 
-# setup sources.list and keys
-RUN echo "deb http://packages.ros.org/ros2/ubuntu jammy main" > /etc/apt/sources.list.d/ros2-latest.list && \
-    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+# setup sources.list and keys for ROS
+RUN apt update && apt install locales && \
+    locale-gen en_US en_US.UTF-8 && \
+    update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+
+RUN apt update && apt install -y gnupg wget software-properties-common && \
+    add-apt-repository universe
+
+RUN wget -qO - https://isaac.download.nvidia.com/isaac-ros/repos.key | \
+    apt-key add - && \
+    echo 'deb https://isaac.download.nvidia.com/isaac-ros/ubuntu/main focal main' | \
+    tee -a "/etc/apt/sources.list"
+
+RUN apt update && apt install curl -y && \
+    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu focal main" | \
+    tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
 # setup timezone & install packages
 RUN apt-get update && apt-get install -q -y --no-install-recommends \
@@ -21,11 +35,9 @@ RUN apt-get update && apt-get install -q -y --no-install-recommends \
     python3-colcon-common-extensions \
     python3-colcon-mixin \
     python3-rosdep \
-    python3-vcstool 
-
-# setup environment
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
+    python3-vcstool && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
 
 ENV ROS_DISTRO humble
 
@@ -45,17 +57,16 @@ RUN mkdir /ws/src/ && cd "$_" && \
     cd .. && \
     source /opt/ros/humble/setup.bash && \ 
     rosdep update && \
-    rosdep install --from-paths src --ignore-src -r -y && \
+    rosdep install --from-paths src -y -r --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \
     colcon build --parallel-workers $(nproc) --symlink-install \
-    --event-handlers console_direct+ --base-paths src \
-    --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
-    ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-    ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' && \
+        --event-handlers console_direct+ --base-paths src \
+        --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
+        ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
+        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' && \
     rm -rf /var/lib/apt/lists/*
 
-# not writing to bashrc
+# doesnt copy to bashrc
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \ 
     echo "source /ws/install/setup.bash" >> ~/.bashrc
 
-ENTRYPOINT ["./ros_entrypoint.sh"]
 CMD ["bash"]
