@@ -5,8 +5,8 @@ services:
     image: autonomous
 
     build:
-      context: .
-      dockerfile: ./ros2_ws.Dockerfile
+      context: ..
+      dockerfile: .devcontainer/ros2_ws.Dockerfile
 
     environment:
       - DISPLAY
@@ -38,8 +38,8 @@ services:
     privileged: true
     
     build:
-      context: .
-      dockerfile: ./zed.Dockerfile
+      context: ..
+      dockerfile: .devcontainer/zed.Dockerfile
 
     environment:
       - DISPLAY
@@ -57,7 +57,7 @@ services:
     ipc: host
     stdin_open: true
     tty: true
-
+    runtime: nvidia
     deploy:
       resources:
         reservations:
