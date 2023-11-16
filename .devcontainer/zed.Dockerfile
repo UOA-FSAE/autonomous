@@ -56,14 +56,15 @@ RUN mkdir /ws/src/ && cd "$_" && \
     git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
     cd .. && \
     source /opt/ros/humble/setup.bash && \ 
-    rosdep update && \
+    rosdep update && apt-get update && \
     rosdep install --from-paths src -y -r --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \
     colcon build --parallel-workers $(nproc) --symlink-install \
         --event-handlers console_direct+ --base-paths src \
         --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
         ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
         ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
 
 # doesnt copy to bashrc
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \ 
