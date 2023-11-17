@@ -68,8 +68,9 @@ class detection(Node):
         self.image_left_tmp = sl.Mat()
         
         print("Initialized Camera")
-        
-        positional_tracking_parameters = sl.PositionalTrackingParameters()
+
+        py_transform = sl.Transform()
+        positional_tracking_parameters = sl.PositionalTrackingParameters(_init_pos=py_transform)
         # If the camera is static, uncomment the following line to have better performances and boxes sticked to the ground.
         # positional_tracking_parameters.set_as_static = True
         self.zed.enable_positional_tracking(positional_tracking_parameters)
@@ -81,6 +82,11 @@ class detection(Node):
         
         self.objects = sl.Objects()
         self.obj_runtime_param = sl.ObjectDetectionRuntimeParameters()
+
+        self.zed_pose = sl.Pose()
+        zed_sensors = sl.SensorsData()
+        zed_info = self.zed.get_camera_information()
+        self.py_translation = sl.Translation()
 
         # ... [Initialize the ROS 2 publisher for DetectedObject message]
         self.publisher_ = self.create_publisher(ConeMap, 'cone', 10)
@@ -199,8 +205,20 @@ class detection(Node):
         lock.release()
         self.zed.retrieve_objects(self.objects, self.obj_runtime_param)
 
-        all_cones = ConeMap();
-        single_cone = Cone();
+        self.zed.get_position(self.zed_pose, sl.REFERENCE_FRAME.WORLD)
+        rotation = self.zed_pose.get_rotation_vector()
+        translation = self.zed_pose.get_translation(self.py_translation)
+
+        all_cones = ConeMap()
+        single_cone = Cone()
+
+        #message for camera localization
+        single_cone.pose.pose.orientation.w = rotation[1]
+        single_cone.pose.pose.position.x = translation[1]
+        single_cone.pose.pose.position.y = translation[2]
+        single_cone.pose.pose.position.z = translation[3]
+        all_cones.cones.append(single_cone)
+        
         #Create messages and send
         for object in self.objects.object_list:
             single_cone.id = object.id
