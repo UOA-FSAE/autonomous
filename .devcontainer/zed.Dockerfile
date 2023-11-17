@@ -6,7 +6,6 @@ SHELL [ "/bin/bash", "-c" ]
 WORKDIR /ws
 COPY . .
 #COPY ../ /
-#COPY .. /ws
 
 # setup sources.list and keys
 RUN echo "deb http://packages.ros.org/ros2/ubuntu jammy main" > /etc/apt/sources.list.d/ros2-latest.list && \
@@ -59,6 +58,15 @@ RUN mkdir /ws/src/ && cd "$_" && \
 # not writing to bashrc
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \ 
     echo "source /ws/install/setup.bash" >> ~/.bashrc
+    
+# Install zed library
+RUN pip3 install requests
+RUN python3 /usr/local/zed/get_python_api.py
+RUN cd /ws/src/moa/cone-detection/cone_detecction
+RUN git clone git@github.com:WongKinYiu/yolov7.git
+RUN cd yolov7
+RUN pip3 install -r requirements.txt
+RUN cd /ws
 
 ENTRYPOINT ["./ros_entrypoint.sh"]
 CMD ["bash"]

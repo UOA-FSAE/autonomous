@@ -50,7 +50,7 @@ services:
     privileged: true
     
     volumes:
-      - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
+#     - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
       - ..:/ws
       
             
