@@ -147,7 +147,9 @@ def main():
 	
 	print("Initialized Camera")
 	
-	positional_tracking_parameters = sl.PositionalTrackingParameters()
+	py_transform = sl.Transform()
+	
+	positional_tracking_parameters = sl.PositionalTrackingParameters(_init_pos=py_transform)
 	# If the camera is static, uncomment the following line to have better performances and boxes sticked to the ground.
 	# positional_tracking_parameters.set_as_static = True
 	zed.enable_positional_tracking(positional_tracking_parameters)
@@ -159,6 +161,18 @@ def main():
 	
 	objects = sl.Objects()
 	obj_runtime_param = sl.ObjectDetectionRuntimeParameters()
+	
+	zed_pose = sl.Pose()
+	zed_sensors = sl.SensorsData()
+	zed_info = = zed.get_camera_information()
+	zed.get_position(zed_pose, sl.REFERENCE_FRAME.WORLD)
+	rotation = zed_pose.get_rotation_vector()
+	py_translation = sl.Translation()
+	translation = zed_pose.get_translation(py_translation)
+	text_rotation = str((round(rotation[0], 2), round(rotation[1], 2), round(rotation[2], 2)))
+	text_translation = str((round(translation.get()[0], 2), round(translation.get()[1], 2), round(translation.get()[2], 2)))
+	print(text_rotation)
+	print(text_translation)
 	
 	
 	while not exit_signal:
@@ -181,7 +195,7 @@ def main():
 	        lock.release()
 	        zed.retrieve_objects(objects, obj_runtime_param)
 	        for object in objects.object_list:
-	            print("{} {}".format(object.id, object.position))
+	            #print("{} {}".format(object.id, object.position))
 	
 	    else:
 	        exit_signal = True
