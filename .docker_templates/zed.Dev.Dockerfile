@@ -4,7 +4,8 @@ LABEL Name=zed_sdk Version=0.0.1
 SHELL [ "/bin/bash", "-c" ]
 
 WORKDIR /ws
-COPY ../ /
+COPY ./src/moa/cone-detection /ws/src/moa/cone-detection
+COPY ./src/moa/moa_description /ws/src/moa/moa_description
 
 # setup sources.list and keys
 RUN echo "deb http://packages.ros.org/ros2/ubuntu jammy main" > /etc/apt/sources.list.d/ros2-latest.list && \
@@ -21,8 +22,9 @@ RUN apt-get update && apt-get install -q -y --no-install-recommends \
     python3-colcon-common-extensions \
     python3-colcon-mixin \
     python3-rosdep \
-    python3-vcstool \
-    ros-humble-foxglove-bridge
+    python3-vcstool && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
 
 # setup environment
 ENV LANG C.UTF-8
@@ -41,22 +43,26 @@ RUN rosdep init && \
     colcon metadata update
 
 # install ros2 packages
-RUN mkdir /ws/src/ && cd "$_" && \
+RUN cd /ws/src/ && \
     git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
     cd .. && \
     source /opt/ros/humble/setup.bash && \ 
-    rosdep update && \
+    apt-get update && rosdep update && \
     rosdep install --from-paths src --ignore-src -r -y && \
-    colcon build --parallel-workers $(nproc) --symlink-install \
+    echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
+
+RUN cd /usr/local/zed && \
+    pip install requests && \
+    python3 get_python_api.py
+
+RUN colcon build --parallel-workers $(nproc) --symlink-install \
     --event-handlers console_direct+ --base-paths src \
     --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
     ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-    ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' && \
-    rm -rf /var/lib/apt/lists/*
+    ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
 
-# not writing to bashrc
-RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \ 
-    echo "source /ws/install/setup.bash" >> ~/.bashrc
+RUN echo "source /ws/install/setup.bash" >> ~/.bashrc
 
-ENTRYPOINT ["./ros_entrypoint.sh"]
 CMD ["bash"]
