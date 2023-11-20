@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import rclpy
 from rclpy.node import Node
 from moa_msgs.msg import Cone
@@ -83,7 +82,7 @@ class detection(Node):
         self.obj_runtime_param = sl.ObjectDetectionRuntimeParameters()
 
         # ... [Initialize the ROS 2 publisher for DetectedObject message]
-        self.publisher = self.create_publisher(ConeMap, 'cone', 10)
+        self.publisher = self.create_publisher(ConeMap, 'cone_detection', 10)
         self.timer = self.create_timer(0.5, self.run_detection)
 
     def img_preprocess(self, img, device, half, net_size):

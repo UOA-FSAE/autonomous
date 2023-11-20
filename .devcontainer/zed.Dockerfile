@@ -62,7 +62,7 @@ RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
 # Install zed library
 RUN pip3 install requests
 RUN python3 /usr/local/zed/get_python_api.py
-RUN cd /ws/src/moa/cone-detection/cone_detecction
+RUN cd /ws/src/moa/cone-detection/cone_detection
 RUN git clone git@github.com:WongKinYiu/yolov7.git
 RUN cd yolov7
 RUN pip3 install -r requirements.txt
