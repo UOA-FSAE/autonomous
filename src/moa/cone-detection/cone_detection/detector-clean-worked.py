@@ -193,8 +193,11 @@ def main():
             zed.ingest_custom_box_objects(detections)
             lock.release()
             zed.retrieve_objects(objects, obj_runtime_param)
-            # for object in objects.object_list:
-            #    #print("{} {}".format(object.id, object.position))
+            string_output = "";
+            for object in objects.object_list:
+                string_output += "q"
+                #print("{} {}".format(object.id, object.position))
+            print(string_output);
 
             zed.get_position(zed_pose, sl.REFERENCE_FRAME.WORLD)
             rotation = zed_pose.get_rotation_vector()
@@ -203,7 +206,7 @@ def main():
             text_translation = str(
                 (round(translation.get()[0], 2), round(translation.get()[1], 2), round(translation.get()[2], 2)))
             #print(text_rotation)
-            print(text_translation)
+            #print(text_translation)
 
     else:
         exit_signal = True

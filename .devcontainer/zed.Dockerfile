@@ -68,5 +68,16 @@ RUN cd yolov7
 RUN pip3 install -r requirements.txt
 RUN cd /ws
 
+# Install nano
+RUN apt-get update && apt-get install -y \
+    nano
+    
+# Install libusb
+RUN apt-get install -y usbutils
+
+# Install IDLE
+RUN apt-get update && apt-get install -y \
+    idle3
+
 ENTRYPOINT ["./ros_entrypoint.sh"]
 CMD ["bash"]

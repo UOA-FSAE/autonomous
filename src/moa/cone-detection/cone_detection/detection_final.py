@@ -25,7 +25,7 @@ from utils.datasets import letterbox
 from threading import Lock, Thread
 from time import sleep
 
-global image_net, exit_signal, run_signal, detections, weights, img_size, conf_thres
+global exit_signal,detections, weights, img_size, conf_thres
 
 #Basic arguments of the scripts
 weights = "yolov7m.pt"
@@ -33,11 +33,11 @@ img_size = 416
 conf_thres = 0.4
 
 lock = Lock()
-run_signal = False
 exit_signal = False
 
 class detection(Node):
     def __init__(self):
+        self.run_signal = False
         super().__init__('detector')
 
         # Initialize ZED camera and YOLOv7
@@ -83,7 +83,7 @@ class detection(Node):
         self.obj_runtime_param = sl.ObjectDetectionRuntimeParameters()
 
         # ... [Initialize the ROS 2 publisher for DetectedObject message]
-        self.publisher_ = self.create_publisher(ConeMap, 'cone', 10)
+        self.publisher = self.create_publisher(ConeMap, 'cone', 10)
         self.timer = self.create_timer(0.5, self.run_detection)
 
     def img_preprocess(self, img, device, half, net_size):
@@ -145,7 +145,7 @@ class detection(Node):
         return output
 
     def torch_thread(self, weights, img_size, conf_thres=0.2, iou_thres=0.45):
-        global image_net, exit_signal, run_signal, detections
+        global image_net, exit_signal, detections
 	
         print("Intializing Network...")
         
@@ -166,32 +166,34 @@ class detection(Node):
             model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
         
         while not exit_signal:
-                if run_signal:
-                    lock.acquire()
-                    img, ratio, pad = self.img_preprocess(image_net, device, half, imgsz)
-            
-                    pred = model(img)[0]
-                    det = non_max_suppression(pred, conf_thres, iou_thres)
-            
-                    # ZED CustomBox format (with inverse letterboxing tf applied)
-                    detections = self.detections_to_custom_box(det, img, image_net)
-                    lock.release()
-                    run_signal = False
-                sleep(0.01)
+            #print("looping in another thread")
+            if self.run_signal:
+                lock.acquire()
+                img, ratio, pad = self.img_preprocess(self.image_net, device, half, imgsz)
+
+                pred = model(img)[0]
+                det = non_max_suppression(pred, conf_thres, iou_thres)
+
+                # ZED CustomBox format (with inverse letterboxing tf applied)
+                detections = self.detections_to_custom_box(det, img, self.image_net)
+                lock.release()
+                self.run_signal = False
+            sleep(0.01)
 
     def run_detection(self):
         self.zed.grab(self.runtime_params)
         # -- Get the image
         lock.acquire()
         self.zed.retrieve_image(self.image_left_tmp, sl.VIEW.LEFT)
-        image_net = self.image_left_tmp.get_data()
+        self.image_net = self.image_left_tmp.get_data()
         lock.release()
-        run_signal = True
-
+        self.run_signal = True
+        print("here")
         # -- Detection running on the other thread
-        while run_signal:
+        while self.run_signal:
+            #print(run_signal);
             sleep(0.001)
-
+        print("outside loop")
         # Wait for detections
         lock.acquire()
         # -- Ingest detections
@@ -205,16 +207,22 @@ class detection(Node):
         for object in self.objects.object_list:
             single_cone.id = object.id
             single_cone.confidence = object.confidence
-            single_cone.colour = object.label
-            single_cone.pose.covariance = object.position_covariance
-            single_cone.pose.pose.position.x = object.position[1]
-            single_cone.pose.pose.position.y = object.position[2]
-            single_cone.pose.pose.position.z = object.position[3]
-            single_cone.radius = object.dimensions[1]/2
-            single_cone.height = object.dimensions[2]
+            #single_cone.colour = int(object.label[0])
+            single_cone.colour = 1
+
+            #single_cone.pose.covariance = object.position_covariance
+            single_cone.pose.pose.position.x = object.position[0]
+            single_cone.pose.pose.position.y = object.position[1]
+            single_cone.pose.pose.position.z = object.position[2]
+            single_cone.radius = object.dimensions[0]/2
+            single_cone.height = object.dimensions[1]
             all_cones.cones.append(single_cone)
 
         self.publisher.publish(all_cones)
+        string_output = "";
+        for cone_item in all_cones.cones:
+            string_output += "s"
+        print(string_output);
 
 def main(args=None):
     rclpy.init(args=args)
