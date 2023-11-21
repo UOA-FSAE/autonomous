@@ -65,7 +65,8 @@ RUN cd /usr/local/zed && \
     pip install requests && \
     python3 get_python_api.py
 
-RUN colcon build --parallel-workers $(nproc) --symlink-install \
+RUN source /opt/ros/humble/setup.bash && \
+    colcon build --parallel-workers $(nproc) --symlink-install \
         --event-handlers console_direct+ --base-paths src \
         --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
         ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
