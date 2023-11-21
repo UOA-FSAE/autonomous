@@ -67,9 +67,9 @@ RUN cd /usr/local/zed && \
 
 RUN colcon build --parallel-workers $(nproc) --symlink-install \
         --event-handlers console_direct+ --base-paths src \
-        --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
-        ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
+        # --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
+        # ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
+        # ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
 
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \ 
     echo "source /ws/install/setup.bash" >> ~/.bashrc
