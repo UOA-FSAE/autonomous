@@ -4,7 +4,19 @@ LABEL Name=autonomous Version=0.0.1
 SHELL [ "/bin/bash", "-c" ]
 
 WORKDIR /ws
-COPY . .
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libopenblas-dev \
+        libopenmpi-dev \
+        openmpi-bin \
+        openmpi-common \
+        gfortran \
+        libomp-dev  \
+        nvidia-cuda-dev \
+        nvidia-cudnn8-dev && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
 
 RUN apt update && apt install locales && \
     locale-gen en_US en_US.UTF-8 && \
@@ -37,25 +49,12 @@ RUN apt update && apt install --no-install-recommends -y \
     ros-humble-foxglove-bridge && \
     echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc 
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        libopenblas-dev \
-        libopenmpi-dev \
-        openmpi-bin \
-        openmpi-common \
-        gfortran \
-        libomp-dev  \
-        nvidia-cuda-dev \
-        nvidia-cudnn8-dev && \
-    rm -rf /var/lib/apt/lists/* && \
-    apt-get clean
+COPY . .
 
 RUN rosdep init && rosdep update --rosdistro $ROS_DISTRO && apt-get update && \
     cd /ws && \
     rosdep install --from-paths src -y --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \ 
     rm -rf /var/lib/apt/lists/* 
-
-RUN apt-get update && apt-get install --no-install-recommends -y python3-pip
 
 ENV PYTORCH_URL=https://developer.download.nvidia.com/compute/redist/jp/v512/pytorch/torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl PYTORCH_WHL=torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl 
 
@@ -64,13 +63,5 @@ RUN cd /opt && \
     pip3 install --verbose ${PYTORCH_WHL}
 
 RUN python3 -c 'import torch; print(f"PyTorch version: {torch.__version__}"); print(f"CUDA available:  {torch.cuda.is_available()}"); print(f"cuDNN version:   {torch.backends.cudnn.version()}"); print(torch.__config__.show());'
-
-RUN source /opt/ros/humble/setup.bash && \
-    colcon build --parallel-workers $(nproc) --symlink-install \
-        --event-handlers console_direct+ --base-paths src \
-        --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
-        ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' && \
-    echo "source /ws/install/setup.bash" >> ~/.bashrc 
 
 CMD [ "bash" ]

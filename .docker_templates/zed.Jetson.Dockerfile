@@ -4,12 +4,9 @@ LABEL Name=zed_sdk Version=0.0.1
 SHELL [ "/bin/bash", "-c" ]
 
 WORKDIR /ws
-COPY ../ /
 
-# setup sources.list and keys for ROS
-RUN apt update && apt install locales && \
-    locale-gen en_US en_US.UTF-8 && \
-    update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
 
 RUN apt update && apt install -y gnupg wget software-properties-common && \
     add-apt-repository universe
@@ -51,22 +48,29 @@ RUN rosdep init && \
       https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
     colcon metadata update
 
+COPY ./src/moa/cone-detection /ws/src/moa/cone-detection
+COPY ./src/moa/moa_description /ws/src/moa/moa_description
+
 # install ros2 packages
-RUN mkdir /ws/src/ && cd "$_" && \
+RUN cd /ws/src/ && \
     git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
     cd .. && \
     source /opt/ros/humble/setup.bash && \ 
     rosdep update && apt-get update && \
     rosdep install --from-paths src -y -r --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \
-    colcon build --parallel-workers $(nproc) --symlink-install \
-        --event-handlers console_direct+ --base-paths src \
-        --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
-        ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
-# doesnt copy to bashrc
+RUN cd /usr/local/zed && \
+    pip install requests && \
+    python3 get_python_api.py
+
+RUN colcon build --parallel-workers $(nproc) --symlink-install \
+        --event-handlers console_direct+ --base-paths src \
+        --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
+        ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
+        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
+
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \ 
     echo "source /ws/install/setup.bash" >> ~/.bashrc
 
