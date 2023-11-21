@@ -24,19 +24,17 @@ from utils.datasets import letterbox
 from threading import Lock, Thread
 from time import sleep
 
-global exit_signal,detections, weights, img_size, conf_thres
-
 #Basic arguments of the scripts
 weights = "yolov7m.pt"
 img_size = 416
 conf_thres = 0.4
 
 lock = Lock()
-exit_signal = False
 
 class detection(Node):
     def __init__(self):
         self.run_signal = False
+        self.exit_signal = False
         super().__init__('detector')
 
         # Initialize ZED camera and YOLOv7
@@ -68,7 +66,8 @@ class detection(Node):
         
         print("Initialized Camera")
         
-        positional_tracking_parameters = sl.PositionalTrackingParameters()
+        py_transform = sl.Transform()
+        positional_tracking_parameters = sl.PositionalTrackingParameters(_init_pos=py_transform)
         # If the camera is static, uncomment the following line to have better performances and boxes sticked to the ground.
         # positional_tracking_parameters.set_as_static = True
         self.zed.enable_positional_tracking(positional_tracking_parameters)
@@ -80,6 +79,12 @@ class detection(Node):
         
         self.objects = sl.Objects()
         self.obj_runtime_param = sl.ObjectDetectionRuntimeParameters()
+
+        #Config for camera position
+        self.zed_pose = sl.Pose()
+        zed_sensors = sl.SensorsData()
+        zed_info = self.zed.get_camera_information()
+        self.py_translation = sl.Translation()
 
         # ... [Initialize the ROS 2 publisher for DetectedObject message]
         self.publisher = self.create_publisher(ConeMap, 'cone_detection', 10)
@@ -144,7 +149,6 @@ class detection(Node):
         return output
 
     def torch_thread(self, weights, img_size, conf_thres=0.2, iou_thres=0.45):
-        global image_net, exit_signal, detections
 	
         print("Intializing Network...")
         
@@ -164,7 +168,7 @@ class detection(Node):
         if device.type != 'cpu':
             model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
         
-        while not exit_signal:
+        while not self.exit_signal:
             #print("looping in another thread")
             if self.run_signal:
                 lock.acquire()
@@ -174,7 +178,7 @@ class detection(Node):
                 det = non_max_suppression(pred, conf_thres, iou_thres)
 
                 # ZED CustomBox format (with inverse letterboxing tf applied)
-                detections = self.detections_to_custom_box(det, img, self.image_net)
+                self.detections = self.detections_to_custom_box(det, img, self.image_net)
                 lock.release()
                 self.run_signal = False
             sleep(0.01)
@@ -187,28 +191,39 @@ class detection(Node):
         self.image_net = self.image_left_tmp.get_data()
         lock.release()
         self.run_signal = True
-        print("here")
+
         # -- Detection running on the other thread
         while self.run_signal:
             #print(run_signal);
             sleep(0.001)
-        print("outside loop")
+
         # Wait for detections
         lock.acquire()
         # -- Ingest detections
-        self.zed.ingest_custom_box_objects(detections)
+        self.zed.ingest_custom_box_objects(self.detections)
         lock.release()
         self.zed.retrieve_objects(self.objects, self.obj_runtime_param)
+        
+        #Ingest camera orientation info
+        self.zed.get_position(self.zed_pose, sl.REFERENCE_FRAME.WORLD)
+        rotation = self.zed_pose.get_rotation_vector()
+        translation = self.zed_pose.get_translation(self.py_translation)
 
         all_cones = ConeMap();
         single_cone = Cone();
+
+        #message for camera localization
+        single_cone.pose.pose.orientation.w = rotation[0]
+        single_cone.pose.pose.position.x = translation.get()[0]
+        single_cone.pose.pose.position.y = translation.get()[1]
+        single_cone.pose.pose.position.z = translation.get()[2]
+        all_cones.cones.append(single_cone)
+
         #Create messages and send
         for object in self.objects.object_list:
             single_cone.id = object.id
             single_cone.confidence = object.confidence
             #single_cone.colour = int(object.label[0])
-            single_cone.colour = 1
-
             #single_cone.pose.covariance = object.position_covariance
             single_cone.pose.pose.position.x = object.position[0]
             single_cone.pose.pose.position.y = object.position[1]
@@ -227,7 +242,8 @@ def main(args=None):
     rclpy.init(args=args)
     cone_detection = detection()
     rclpy.spin(cone_detection)  # The spin function will run the node until it is shutdown
-    exit_signal = True
+    cone_detection.exit_signal = True
+    cone_detection.zed.close()
     cone_detection.destroy_node()
     rclpy.shutdown()
 
