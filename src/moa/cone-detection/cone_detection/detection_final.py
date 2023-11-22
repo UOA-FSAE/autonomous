@@ -79,6 +79,8 @@ class detection(Node):
         self.zed.enable_object_detection(obj_param)
         
         self.objects = sl.Objects()
+        self.pose = sl.Pose()
+        self.py_translation = sl.Translation()
         self.obj_runtime_param = sl.ObjectDetectionRuntimeParameters()
 
         # ... [Initialize the ROS 2 publisher for DetectedObject message]
@@ -202,6 +204,10 @@ class detection(Node):
 
         all_cones = ConeMap();
         single_cone = Cone();
+        #Get position and rotation as first cone
+        self.zed.get_position(self.pose, sl.REFERENCE_FRAME.WORLD)
+        rotation = self.pose.get_rotation_vector()
+        translation = self.pose.get_translation(self.py_translation)
         #Create messages and send
         for object in self.objects.object_list:
             single_cone.id = object.id
