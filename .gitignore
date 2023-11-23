@@ -2,6 +2,7 @@
 build
 install
 log
+kaggle.json
 .devcontainer/docker-compose.yml
 .devcontainer/zed.Dockerfile
 .devcontainer/ros2_ws.Dockerfile

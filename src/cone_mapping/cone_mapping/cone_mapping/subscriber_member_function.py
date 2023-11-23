@@ -39,7 +39,7 @@ class Cone_Mapper(Node):
         print("started")
         self.subscription = self.create_subscription(
             ConeMap,
-            'cone_detect',
+            'cone_detection',
             self.listener_callback,
             10)
         self.subscription  # prevent unused variable warning
