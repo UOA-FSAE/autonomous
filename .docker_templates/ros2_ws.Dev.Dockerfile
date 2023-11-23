@@ -17,5 +17,4 @@ RUN source /opt/ros/humble/setup.bash && \
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
     echo "source /ws/install/setup.bash" >> ~/.bashrc
 
-ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD [ "bash" ]
