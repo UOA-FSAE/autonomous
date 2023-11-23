@@ -50,6 +50,7 @@ RUN rosdep init && \
 
 COPY ./src/moa/cone-detection /ws/src/moa/cone-detection
 COPY ./src/moa/moa_description /ws/src/moa/moa_description
+COPY ./src/moa/moa_msgs /ws/src/moa/moa_msgs
 
 # install ros2 packages
 RUN cd /ws/src/ && \

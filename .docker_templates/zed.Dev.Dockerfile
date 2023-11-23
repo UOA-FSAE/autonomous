@@ -6,6 +6,7 @@ SHELL [ "/bin/bash", "-c" ]
 WORKDIR /ws
 COPY ./src/moa/cone-detection /ws/src/moa/cone-detection
 COPY ./src/moa/moa_description /ws/src/moa/moa_description
+COPY ./src/moa/moa_msgs /ws/src/moa/moa_msgs
 
 # setup sources.list and keys
 RUN echo "deb http://packages.ros.org/ros2/ubuntu jammy main" > /etc/apt/sources.list.d/ros2-latest.list && \
