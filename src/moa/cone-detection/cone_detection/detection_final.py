@@ -204,10 +204,7 @@ class detection(Node):
 
         all_cones = ConeMap();
         single_cone = Cone();
-        #Get position and rotation as first cone
-        self.zed.get_position(self.pose, sl.REFERENCE_FRAME.WORLD)
-        rotation = self.pose.get_rotation_vector()
-        translation = self.pose.get_translation(self.py_translation)
+        all_cones.cones.append(self.get_localization_cone())
         #Create messages and send
         for object in self.objects.object_list:
             single_cone.id = object.id
@@ -217,17 +214,67 @@ class detection(Node):
 
             #single_cone.pose.covariance = object.position_covariance
             single_cone.pose.pose.position.x = object.position[0]
-            single_cone.pose.pose.position.y = object.position[1]
-            single_cone.pose.pose.position.z = object.position[2]
+            single_cone.pose.pose.position.y = object.position[2] * -1
+            single_cone.pose.pose.position.z = object.position[1]
             single_cone.radius = object.dimensions[0]/2
             single_cone.height = object.dimensions[1]
             all_cones.cones.append(single_cone)
 
         self.publisher.publish(all_cones)
+        # self.get_logger().info('Publishing: "%s"' % ConeMap.data)
         string_output = "";
+        is_first = True;
+
+        print("######################New Message##########################")
+        self.print_cone_information(all_cones.cones[0], True)
         for cone_item in all_cones.cones:
-            string_output += "s"
-        print(string_output);
+            self.print_cone_information(cone_item, is_first)
+            is_first = False;
+
+    def get_localization_cone(self):
+        localization_cone = Cone();
+        #Get position and rotation as first cone
+        self.zed.get_position(self.pose, sl.REFERENCE_FRAME.WORLD)
+        rotation = self.pose.get_rotation_vector()
+        translation = self.pose.get_translation(self.py_translation)
+        x = round(translation.get()[0], 2);
+        y = -1 * round(translation.get()[2], 2);
+        w = round(rotation[1], 2);
+        localization_cone.id = 99999;
+        localization_cone.pose.pose.position.x = x
+        localization_cone.pose.pose.position.y = y
+        localization_cone.pose.pose.orientation.w = w
+
+        return localization_cone
+
+
+    def print_cone_information(self, cone_input, is_first):
+        id_message = ""
+        x_message = "x: " + str(cone_input.pose.pose.position.x)
+        y_message = "y: " + str(cone_input.pose.pose.position.y)
+        z_message = "z: " + str(cone_input.pose.pose.position.z)
+        w_message = "w: " + str(cone_input.pose.pose.orientation.w * 180 / np.pi)
+        color_message = "color_id: " + str(cone_input.colour)
+        radius_message = "radius: " + str(cone_input.radius)
+        height_message = "height: " + str(cone_input.height)
+
+        if is_first:
+            id_message = "Car location"
+        else:
+            id_message = str(cone_input.id)
+
+        print("############################")
+        print(id_message);
+        print(x_message);
+        print(y_message);
+        print(z_message);
+        print(w_message);
+        print(color_message);
+        print(radius_message);
+        print(height_message);
+
+
+
 
 def main(args=None):
     rclpy.init(args=args)
