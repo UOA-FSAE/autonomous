@@ -4,8 +4,6 @@ LABEL Name=zed_sdk Version=0.0.1
 SHELL [ "/bin/bash", "-c" ]
 
 WORKDIR /ws
-COPY ./src/moa/cone-detection /ws/src/moa/cone-detection
-COPY ./src/moa/moa_description /ws/src/moa/moa_description
 
 # setup sources.list and keys
 RUN echo "deb http://packages.ros.org/ros2/ubuntu jammy main" > /etc/apt/sources.list.d/ros2-latest.list && \
@@ -42,6 +40,10 @@ RUN rosdep init && \
       https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
     colcon metadata update
 
+COPY ./src/perception/ /ws/src/perception/
+COPY ./src/moa/moa_description /ws/src/moa/moa_description
+COPY ./src/moa/moa_msgs /ws/src/moa/moa_msgs
+
 # install ros2 packages
 RUN cd /ws/src/ && \
     git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
@@ -57,11 +59,12 @@ RUN cd /usr/local/zed && \
     pip install requests && \
     python3 get_python_api.py
 
-RUN colcon build --parallel-workers $(nproc) --symlink-install \
-    --event-handlers console_direct+ --base-paths src \
-    --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
-    ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-    ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
+RUN source /opt/ros/humble/setup.bash && \ 
+    colcon build --parallel-workers $(nproc) --symlink-install \
+        --event-handlers console_direct+ --base-paths src \
+        --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
+        ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
+        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
 
 RUN echo "source /ws/install/setup.bash" >> ~/.bashrc
 

@@ -47,13 +47,15 @@ RUN apt update && apt install --no-install-recommends -y \
     python3-vcstool \ 
     python3-pip \
     ros-humble-foxglove-bridge && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean && \
     echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc 
-
+    
 COPY . .
 
 RUN rosdep init && rosdep update --rosdistro $ROS_DISTRO && apt-get update && \
     cd /ws && \
-    rosdep install --from-paths src -y --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \ 
+    rosdep install --from-paths src -y --ignore-src -i src/perception --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \ 
     rm -rf /var/lib/apt/lists/* 
 
 ENV PYTORCH_URL=https://developer.download.nvidia.com/compute/redist/jp/v512/pytorch/torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl PYTORCH_WHL=torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl 

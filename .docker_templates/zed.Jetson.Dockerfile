@@ -48,8 +48,9 @@ RUN rosdep init && \
       https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
     colcon metadata update
 
-COPY ./src/moa/cone-detection /ws/src/moa/cone-detection
+COPY ./src/perception/ /ws/src/perception/
 COPY ./src/moa/moa_description /ws/src/moa/moa_description
+COPY ./src/moa/moa_msgs /ws/src/moa/moa_msgs
 
 # install ros2 packages
 RUN cd /ws/src/ && \
