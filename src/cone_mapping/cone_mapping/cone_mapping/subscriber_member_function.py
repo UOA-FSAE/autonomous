@@ -44,6 +44,9 @@ class Cone_Mapper(Node):
             10)
         self.subscription  # prevent unused variable warning
 
+        # Create cone map publisher
+        self.publisher = self.create_publisher(ConeMap, 'cone_map', 10)
+
         #Static matrix size KF, need to change afterward
         self.number_of_cones = 0; #Used for second iteration only, later on would need to have this number be dynamic
         self.matrix_size = 3 + self.number_of_cones * 2;
@@ -87,18 +90,26 @@ class Cone_Mapper(Node):
         #self.get_logger().info('Mapped result: "%s"' % msg.cones)
         print("Listened")
         self.kalman_filter_update(msg)
+        self.publisher.publish(self.Cone_map)
+
+        print("######################New Message##########################")
+        is_first = True
+        for cone_item in self.Cone_map.cones:
+            self.print_cone_information(cone_item, is_first)
+            is_first = False
+
         #self.get_measurement(msg) #For testing rev 0 function
         
         #self.get_logger().info('Mapped result: "%s"' % self.cone_map)
         #print(self.cone_map_array_measured);
-        self.counter += 1;
+        # self.counter += 1;
 
-        if self.counter % 50 == 0:
-            plt.scatter(self.cone_map_array[0], self.cone_map_array[1], marker="x") #x marker for cone mapping
-            plt.scatter(self.cone_map_array_measured_all[0], self.cone_map_array_measured_all[1], marker=".") #. marker for all measurements taken
-            plt.scatter(self.real_x,self.real_y, marker = ".") #. marker for true position
-            plt.show();
-            time.sleep(1)
+        #if self.counter % 50 == 0:
+        #    plt.scatter(self.cone_map_array[0], self.cone_map_array[1], marker="x") #x marker for cone mapping
+        #    plt.scatter(self.cone_map_array_measured_all[0], self.cone_map_array_measured_all[1], marker=".") #. marker for all measurements taken
+        #    plt.scatter(self.real_x,self.real_y, marker = ".") #. marker for true position
+        #    plt.show();
+        #    time.sleep(1)
 
 ####SLAM fucntion below################################################################################################################################
 
@@ -128,7 +139,7 @@ class Cone_Mapper(Node):
         matching_flag = False;
         for cone in predicted_cones:
             #For each existing cone, check whether there is any measurement that is within the specified radius match_radius, and append the measurement if there is any and remove the measurement from measured_cones to avoid this measurement to be checked again
-            match_radius = 3;
+            match_radius = 0.2;
             matching_flag = False;
             predict_x, predict_y, predict_theta, predict_covaraince = self.extract_data_from_cone(cone)
             for measured_cone in measured_cones:
@@ -459,6 +470,31 @@ class Cone_Mapper(Node):
         distance_differences_y = cone_1_y - cone_2_y;
         distance_apart = math.sqrt(distance_differences_x ** 2 + distance_differences_y ** 2);
         return abs(distance_apart) <= tolerance
+
+    def print_cone_information(self, cone_input, is_first):
+        id_message = ""
+        x_message = "x: " + str(cone_input.pose.pose.position.x)
+        y_message = "y: " + str(cone_input.pose.pose.position.y)
+        z_message = "z: " + str(cone_input.pose.pose.position.z)
+        w_message = "w: " + str(cone_input.pose.pose.orientation.w * 180 / np.pi)
+        color_message = "color_id: " + str(cone_input.colour)
+        radius_message = "radius: " + str(cone_input.radius)
+        height_message = "height: " + str(cone_input.height)
+
+        if is_first:
+            id_message = "Car location"
+        else:
+            id_message = str(cone_input.id)
+
+        print("############################")
+        print(id_message);
+        print(x_message);
+        print(y_message);
+        print(z_message);
+        print(w_message);
+        print(color_message);
+        print(radius_message);
+        print(height_message);
         
 
 def main(args=None):

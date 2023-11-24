@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from moa_msgs.msg import Cone
 from moa_msgs.msg import ConeStamped
-from moa_msgs.msg import ConeMap
 from moa_msgs.msg import ConeMapStamped
+from mapping_interfaces.msg import ConeMap
+from mapping_interfaces.msg import Cone
 
 import sys
 import numpy as np
@@ -65,7 +65,7 @@ class detection(Node):
             exit()
         
         self.image_left_tmp = sl.Mat()
-        
+
         print("Initialized Camera")
         
         positional_tracking_parameters = sl.PositionalTrackingParameters()
@@ -86,6 +86,8 @@ class detection(Node):
         # ... [Initialize the ROS 2 publisher for DetectedObject message]
         self.publisher = self.create_publisher(ConeMap, 'cone_detection', 10)
         self.timer = self.create_timer(0.5, self.run_detection)
+
+        self.counter = 0
 
     def img_preprocess(self, img, device, half, net_size):
         net_image, ratio, pad = letterbox(img[:, :, :3], net_size, auto=False)
@@ -222,14 +224,20 @@ class detection(Node):
 
         self.publisher.publish(all_cones)
         # self.get_logger().info('Publishing: "%s"' % ConeMap.data)
-        string_output = "";
-        is_first = True;
+        string_output = ""
+        is_first = True
 
-        print("######################New Message##########################")
-        self.print_cone_information(all_cones.cones[0], True)
+        print("######################New Message##########################" + str(self.counter))
+        #self.print_cone_information(all_cones.cones[0], True)
         for cone_item in all_cones.cones:
             self.print_cone_information(cone_item, is_first)
-            is_first = False;
+            is_first = False
+
+        self.counter += 1
+        if self.counter == 100:
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+            self.counter = 0
 
     def get_localization_cone(self):
         localization_cone = Cone();
