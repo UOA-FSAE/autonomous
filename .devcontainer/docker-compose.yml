@@ -52,6 +52,7 @@ services:
     volumes:
       - ../src/moa/cone-detection:/ws/src/moa/cone-detection
       - ../src/moa/moa_description:/ws/src/moa/moa_description
+      - ../src/moa/moa_msgs:/ws/src/moa/moa_msgs
       
 
     network_mode: host
