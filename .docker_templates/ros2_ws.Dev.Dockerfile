@@ -17,7 +17,7 @@ COPY . .
 
 RUN source /opt/ros/humble/setup.bash && \
     rosdep update --rosdistro $ROS_DISTRO && apt-get update && \
-    rosdep install --from-paths src -y --ignore-src -i src/perception --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \ 
+    rosdep install --from-paths src -y -r --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \ 
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
