@@ -55,7 +55,7 @@ COPY . .
 
 RUN rosdep init && rosdep update --rosdistro $ROS_DISTRO && apt-get update && \
     cd /ws && \
-    rosdep install --from-paths src -y --ignore-src -i src/perception --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \ 
+    rosdep install --from-paths src -y -r --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \ 
     rm -rf /var/lib/apt/lists/* 
 
 ENV PYTORCH_URL=https://developer.download.nvidia.com/compute/redist/jp/v512/pytorch/torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl PYTORCH_WHL=torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl 
@@ -68,9 +68,6 @@ RUN python3 -c 'import torch; print(f"PyTorch version: {torch.__version__}"); pr
 
 RUN source /opt/ros/humble/setup.bash && \
     colcon build --parallel-workers $(nproc) --symlink-install \
-        --event-handlers console_direct+ --base-paths src \
-        --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
-        ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
+        --event-handlers console_direct+ --base-paths src 
 
 CMD [ "bash" ]
