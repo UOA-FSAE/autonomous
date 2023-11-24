@@ -68,6 +68,11 @@ RUN cd yolov7
 RUN pip3 install -r requirements.txt
 RUN cd /ws
 
+# Install foxglove bridge
+RUN cd /ws/src/hardware_drivers
+RUN git clone git@github.com:foxglove/ros-foxglove-bridge.git
+RUN cd /ws
+
 # Install nano
 RUN apt-get update && apt-get install -y \
     nano
