@@ -6,7 +6,8 @@ git clone git@github.com:WongKinYiu/yolov7.git
 cd yolov7
 pip3 install -r requirements.txt
 cd /ws
+pip3 install pyopengl
 
-cd /ws/src/hardware_drivers
-git clone git@github.com:foxglove/ros-foxglove-bridge.git
-cd /ws
+# cd /ws/src/hardware_drivers
+# git clone git@github.com:foxglove/ros-foxglove-bridge.git
+# cd /ws
