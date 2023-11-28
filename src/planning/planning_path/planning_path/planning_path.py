@@ -9,7 +9,6 @@ from geometry_msgs.msg import Pose, PoseArray
 from moa_msgs.msg import Cone, ConeMap
 from moa_msgs.msg import BoundaryStamped
 from ackermann_msgs.msg import AckermannDrive
-# from message_filters import ApproximateTimeSynchronizer
 
 
 
@@ -20,7 +19,7 @@ class path_planning(Node):
         self.ackermann_pub = self.create_publisher(AckermannDrive, "/cmd_vel", 5)
         self.boundl_sub = self.create_subscription(BoundaryStamped, "track/bound_l", self.get_left_boundary, 5)
         self.boundr_sub = self.create_subscription(BoundaryStamped, "track/bound_r", self.get_right_boundary, 5)
-        self.cone_map_cli = self.create_client(ConeMappingService, 'conemapservice')
+        self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.get_cone_map, 5)
 
         self.timer = self.create_timer(5, self.publish_best_state)
 
@@ -31,22 +30,8 @@ class path_planning(Node):
         '''
         self.get_logger().info("5 seconds up - generating trajectories")
 
-        # request cone map - client
-        temp_time = time.time()
-        while not self.cone_map_cli.wait_for_service(timeout_sec=2):
-            self.get_logger().info('cone map service not available, waiting again...')
-            if time.time() - temp_time > 1:
-                self.timer.reset()
-                return
-        # call async
-        self.future = self.cone_map_cli.call_async(ConeMappingService.Request())
-        while not self.future:
-            self.timer.cancel()
-            self.get_logger().info('waiting for future service response')
-        self.timer.reset()
-        cone_map = self.future.result
         # generate trajectories
-        trajectories, states = self.trajectory_generator(cone_map)
+        trajectories, states = self.trajectory_generator(self.cone_map)
         # delete trajectories
         self.trajectory_deletion(trajectories)
         # find best trajectory
@@ -65,6 +50,8 @@ class path_planning(Node):
     def get_left_boundary(self, msg: BoundaryStamped) -> None: self.leftbound = msg.coords
     
     def get_right_boundary(self, msg: BoundaryStamped) -> None: self.rightbound = msg.coords
+
+    def get_cone_map(self, msg:ConeMap) -> None: self.cone_map = msg.cones
 
     # ===========================================================
     # TRAJECTORY GENERATION
