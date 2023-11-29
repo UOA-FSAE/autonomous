@@ -15,8 +15,7 @@
 
   <!--Python Packages-->
   <exec_depend>python3-numpy</exec_depend>
-  <!-- <exec_depend>zlib</exec_depend> -->
-
+ 
   <!--ROS2 Message Types-->
   <exec_depend>ackermann_msgs</exec_depend>
   <exec_depend>moa_msgs</exec_depend>
