@@ -4,7 +4,7 @@ LABEL Name=autonomous Version=0.0.1
 SHELL [ "/bin/bash", "-c" ]
 
 WORKDIR /ws
-COPY . .
+# COPY . .
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
     python3-pip \

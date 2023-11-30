@@ -60,18 +60,13 @@ RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
     echo "source /ws/install/setup.bash" >> ~/.bashrc
     
 # Install zed library
-RUN pip3 install requests
-RUN python3 /usr/local/zed/get_python_api.py
-RUN cd /ws/src/moa/cone-detection/cone_detection
-RUN git clone git@github.com:WongKinYiu/yolov7.git
-RUN cd yolov7
-RUN pip3 install -r requirements.txt
-RUN cd /ws
-
-# Install foxglove bridge
-RUN cd /ws/src/hardware_drivers
-RUN git clone git@github.com:foxglove/ros-foxglove-bridge.git
-RUN cd /ws
+# RUN pip3 install requests
+# RUN python3 /usr/local/zed/get_python_api.py
+# RUN cd /ws/src/perception/cone-detection/cone_detection
+# RUN git clone git@github.com:WongKinYiu/yolov7.git
+# RUN cd yolov7
+# RUN pip3 install -r requirements.txt
+# RUN cd /ws
 
 # Install nano
 RUN apt-get update && apt-get install -y \
@@ -80,9 +75,6 @@ RUN apt-get update && apt-get install -y \
 # Install libusb
 RUN apt-get install -y usbutils
 
-# Install IDLE
-RUN apt-get update && apt-get install -y \
-    idle3
 
 ENTRYPOINT ["./ros_entrypoint.sh"]
 CMD ["bash"]
