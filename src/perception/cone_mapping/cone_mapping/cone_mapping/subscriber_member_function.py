@@ -19,8 +19,8 @@ import random
 from rclpy.node import Node
 
 from std_msgs.msg import String
-from mapping_interfaces.msg import ConeMap
-from mapping_interfaces.msg import Cone
+from moa_msgs.msg import ConeMap
+from moa_msgs.msg import Cone
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import PoseWithCovariance;
@@ -139,7 +139,7 @@ class Cone_Mapper(Node):
         matching_flag = False;
         for cone in predicted_cones:
             #For each existing cone, check whether there is any measurement that is within the specified radius match_radius, and append the measurement if there is any and remove the measurement from measured_cones to avoid this measurement to be checked again
-            match_radius = 0.2;
+            match_radius = 2;
             matching_flag = False;
             predict_x, predict_y, predict_theta, predict_covaraince = self.extract_data_from_cone(cone)
             for measured_cone in measured_cones:
