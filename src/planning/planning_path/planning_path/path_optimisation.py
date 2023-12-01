@@ -4,10 +4,8 @@ import time
 
 import rclpy
 from rclpy.node import Node
-from cone_mapping.srv import ConeMappingService
 from geometry_msgs.msg import Pose, PoseArray
-from moa_msgs.msg import Cone, ConeMap
-from moa_msgs.msg import BoundaryStamped
+from moa_msgs.msg import Cone, ConeMap, BoundaryStamped
 from ackermann_msgs.msg import AckermannDrive
 
 
@@ -16,7 +14,8 @@ class path_planning(Node):
     def __init__(self):
         super().__init__("path_planning")
 
-        self.ackermann_pub = self.create_publisher(AckermannDrive, "/cmd_vel", 5)
+        self.ackerman_sub = self.create_subscription(AckermannDrive, "/cmd_vel", self.get_current_states, 5)
+        self.ackermann_pub = self.create_publisher(AckermannDrive, "/moa/drive", 5)
         self.boundl_sub = self.create_subscription(BoundaryStamped, "track/bound_l", self.get_left_boundary, 5)
         self.boundr_sub = self.create_subscription(BoundaryStamped, "track/bound_r", self.get_right_boundary, 5)
         self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.get_cone_map, 5)
@@ -33,25 +32,39 @@ class path_planning(Node):
         # generate trajectories
         trajectories, states = self.trajectory_generator(self.cone_map)
         # delete trajectories
-        self.trajectory_deletion(trajectories)
+        states = list(states)
+        self.trajectory_deletion(trajectories, states)
         # find best trajectory
         self.best_state = self.optimisation(trajectories, states)
 
-        # publish msg
-        args = {"steering_angle": float(self.best_state),
+        # p-controller
+        error = self.get_control_error(self.current_angle, self.best_state)
+        # constant gain multiplier
+        p_gain = 0.5
+        # new steering angle output
+        self.chosen_state = self.current_angle + error * p_gain
+
+        # publish msg to /moa/drive
+        args = {"steering_angle": float(self.chosen_state),
                 "steering_angle_velocity": 0.0,
-                "speed": 5.0,
+                "speed": self.current_speed,
                 "acceleration": 0.0,
                 "jerk": 0.0}
         msg = AckermannDrive(**args)
         self.ackermann_pub(msg)
-        print(self.best_state)
+        print(self.chosen_state)
+
+    def get_current_states(self, msg:AckermannDrive) -> None: 
+        self.current_speed = msg.speed
+        self.current_angle = msg.steering_angle
 
     def get_left_boundary(self, msg: BoundaryStamped) -> None: self.leftbound = msg.coords
     
     def get_right_boundary(self, msg: BoundaryStamped) -> None: self.rightbound = msg.coords
 
     def get_cone_map(self, msg:ConeMap) -> None: self.cone_map = msg.cones
+
+    def get_control_error(self, csa, dsa): return csa-dsa
 
     # ===========================================================
     # TRAJECTORY GENERATION
@@ -107,7 +120,7 @@ class path_planning(Node):
 
     # ===========================================================
     # TRAJECTORY DELETION
-    def trajectory_deletion(self, trajectories=None) -> None:
+    def trajectory_deletion(self, trajectories=None, states=None) -> None:
         '''
         Caller for trajectory deletion if there are trajectories
 
@@ -116,25 +129,28 @@ class path_planning(Node):
         '''
         if trajectories is None:
             return 
-        self.get_logger().info("Trajectory Deletion Started")
-        self.get_inbound_trajectories(trajectories) 
+        # self.get_logger().info("Trajectory Deletion Started")
+        self.get_inbound_trajectories(trajectories,states) 
         
-    def get_inbound_trajectories(self, trajectories):
+    def get_inbound_trajectories(self, trajectories, states):
         '''
         Deletes trajectories that are on track boundaries
 
         Inputs
             trajectories (1darray): a list of PoseArrays 
         '''
-        for T in trajectories:
+        rm_inds = []
+        for i, T in enumerate(trajectories):
             for cpose in T.poses:
                 x = cpose.position.x 
                 y = cpose.position.y
                 # compare points with boundaries
                 onBound = self.compare_with_boundary(x,y)
                 if onBound:  
-                    trajectories.pop([i for i in range(len(trajectories)) if T==trajectories[i]][0])
+                    rm_inds.append(i)
+                    # trajectories.pop([i for i in range(len(trajectories)) if T==trajectories[i]][0])
                     break
+        [(trajectories.pop(index), states.pop(index)) for index in list(reversed(rm_inds))]
     
     def compare_with_boundary(self, x, y):
         '''
@@ -195,7 +211,7 @@ class path_planning(Node):
     def optimisation(self, trajectories=None, states=None):
         if trajectories is None:
             return
-        self.get_logger().info("Optimisation Started")
+        # self.get_logger().info("Optimisation Started")
         best_state = self.get_best_trajectory_state(trajectories, states)
 
         return best_state
@@ -220,30 +236,29 @@ class path_planning(Node):
     def get_trajectory_state(self, states, idx):
         return states[idx]
 
-    # # FOR DEBUGGING
-    # def generate_trajectories(self, n):
-    #     # list of all trajectories and states (for now just steering angle in rads)
-    #     all_traj = []
-    #     all_states = -np.random.random(n) + np.random.random(n)
-    #     # make n pose arrays
-    #     x = y = z = 0.0
-    #     for i in range(n):
-    #         # contains poses for ith pose array
-    #         temp = []
-    #         # make m poses with random coordinates
-    #         for j in range(3):
-    #             pose = Pose()
-    #             pose.position.x, pose.position.y, pose.position.z = x, y, z
-    #             # pose_array.poses = pose
-    #             temp.append(pose)
-    #             # calculate new x, y, z sqrt((x2-x1)^2+(y2-y1)^2) = length with x2 unknown
-    #             x = np.sqrt(0.1**2) + x
-    #         pose_array = PoseArray()
-    #         pose_array.poses = temp
-    #         # append pose array to all trajectories
-    #         all_traj.append(pose_array)
+    def DEBUG_generate_trajectories(self, n):
+        # list of all trajectories and states (for now just steering angle in rads)
+        all_traj = []
+        all_states = -np.random.random(n) + np.random.random(n)
+        # make n pose arrays
+        x = y = z = 0.0
+        for i in range(n):
+            # contains poses for ith pose array
+            temp = []
+            # make m poses with random coordinates
+            for j in range(3):
+                pose = Pose()
+                pose.position.x, pose.position.y = x, y
+                # pose_array.poses = pose
+                temp.append(pose)
+                # calculate new x, y, z sqrt((x2-x1)^2+(y2-y1)^2) = length with x2 unknown
+                x = np.sqrt(0.1**2) + x
+            pose_array = PoseArray()
+            pose_array.poses = temp
+            # append pose array to all trajectories
+            all_traj.append(pose_array)
 
-    #     return all_traj, all_states
+        return all_traj, all_states
 
 
 def main():
