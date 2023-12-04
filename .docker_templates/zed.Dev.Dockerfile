@@ -4,7 +4,6 @@ LABEL Name=zed_sdk Version=0.0.1
 SHELL [ "/bin/bash", "-c" ]
 
 WORKDIR /ws
-COPY ../ /
 
 # setup sources.list and keys
 RUN echo "deb http://packages.ros.org/ros2/ubuntu jammy main" > /etc/apt/sources.list.d/ros2-latest.list && \
@@ -16,12 +15,14 @@ RUN apt-get update && apt-get install -q -y --no-install-recommends \
     dirmngr \
     gnupg2 \
     git \
-    ros-humble-ros-core=0.10.0-1* \
+    ros-humble-ros-base \
     build-essential \
     python3-colcon-common-extensions \
     python3-colcon-mixin \
     python3-rosdep \
-    python3-vcstool 
+    python3-vcstool && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
 
 # setup environment
 ENV LANG C.UTF-8
@@ -39,22 +40,32 @@ RUN rosdep init && \
       https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
     colcon metadata update
 
+COPY ./src/perception/ /ws/src/perception/
+COPY ./src/moa/moa_description /ws/src/moa/moa_description
+COPY ./src/moa/moa_msgs /ws/src/moa/moa_msgs
+
 # install ros2 packages
-RUN mkdir /ws/src/ && cd "$_" && \
+RUN cd /ws/src/ && \
     git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
     cd .. && \
     source /opt/ros/humble/setup.bash && \ 
-    rosdep update && \
-    rosdep install --from-paths src --ignore-src -r -y
-    #   && \
-#     colcon build --parallel-workers $(nproc) --symlink-install \
-#     --event-handlers console_direct+ --base-paths src \
-#     --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
-#     ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-#     ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' && \
-#     rm -rf /var/lib/apt/lists/* && \
-#     echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
-#     echo "source /ws/install/setup.bash" >> ~/.bashrc
+    apt-get update && rosdep update && \
+    rosdep install --from-paths src --ignore-src -r -y && \
+    echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
 
-# ENTRYPOINT ["/ros_entrypoint.sh"]
-# CMD ["bash"]
+RUN cd /usr/local/zed && \
+    pip install requests && \
+    python3 get_python_api.py
+
+RUN source /opt/ros/humble/setup.bash && \ 
+    colcon build --parallel-workers $(nproc) --symlink-install \
+        --event-handlers console_direct+ --base-paths src \
+        --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
+        ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
+        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
+
+RUN echo "source /ws/install/setup.bash" >> ~/.bashrc
+
+CMD ["bash"]

@@ -3,6 +3,9 @@ build
 install
 log
 .devcontainer/docker-compose.yml
+.devcontainer/zed.Dockerfile
+.devcontainer/ros2_ws.Dockerfile
 .vscode/settings.json
 .gitignore
 .vscode/c_cpp_properties.json
+**/__pycache__/
