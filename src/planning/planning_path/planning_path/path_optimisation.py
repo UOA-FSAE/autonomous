@@ -5,66 +5,59 @@ import time
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Pose, PoseArray
-from moa_msgs.msg import Cone, ConeMap, BoundaryStamped
+from moa_msgs.msg import Cone, ConeMap, BoundaryStamped, AllTrajectories
 from ackermann_msgs.msg import AckermannDrive
-
 
 
 class path_planning(Node):
     def __init__(self):
-        super().__init__("path_planning")
+        super().__init__("Path Planning & Trajectory Optimisation")
 
+        # all trajectories publisher 
+        self.all_traj_pub = self.create_publisher(AllTrajectories,"moa/trajectories",5)
+        # subscribe to car states and cone map
         self.ackerman_sub = self.create_subscription(AckermannDrive, "/cmd_vel", self.get_current_states, 5)
-        self.ackermann_pub = self.create_publisher(AckermannDrive, "/moa/drive", 5)
+        self.cone_map_sub = self.create_subscription(ConeMap,"cone_map",self.get_cone_map,5)
+
+        # publish best trajectorys
+        self.best_traj_pub = self.create_publisher(AckermannDrive, "moa/selected_trajectory", 5)
+        # subscribe to all trajectories
+        self.all_traj_sub = self.create_subscription(AllTrajectories, "moa/trajectories", self.get_all_trajectories, 5)
+        # subscribe to cone map and track boundaries
         self.boundl_sub = self.create_subscription(BoundaryStamped, "track/bound_l", self.get_left_boundary, 5)
         self.boundr_sub = self.create_subscription(BoundaryStamped, "track/bound_r", self.get_right_boundary, 5)
         self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.get_cone_map, 5)
 
-        self.timer = self.create_timer(5, self.publish_best_state)
+        self.timer = self.create_timer(5, self.publish_trajectories)
 
     # BEST TRAJECTORY PUBLISHER
-    def publish_best_state(self):
+    def publish_trajectories(self):
         '''
-        Publishes the best trajectory state every n seconds
+        Publishes all generated trajectories once created every n seconds
         '''
         self.get_logger().info("5 seconds up - generating trajectories")
 
         # generate trajectories
-        trajectories, states = self.trajectory_generator(self.cone_map)
-        # delete trajectories
-        states = list(states)
-        self.trajectory_deletion(trajectories, states)
-        # find best trajectory
-        self.best_state = self.optimisation(trajectories, states)
-
-        # p-controller
-        error = self.get_control_error(self.current_angle, self.best_state)
-        # constant gain multiplier
-        p_gain = 0.5
-        # new steering angle output
-        self.chosen_state = self.current_angle + error * p_gain
-
-        # publish msg to /moa/drive
-        args = {"steering_angle": float(self.chosen_state),
-                "steering_angle_velocity": 0.0,
-                "speed": self.current_speed,
-                "acceleration": 0.0,
-                "jerk": 0.0}
-        msg = AckermannDrive(**args)
-        self.ackermann_pub(msg)
-        print(self.chosen_state)
+        self.trajectories, states = self.trajectory_generator(self.cone_map)
+        
+        # publish to moa/trajectories
+        trajectory_list = []
+        for i in range(len(states)):
+            args = {"steering_angle": float(states[i]),
+                    "steering_angle_velocity": 0.0,
+                    "speed": self.current_speed,
+                    "acceleration": 0.0,
+                    "jerk": 0.0}
+            trajectory_list.append(AckermannDrive(**args))
+        
+        msg = AllTrajectories(trajectories = trajectory_list)
+        self.all_traj_pub.publish(msg)
 
     def get_current_states(self, msg:AckermannDrive) -> None: 
         self.current_speed = msg.speed
         self.current_angle = msg.steering_angle
-
-    def get_left_boundary(self, msg: BoundaryStamped) -> None: self.leftbound = msg.coords
     
-    def get_right_boundary(self, msg: BoundaryStamped) -> None: self.rightbound = msg.coords
-
     def get_cone_map(self, msg:ConeMap) -> None: self.cone_map = msg.cones
-
-    def get_control_error(self, csa, dsa): return csa-dsa
 
     # ===========================================================
     # TRAJECTORY GENERATION
@@ -118,6 +111,33 @@ class path_planning(Node):
         transformed_point = np.matmul(rotation_matrix, point) + position_vector
         return transformed_point
 
+    # CLASS TRAJECTORY_OPTIMISATION is combined as trajectory points are needed
+    def get_all_trajectories(self, msg: AllTrajectories) -> None: 
+        states = []
+        trajs = msg.trajectories
+        for i in range(len(trajs)):
+            states.append(trajs[i].steering_angle)
+        
+        # trajectory deletion
+        self.trajectory_deletion(self.trajectories, states)
+        # optimisation
+        best_state = self.optimisation(self.trajectories,states)
+
+        # publish to moa/selected_trajectory
+        args = {"steering_angle": float(best_state),
+                "steering_angle_velocity": 0.0,
+                "speed": self.current_speed,
+                "acceleration": 0.0,
+                "jerk": 0.0}
+        msg = AckermannDrive(**args)
+        self.best_traj_pub.publish(msg)
+    
+    def get_left_boundary(self, msg: BoundaryStamped) -> None: self.leftbound = msg.coords
+    
+    def get_right_boundary(self, msg: BoundaryStamped) -> None: self.rightbound = msg.coords
+
+    def get_cone_map(self, msg:ConeMap) -> None: self.cone_map = msg.cones
+
     # ===========================================================
     # TRAJECTORY DELETION
     def trajectory_deletion(self, trajectories=None, states=None) -> None:
@@ -129,7 +149,7 @@ class path_planning(Node):
         '''
         if trajectories is None:
             return 
-        # self.get_logger().info("Trajectory Deletion Started")
+        self.get_logger().info("Trajectory Deletion Started")
         self.get_inbound_trajectories(trajectories,states) 
         
     def get_inbound_trajectories(self, trajectories, states):
@@ -176,42 +196,12 @@ class path_planning(Node):
                 return True
         return False
 
-
-    # def search_list(self, ls, val):
-    #     ls = list(ls)
-    #     val = np.round(val,4)
-    #     # binary search - assumes a sorted search list
-    #     # number of elements dropped in binary search
-    #     elem_dropped = 0
-    #     while True:
-    #         # get middle element
-    #         mid = int(np.ceil(len(ls) / 2)) - 1
-    #         try:
-    #             # check middle element
-    #             if val == ls[mid]:
-    #                 # index found, if list has one element increase mid-index by 1
-    #                 if mid == -1: mid = 0
-    #                 break
-    #             elif val > ls[mid]:
-    #                 # count number elements to be dropped
-    #                 elem_dropped += mid + 1
-    #                 # update list
-    #                 ls[:] = ls[(mid + 1):]
-    #             else:
-    #                 # update list
-    #                 ls[:] = ls[:mid]
-    #         except IndexError:
-    #             # value doesn't exist
-    #             return None
-
-    #     return elem_dropped + mid
-
     # ===========================================================
     # OPTIMISATION
     def optimisation(self, trajectories=None, states=None):
         if trajectories is None:
             return
-        # self.get_logger().info("Optimisation Started")
+        self.get_logger().info("Optimisation Started")
         best_state = self.get_best_trajectory_state(trajectories, states)
 
         return best_state
@@ -261,18 +251,49 @@ class path_planning(Node):
         return all_traj, all_states
 
 
+class trajectory_following(Node):
+    def __init__(self):
+        super().__init__("Trajectory Following")
+
+        # publish p-controlled trajectory
+        self.p_controlled_pub = self.create_publisher(AckermannDrive, "moa/drive", 5)
+        # subscribe to best trajectory
+        self.best_traj_sub = self.create_subscription(AckermannDrive, "moa/selected_trajectory", self.get_best_state, 5)
+        self.current_states_sub = self.create_subscription(AckermannDrive, "/cmd_vel", self.get_current_states, 5)
+
+    def get_current_states(self, msg: AckermannDrive) -> None: 
+        self.current_speed = msg.speed
+        self.current_angle = msg.steering_angle
+
+    def get_control_error(self, csa, dsa): return csa-dsa
+
+    def get_best_state(self, msg: AckermannDrive):
+        error = self.get_control_error(self.current_angle, msg.steering_angle)
+        # constant gain multiplier
+        p_gain = 0.5
+        # new steering angle output
+        chosen_state = self.current_angle + error * p_gain
+
+        # publish msg to /moa/drive
+        args = {"steering_angle": float(chosen_state),
+                "steering_angle_velocity": 0.0,
+                "speed": self.current_speed,
+                "acceleration": 0.0,
+                "jerk": 0.0}
+        msg = AckermannDrive(**args)
+        self.p_controlled_pub(msg)
+        self.get_logger().info(f"P-controlled trajectory steering angle published = {chosen_state}")
+        print(chosen_state)
+
+
 def main():
     rclpy.init()
-
     NDE = path_planning()
-
     try:
         rclpy.spin(NDE)
     except Exception as e:
         print(f"node spin error: {e}")
-
     NDE.destroy_node()
-
     rclpy.shutdown()
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(ackermann_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 # List message and service files
@@ -20,6 +21,8 @@ set(msg_files
   "msg/ConeStamped.msg"
   "msg/ConeMap.msg"
   "msg/ConeMapStamped.msg"
+  "msg/BoundaryStamped.msg"
+  "msg/AllTrajectories.msg"
 )
 set(srv_files
   "srv/CANSendReq.srv"
@@ -29,7 +32,7 @@ set(srv_files
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${msg_files}
   ${srv_files}
-  DEPENDENCIES std_msgs geometry_msgs
+  DEPENDENCIES std_msgs geometry_msgs ackermann_msgs
 )
 
 # Export package dependencies

@@ -7,6 +7,10 @@
   <maintainer email="Tanish.Bhatt@fsae.co.nz">root</maintainer>
   <license>Package for path planning implementation</license>
 
+  <exec_depend>ackermann_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>moa_msgs</exec_depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>

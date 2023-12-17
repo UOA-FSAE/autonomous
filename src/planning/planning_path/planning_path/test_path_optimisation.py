@@ -1,15 +1,15 @@
 #!/usr/bin/python3
 ### ------- Testing of the path_planning node ------------ ###
 ## Notes/Info:
-# Create a boundary stamped msg type (change cmakelists.txt file as well) for temporary code testing and
 
-from path_optimisation import path_planning as pp
+from path_optimisation import path_planning as pp 
+from path_optimisation import trajectory_following as tf
 import numpy as np
 
 def test_get_control_error():
     csa = 50
     dsa = 60
-    assert pp.get_control_error(0, csa,dsa) == -10
+    assert tf.get_control_error(0, csa,dsa) == -10
 
 def test_trajectory_deletion():
     ppI = pp.__new__(pp)
