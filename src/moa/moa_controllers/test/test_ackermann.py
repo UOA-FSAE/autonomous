@@ -1,14 +1,13 @@
 import pytest
 import numpy as np
-from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
-from moa_msgs.msg import CANStamped
+from ackermann_msgs.msg import AckermannDriveStamped
 from moa_controllers.ack_to_can import ack_to_can
 from unittest.mock import Mock
 import rclpy
 
 
 
-@pytest.fixture(autouse=True, scope='session')
+@pytest.fixture(autouse=True, scope='module')
 def node():
     rclpy.init(args=None)
     test_ack = ack_to_can()
@@ -16,12 +15,6 @@ def node():
     yield test_ack
     test_ack.destroy_node()
     rclpy.shutdown()
-
-    
-# def test_compress_floats():
-#     values = np.array([1.0, 1.5, 2.0, 2.5])
-#     expected_result = b'x\x9c+\x01\x00\xf6\xff,\x02\x00\xfa\xff'
-#     assert compress_floats(values) == expected_result
 
 
 def test_ackermann_to_can_parser_out_of_bounds(node: ack_to_can):

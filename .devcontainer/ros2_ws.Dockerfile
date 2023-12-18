@@ -4,10 +4,11 @@ LABEL Name=autonomous Version=0.0.1
 SHELL [ "/bin/bash", "-c" ]
 
 WORKDIR /ws
-COPY . .
+# COPY . .
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
-    python3-pip && \
+    python3-pip \
+    ros-humble-foxglove-bridge && \ 
     rm -rf /var/lib/apt/lists/*
 
 RUN source /opt/ros/humble/setup.bash && \
