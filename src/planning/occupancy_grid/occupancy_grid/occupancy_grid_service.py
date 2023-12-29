@@ -16,8 +16,6 @@ from mpl_toolkits.mplot3d import Axes3D
 class Occupancy_grid(Node):
     def __init__(self):
         super().__init__('Occupancy_grid')
-        self.srv = self.create_service(AddTwoInts, 'add_two_ints', self.add_two_ints_callback)
-        
         self.occ_grid_publisher = self.create_publisher(
             OccupancyGrid,
             'track/occ_grid',
@@ -46,15 +44,6 @@ class Occupancy_grid(Node):
 
         self.resolution = 0.1 # in m/pixel 
         self.car_width = 1.5 # in m TODO change to acutal width
-
-    def add_two_ints_callback(self, request, response):
-        print("Testing occupancy grid function")
-        cone_map = self.generate_cone_map_for_test()
-        print(self.gen_occ_grid(cone_map))
-        response.sum = request.a + request.b
-        self.get_logger().info('Incoming request\na: %d b: %d' % (request.a, request.b))
-
-        return response
     
     def publish_occ_grid(self, msg):
         bound_l, bound_r, occ_grid = self.gen_occ_grid(msg)
