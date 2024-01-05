@@ -3,6 +3,9 @@
 <package format="3">
   <name>moa_driver</name>
   <version>0.0.0</version>
+  <description>All the hardware drivers for running the moa</description>
+  <maintainer email="chrisgraham@gmail.com">chris</maintainer>
+  <license>Apache 2.0</license>
   <description>TODO: Package description</description>
   <maintainer email="chrisgraham908@gmail.com">chris</maintainer>
   <license>TODO: License declaration</license>
@@ -11,6 +14,8 @@
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
+
+  <exec_depend>moa_msgs</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>
