@@ -20,7 +20,15 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'can_interface_jnano = moa_driver.can_interface_jnano:main',
+            'can_interface_jnano = moa_driver.can_interface_jnano:main'
+        ]
+    },
+    maintainer_email='chrisgraham908@gmail.com',
+    description='TODO: Package description',
+    license='TODO: License declaration',
+    tests_require=['pytest'],
+    entry_points={
+        'console_scripts': [
         ],
     },
 )
