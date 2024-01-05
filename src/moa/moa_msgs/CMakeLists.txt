@@ -21,6 +21,7 @@ set(msg_files
   "msg/ConeStamped.msg"
   "msg/ConeMap.msg"
   "msg/ConeMapStamped.msg"
+  "msg/BoundaryStamped.msg"
   "msg/AllTrajectories.msg"
   "msg/HardwareStates.msg"
   "msg/HardwareStatesStamped.msg"
