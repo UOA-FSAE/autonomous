@@ -38,8 +38,8 @@ services:
     privileged: true
     
     build:
-      context: ..
-      dockerfile: .devcontainer/zed.Dockerfile
+      context: .
+      dockerfile: ./zed.Dockerfile
 
     environment:
       - DISPLAY
@@ -67,3 +67,4 @@ services:
             - driver: nvidia
               device_ids: []
               capabilities: [gpu]
+
