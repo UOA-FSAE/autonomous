@@ -4,7 +4,8 @@ LABEL Name=zed_sdk Version=0.0.1
 SHELL [ "/bin/bash", "-c" ]
 
 WORKDIR /ws
-COPY ../ /
+COPY . .
+#COPY ../ /
 
 # setup sources.list and keys
 RUN echo "deb http://packages.ros.org/ros2/ubuntu jammy main" > /etc/apt/sources.list.d/ros2-latest.list && \
@@ -16,7 +17,7 @@ RUN apt-get update && apt-get install -q -y --no-install-recommends \
     dirmngr \
     gnupg2 \
     git \
-    ros-humble-ros-core=0.10.0-1* \
+    ros-humble-ros-base \
     build-essential \
     python3-colcon-common-extensions \
     python3-colcon-mixin \
@@ -40,21 +41,40 @@ RUN rosdep init && \
       https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
     colcon metadata update
 
-# # install ros2 packages
-# RUN mkdir /ws/src/ && cd "$_" && \
-#     git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
-#     cd .. && \
-#     source /opt/ros/humble/setup.bash && \ 
-#     rosdep update && \
-#     rosdep install --from-paths src --ignore-src -r -y && \
-#     colcon build --parallel-workers $(nproc) --symlink-install \
-#     --event-handlers console_direct+ --base-paths src \
-#     --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
-#     ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-#     ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' && \
-    # rm -rf /var/lib/apt/lists/* && \
-    # echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
-    # echo "source /ws/install/setup.bash" >> ~/.bashrc
+# install ros2 packages
+RUN mkdir /ws/src/ && cd "$_" && \
+    git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
+    cd .. && \
+    source /opt/ros/humble/setup.bash && \ 
+    rosdep update && \
+    rosdep install --from-paths src --ignore-src -r -y && \
+    colcon build --parallel-workers $(nproc) --symlink-install \
+    --event-handlers console_direct+ --base-paths src \
+    --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
+    ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
+    ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' && \
+    rm -rf /var/lib/apt/lists/*
 
-# ENTRYPOINT ["../ros_entrypoint.sh"]
-# CMD ["bash"]
+# not writing to bashrc
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \ 
+    echo "source /ws/install/setup.bash" >> ~/.bashrc
+    
+# Install zed library
+# RUN pip3 install requests
+# RUN python3 /usr/local/zed/get_python_api.py
+# RUN cd /ws/src/perception/cone-detection/cone_detection
+# RUN git clone git@github.com:WongKinYiu/yolov7.git
+# RUN cd yolov7
+# RUN pip3 install -r requirements.txt
+# RUN cd /ws
+
+# Install nano
+RUN apt-get update && apt-get install -y \
+    nano
+    
+# Install libusb
+RUN apt-get install -y usbutils
+
+
+ENTRYPOINT ["./ros_entrypoint.sh"]
+CMD ["bash"]
