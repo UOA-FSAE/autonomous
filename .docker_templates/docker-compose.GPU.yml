@@ -5,9 +5,8 @@ services:
     image: autonomous
 
     build:
-      context: .
-      dockerfile: ./ros2_ws.Dockerfile
-
+      context: ..
+      dockerfile: .devcontainer/ros2_ws.Dockerfile
 
     environment:
       - DISPLAY
@@ -33,11 +32,11 @@ services:
               capabilities: [gpu]
 
 
-
-
   autonomous_zed:
     image: zed_sdk
-  
+
+    privileged: true
+    
     build:
       context: ..
       dockerfile: .devcontainer/zed.Dockerfile
@@ -46,13 +45,15 @@ services:
       - DISPLAY
       - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=all
-      
       - ROS_DOMAIN_ID=47
 
-    command: "ros2 launch zed_wrapper zed2.launch.py"
+    command: "ros2 launch zed_wrapper zed_camera.launch.py camera_model:='zed2i'"
 
     volumes:
-      - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
+      - ../src/perception/:/ws/src/perception/
+      - ../src/moa/moa_description:/ws/src/moa/moa_description
+      - ../src/moa/moa_msgs:/ws/src/moa/moa_msgs
+      
 
     network_mode: host
     ipc: host
