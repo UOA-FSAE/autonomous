@@ -38,8 +38,8 @@ services:
     privileged: true
     
     build:
-      context: .
-      dockerfile: ./zed.Dockerfile
+      context: ..
+      dockerfile: .devcontainer/zed.Dockerfile
 
     environment:
       - DISPLAY
@@ -47,7 +47,7 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=all
       - ROS_DOMAIN_ID=47
 
-    # command: "ros2 launch zed_wrapper zed_camera.launch.py camera_model:='zed2i'"
+    command: "ros2 launch zed_wrapper zed_camera.launch.py camera_model:='zed2i'"
 
     volumes:
       - ../src/perception/:/ws/src/perception/
@@ -67,4 +67,3 @@ services:
             - driver: nvidia
               device_ids: []
               capabilities: [gpu]
-
