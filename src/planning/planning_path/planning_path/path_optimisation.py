@@ -11,8 +11,8 @@ from ackermann_msgs.msg import AckermannDrive
 
 class path_planning(Node):
     def __init__(self):
-        super().__init__("Path Planning & Trajectory Optimisation")
-
+        super().__init__("Path_Planning_Trajectory_Optimisation")
+        self.get_logger().info("Path Planning Node Started")
         # all trajectories publisher 
         self.all_traj_pub = self.create_publisher(AllTrajectories,"moa/trajectories",5)
         # subscribe to car states and cone map
@@ -253,8 +253,8 @@ class path_planning(Node):
 
 class trajectory_following(Node):
     def __init__(self):
-        super().__init__("Trajectory Following")
-
+        super().__init__("Trajectory_Following")
+        self.get_logger().info("Trajectory Following Node Started")
         # publish p-controlled trajectory
         self.p_controlled_pub = self.create_publisher(AckermannDrive, "moa/drive", 5)
         # subscribe to best trajectory
@@ -289,6 +289,16 @@ class trajectory_following(Node):
 def main():
     rclpy.init()
     NDE = path_planning()
+    try:
+        rclpy.spin(NDE)
+    except Exception as e:
+        print(f"node spin error: {e}")
+    NDE.destroy_node()
+    rclpy.shutdown()
+
+def main2():
+    rclpy.init()
+    NDE = trajectory_following()
     try:
         rclpy.spin(NDE)
     except Exception as e:

@@ -8,7 +8,7 @@ import rclpy
 from rclpy.node import Node
 from moa_msgs.msg import Cone, ConeMap, BoundaryStamped
 from std_msgs.msg import Header
-from moa_msgs.msg import OccupancyGrid
+# from moa_msgs.msg import OccupancyGrid
 import math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -16,11 +16,11 @@ from mpl_toolkits.mplot3d import Axes3D
 class Occupancy_grid(Node):
     def __init__(self):
         super().__init__('Occupancy_grid')
-        self.occ_grid_publisher = self.create_publisher(
-            OccupancyGrid,
-            'track/occ_grid',
-            10
-        )
+        # self.occ_grid_publisher = self.create_publisher(
+        #     OccupancyGrid,
+        #     'track/occ_grid',
+        #     10
+        # )
 
         self.bound_l_publisher = self.create_publisher(
             BoundaryStamped,
@@ -48,8 +48,8 @@ class Occupancy_grid(Node):
     def publish_occ_grid(self, msg):
         bound_l, bound_r, occ_grid = self.gen_occ_grid(msg)
         
-        msg_out = OccupancyGrid(occupancyGrid = occ_grid, header = Header())
-        self.occ_grid_publisher.publish(msg_out)     
+        # msg_out = OccupancyGrid(occupancyGrid = occ_grid, header = Header())
+        # self.occ_grid_publisher.publish(msg_out)     
         
         msg_out = BoundaryStamped(coords = bound_l, header = Header())
         self.bound_l_publisher.publish(msg_out) 
