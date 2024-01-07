@@ -47,7 +47,7 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=all
       - ROS_DOMAIN_ID=47
 
-    command: "ros2 launch zed_wrapper zed_camera.launch.py camera_model:='zed2i'"
+    command: bash ". ~/.bashrc && ros2 launch zed_wrapper zed_camera.launch.py camera_model:='zed2i'"
 
     volumes:
       - ../src/perception/:/ws/src/perception/
