@@ -3,8 +3,8 @@ import rclpy
 from rclpy.node import Node
 from moa_msgs.msg import ConeStamped
 from moa_msgs.msg import ConeMapStamped
-from mapping_interfaces.msg import ConeMap
-from mapping_interfaces.msg import Cone
+from moa_msgs.msg import ConeMap
+from moa_msgs.msg import Cone
 
 import sys
 import numpy as np
