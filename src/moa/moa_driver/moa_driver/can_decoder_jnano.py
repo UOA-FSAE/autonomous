@@ -25,9 +25,9 @@ class CANDecoderJNano(Node):
         # publish different status msgs
         self.battery_status_pub = self.create_publisher(BatteryState, "/battery_state", 10)
         self.drive_status_pub = self.create_publisher(AckermannStamped, "/drive_status", 10)
-        self.steering_status_pub = self.create_publisher()
+        # self.steering_status_pub = self.create_publisher()
         self.glv_status_pub = self.create_publisher(BatteryState, "/glv_state", 10)
-        self.motor_temp_pub = self.create_publisher(BatteryState, "/glv_state", 10)
+        # self.motor_temp_pub = self.create_publisher(BatteryState, "/glv_state", 10)
 
     def callback_can_data(self, msg: CANStamped):
 
