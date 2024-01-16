@@ -4,3 +4,6 @@
 [submodule "src/moa/cone-detection/cone_detection/yolov7"]
 	path = src/perception/cone-detection/cone_detection/yolov7
 	url = https://github.com/WongKinYiu/yolov7.git
+[submodule "src/hardware_drivers/CanTalk"]
+	path = src/hardware_drivers/CanTalk
+	url = https://github.com/UOA-FSAE/CanTalk.git
