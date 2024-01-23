@@ -16,7 +16,7 @@ class path_planning(Node):
         # all trajectories publisher 
         self.all_traj_pub = self.create_publisher(AllTrajectories,"moa/trajectories",5)
         # subscribe to car states and cone map
-        self.ackerman_sub = self.create_subscription(AckermannDrive, "/cmd_vel", self.get_current_states, 5)
+        self.ackerman_sub = self.create_subscription(AckermannDrive, "moa/cur_vel", self.get_current_states, 5)
         self.cone_map_sub = self.create_subscription(ConeMap,"cone_map",self.get_cone_map,5)
 
         # publish best trajectorys
@@ -37,6 +37,13 @@ class path_planning(Node):
         '''
         self.get_logger().info("5 seconds up - generating trajectories")
 
+        info_flag = True
+        while not hasattr(self,"current_speed") and not hasattr(self,"current_angle") and not hasattr(self,"cone_map"):
+            if info_flag:
+                self.get_logger().info("Attributes current speed, angle and cone map not initialised - waiting...")
+                info_flag = False
+            pass
+    
         # generate trajectories
         self.trajectories, states = self.trajectory_generator(self.cone_map)
         
@@ -256,10 +263,10 @@ class trajectory_following(Node):
         super().__init__("Trajectory_Following")
         self.get_logger().info("Trajectory Following Node Started")
         # publish p-controlled trajectory
-        self.p_controlled_pub = self.create_publisher(AckermannDrive, "moa/drive", 5)
+        self.p_controlled_pub = self.create_publisher(AckermannDrive, "cmd_vel", 5)
         # subscribe to best trajectory
         self.best_traj_sub = self.create_subscription(AckermannDrive, "moa/selected_trajectory", self.get_best_state, 5)
-        self.current_states_sub = self.create_subscription(AckermannDrive, "/cmd_vel", self.get_current_states, 5)
+        self.current_states_sub = self.create_subscription(AckermannDrive, "moa/cur_vel", self.get_current_states, 5)
 
     def get_current_states(self, msg: AckermannDrive) -> None: 
         self.current_speed = msg.speed
@@ -271,6 +278,14 @@ class trajectory_following(Node):
         error = self.get_control_error(self.current_angle, msg.steering_angle)
         # constant gain multiplier
         p_gain = 0.5
+
+        info_flag = True
+        while not hasattr(self,"current_speed") and not hasattr(self,"current_angle"):
+            if info_flag:
+                self.get_logger().info("Attributes current speed and angle not initialised - waiting...")
+                info_flag = False
+            pass
+
         # new steering angle output
         chosen_state = self.current_angle + error * p_gain
 

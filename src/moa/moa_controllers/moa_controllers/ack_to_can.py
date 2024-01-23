@@ -27,7 +27,7 @@ class ack_to_can(Node):
         # create subscriber for ackermann input
         self.subscription = self.create_subscription(
             AckermannDriveStamped,     # msg type
-            'cmd_val',                 # topic receiving from
+            'cmd_vel',                 # topic receiving from
             self.ack_to_can_publish_callback,    #callback function
             10                         # qos profile
         )
