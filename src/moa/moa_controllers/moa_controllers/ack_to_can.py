@@ -18,7 +18,7 @@ class ack_to_can(Node):
 
         # init ros_arg parameters
         self.declare_parameter('can_id', 
-                               300, 
+                               0x300,
                                ParameterDescriptor(description= 'The frame ID for the CAN messages sent to the car'))
         
         self.can_id = self.get_parameter('can_id').get_parameter_value().integer_value
@@ -35,7 +35,7 @@ class ack_to_can(Node):
         # create publisher for CAN
         self.can_pub = self.create_publisher( 
             CANStamped,
-            'pub_raw_can',
+            'can',
             10  
         )
 
@@ -130,6 +130,7 @@ class ack_to_can(Node):
 
         if can_msg.can.data is not None:
             # publish CAN to topic
+            print(can_msg);
             self.can_pub.publish(can_msg)
 
 
