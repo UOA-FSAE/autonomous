@@ -10,7 +10,7 @@ def generate_launch_description():
     return launch.LaunchDescription([
         DeclareLaunchArgument(
         'can_id',
-        default_value='300',
+        default_value='0x300',
         description='The frame ID for the CAN messages containing Ackermann commands that are sent to the car'
         ),
 
