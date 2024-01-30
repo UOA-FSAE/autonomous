@@ -22,6 +22,8 @@ services:
     ipc: host
     stdin_open: true
     tty: true
+    
+    privileged: true
 
     deploy:
       resources:

@@ -16,8 +16,8 @@ import rclpy
 from rclpy.node import Node
 
 from std_msgs.msg import String
-from mapping_interfaces.msg import ConeMap
-from mapping_interfaces.msg import Cone
+from moa_msgs.msg import ConeMap
+from moa_msgs.msg import Cone
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import PoseWithCovariance;
@@ -36,11 +36,11 @@ class Virtual_Cone_Detection(Node):
 
     def __init__(self):
         super().__init__('virtual_cone_detection')
-        self.publisher_ = self.create_publisher(ConeMap, 'cone_detect', 10)
+        self.publisher_ = self.create_publisher(ConeMap, 'cone_detection', 10)
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
-        with open('/home/dyu056/FSAE/autonomous/src/cone_mapping/test_data.txt') as f:
+        with open('/home/dyu056/fsae/autonomous_2/autonomous/src/perception/virtual_sensor/TESTDATA.txt') as f: #Replace this with your absolute path to test data
         	self.stored_data_list = f.readlines()
         	self.total_length = len(self.stored_data_list)
         	#print(self.stored_data_list)
@@ -97,9 +97,9 @@ class Virtual_Cone_Detection(Node):
         orientation = Quaternion();
         pose_with_covariance = PoseWithCovariance();
         pose = Pose();
-        position.x = self.contaminate_message(x, 0.05);
-        position.y = self.contaminate_message(y, 0.05);
-        orientation.w = self.contaminate_message(theta, 0.02);
+        position.x = self.contaminate_message(x, 1e-6);
+        position.y = self.contaminate_message(y, 1e-6);
+        orientation.w = self.contaminate_message(theta, 1e-6);
         pose.position = position;
         pose.orientation = orientation;
         pose_with_covariance.pose = pose;

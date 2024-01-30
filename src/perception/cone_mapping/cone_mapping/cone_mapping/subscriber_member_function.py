@@ -167,6 +167,12 @@ class Cone_Mapper(Node):
             
         return output;
 
+    def delete_cones(self):
+        """Remove non-existing cones in the map
+
+        """
+        pass
+
     def update_matrix(self):
         self.number_of_cones = len(self.Cone_map.cones) - 1; #Used for second iteration only, later on would need to have this number be dynamic
         self.matrix_size = 3 + self.number_of_cones * 2;
