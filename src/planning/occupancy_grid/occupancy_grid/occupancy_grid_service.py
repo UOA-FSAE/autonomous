@@ -35,12 +35,12 @@ class Occupancy_grid(Node):
         )
 
         # TODO change to service branch 31
-        # self.subscription = self.create_subscription(
-        #     ConeMap,
-        #     'cone_map',
-        #     self.publish_occ_grid,
-        #     10
-        # )
+        self.subscription = self.create_subscription(
+            ConeMap,
+            'cone_map',
+            self.publish_occ_grid,
+            10
+        )
 
         self.resolution = 0.1 # in m/pixel 
         self.car_width = 1.5 # in m TODO change to acutal width
