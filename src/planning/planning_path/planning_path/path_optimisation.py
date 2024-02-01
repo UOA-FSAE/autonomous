@@ -76,7 +76,7 @@ class path_planning(Node):
         trajectory_output = PoseArray();
         for individual_t in t_range:
             pose_input = Pose();
-            x_pre_trans = np.cos(individual_t) * R
+            x_pre_trans = np.cos(individual_t) * R - R
             y_pre_trans = np.sin(individual_t) * R
             post_trans_point = self.apply_transformation(position_vector, rotation_matrix, x_pre_trans, y_pre_trans);
             pose_input.position.x = post_trans_point[0][0]
@@ -85,7 +85,7 @@ class path_planning(Node):
         return trajectory_output
 
     def trajectory_generator(self, cone_map):
-        candidate_steering_angle = np.deg2rad(np.arange(-10, 10, 0.5))
+        candidate_steering_angle = np.deg2rad(np.arange(-10, 10, 0.4))
         trajectories = []
         position_and_orientation = self.get_position_of_cart(cone_map)
         position_vector, rotation_matrix = self.get_transformation_matrix(position_and_orientation)
@@ -354,7 +354,7 @@ def main2():
     rclpy.shutdown()
 
 if __name__ == "__main__":
-    main1()
+    main()
 
 
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 from foxglove_msgs.msg import LinePrimitive, Color, SceneEntity, SceneUpdate, ArrowPrimitive, PoseInFrame, PosesInFrame
-from geometry_msgs.msg import Point, Quaternion, Pose
+from geometry_msgs.msg import Point, Quaternion, Pose, Vector3, Quaternion 
 from moa_msgs.msg import AllTrajectories
 from builtin_interfaces.msg import Time, Duration
 import rclpy
@@ -12,14 +12,13 @@ class pub_viz(Node):
         super().__init__("publish_path_planning_msgs")
         self.get_logger().info("path planning visulisation node started")
 
-        self.pubviz = self.create_publisher(SceneUpdate,'trajectories_viz',1)
+        self.pubviz = self.create_publisher(SceneUpdate, 'trajectories_viz', 1)
         #sub to all trajectories points and callback func
         self.all_paths = self.create_subscription(AllTrajectories, "moa/trajectories", self.show_paths, 1)
         #TODO - sub to final trajectory POINT (HOW?) and save points 
         # self.create_timer(1.0,self.create_traj)
 
     def show_paths(self, msg: AllTrajectories):
-        
         # pts = [Point(x=0.0,y=0.0,z=0.0),Point(x=2.0,y=0.0,z=0.0)]
         # xt = 2.0
         # yt = 0.0
@@ -36,13 +35,13 @@ class pub_viz(Node):
             else:
                 tcols = Color(r=255.0, g=0.0, b=0.0, a=1.0)
             # cols = np.random.choice(range(256),3)
-            pts = []
-            for j in range(len(pths[i].poses)-130):
+            pts = [Point(x=0.0,y=0.0,z=0.0)]
+            for j in range(len(pths[i].poses)):
                 # get a particular pose
                 _ = pths[i].poses[j].position
                 pts.append(_)
-            args = {'type': LinePrimitive.LINE_LOOP,
-                    'pose': Pose(position=Point(x=0.0,y=0.0,z=0.0), orientation=Quaternion(x=0.0,y=0.0,z=0.0,w=1.0)),
+            args = {'type': LinePrimitive.LINE_STRIP,
+                    'pose': Pose(position=Point(x=0.0,y=0.0,z=0.0), orientation=Quaternion(x=0.0,y=0.0,z=0.0,w=0.0)),
                     'thickness': 2.0,
                     'scale_invariant': True,
                     'points': pts,
@@ -66,16 +65,17 @@ class pub_viz(Node):
 
         # scene entity encapsulates these primitive objects
         sargs = {'timestamp': Time(sec=0,nanosec=0),
-                    'frame_id': 'global frame',
+                    'frame_id': 'global_frame',
                     'id': '100',
                     'lifetime': Duration(sec=3,nanosec=0),
-                    'frame_locked': True,
+                    'frame_locked': False,
                     'lines': line_list}
         # scene update is a wrapper for scene entity
         scene_update_msg = SceneUpdate(entities=[SceneEntity(**sargs)])
 
         self.pubviz.publish(scene_update_msg)
         self.get_logger().info("Published msg")
+
         # self.x += 0.1
 
 def main():
