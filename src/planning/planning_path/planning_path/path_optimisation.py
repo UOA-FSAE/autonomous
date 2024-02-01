@@ -105,7 +105,7 @@ class path_planning(Node):
         return x, y, theta
 
     def get_transformation_matrix(self, position_and_orientation):
-        theta = position_and_orientation[2]
+        theta = position_and_orientation[2] - pi/2
         cart_x = position_and_orientation[0]
         cart_y = position_and_orientation[1]
 
