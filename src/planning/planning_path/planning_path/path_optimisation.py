@@ -85,7 +85,7 @@ class path_planning(Node):
         return trajectory_output
 
     def trajectory_generator(self, cone_map):
-        candidate_steering_angle = np.deg2rad(np.arange(-10, 10, 0.4))
+        candidate_steering_angle = np.deg2rad(np.arange(0.0001, 10, 0.4))
         trajectories = []
         position_and_orientation = self.get_position_of_cart(cone_map)
         position_vector, rotation_matrix = self.get_transformation_matrix(position_and_orientation)
