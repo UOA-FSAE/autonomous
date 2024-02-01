@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 from foxglove_msgs.msg import LinePrimitive, Color, SceneEntity, SceneUpdate, ArrowPrimitive, PoseInFrame, PosesInFrame
 from geometry_msgs.msg import Point, Quaternion, Pose, Vector3, Quaternion 
-from moa_msgs.msg import AllTrajectories
+from moa_msgs.msg import AllTrajectories, AllStates
+from ackermann_msgs.msg import AckermannDrive
 from builtin_interfaces.msg import Time, Duration
 import rclpy
 from rclpy.node import Node
@@ -12,30 +13,35 @@ class pub_viz(Node):
         super().__init__("publish_path_planning_msgs")
         self.get_logger().info("path planning visulisation node started")
 
-        self.pubviz = self.create_publisher(SceneUpdate, 'trajectories_viz', 1)
-        #sub to all trajectories points and callback func
-        self.all_paths = self.create_subscription(AllTrajectories, "moa/trajectories", self.show_paths, 1)
-        #TODO - sub to final trajectory POINT (HOW?) and save points 
-        # self.create_timer(1.0,self.create_traj)
+        self.pubviz = self.create_publisher(SceneUpdate, 'visualization_trajectories', 5)
+        # sub to all trajectories points and states
+        self.all_paths = self.create_subscription(AllTrajectories, "moa/trajectories", self.show_paths, 5)
+        self.all_states = self.create_subscription(AllStates, "moa/states", self.get_all_states, 5)
+        # selected path
+        self.chosen_states = self.create_subscription(AckermannDrive, "moa/selected_trajectory", self.get_chosen_state_idx, 5)
+
+        self.id = 1
+
+    def get_all_states(self, msg:AllStates) -> None: self.states = [i.steering_angle for i in msg.states]
+
+    def get_chosen_state_idx(self, msg:AckermannDrive) -> None: 
+        if hasattr(self, "states"): 
+            self.chosen_idx = np.where(np.isclose(self.states, msg.steering_angle, 1e-3))[0][-1]
 
     def show_paths(self, msg: AllTrajectories):
-        # pts = [Point(x=0.0,y=0.0,z=0.0),Point(x=2.0,y=0.0,z=0.0)]
-        # xt = 2.0
-        # yt = 0.0
-        # for i in range(10):
-        #     xt += 0.2
-        #     yt += 0.1
-        #     pts.append(Point(x=xt,y=yt,z=0.0))
+        if not hasattr(self,"chosen_idx"):
+            self.get_logger().info("attribute not initialized")
+            return
+        
         line_list = []
         # list of pose array
         pths = msg.trajectories
         for i in range(len(pths)):
-            if i == 19:
+            if i == self.chosen_idx:
                 tcols = Color(r=255.0, g=255.0, b=255.0, a=1.0)
             else:
                 tcols = Color(r=255.0, g=0.0, b=0.0, a=1.0)
-            # cols = np.random.choice(range(256),3)
-            pts = [Point(x=0.0,y=0.0,z=0.0)]
+            pts = []
             for j in range(len(pths[i].poses)):
                 # get a particular pose
                 _ = pths[i].poses[j].position
@@ -66,7 +72,7 @@ class pub_viz(Node):
         # scene entity encapsulates these primitive objects
         sargs = {'timestamp': Time(sec=0,nanosec=0),
                     'frame_id': 'global_frame',
-                    'id': '100',
+                    'id': f'{self.id}',
                     'lifetime': Duration(sec=3,nanosec=0),
                     'frame_locked': False,
                     'lines': line_list}
@@ -76,7 +82,7 @@ class pub_viz(Node):
         self.pubviz.publish(scene_update_msg)
         self.get_logger().info("Published msg")
 
-        # self.x += 0.1
+        self.id += 1
 
 def main():
     rclpy.init()

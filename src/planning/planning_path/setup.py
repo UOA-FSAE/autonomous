@@ -20,9 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'path_planning = planning_path.path_optimisation:main',
-            'trajectory_optimization = planning_path.path_optimisation:main1',
-            'trajectory_following = planning_path.path_optimisation:main2',
+            'path_planning = planning_path.path_optimisation:main'
         ],
     },
 )
