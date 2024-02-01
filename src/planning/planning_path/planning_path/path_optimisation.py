@@ -90,6 +90,8 @@ class path_planning(Node):
         position_and_orientation = self.get_position_of_cart(cone_map)
         position_vector, rotation_matrix = self.get_transformation_matrix(position_and_orientation)
         for steering_angle in candidate_steering_angle:
+            if steering_angle == 0:
+                steering_angle = 1e-6;
             added_trajectory = self.single_trajectory_generator(steering_angle, position_vector, rotation_matrix)
             # Add transformation
             trajectories.append(added_trajectory)
