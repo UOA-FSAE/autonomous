@@ -77,7 +77,7 @@ class path_planning(Node):
         for individual_t in t_range:
             pose_input = Pose();
             x_pre_trans = np.cos(individual_t) * R - R
-            y_pre_trans = np.sin(individual_t) * R
+            y_pre_trans = abs(np.sin(individual_t) * R)
             post_trans_point = self.apply_transformation(position_vector, rotation_matrix, x_pre_trans, y_pre_trans);
             pose_input.position.x = post_trans_point[0][0]
             pose_input.position.y = post_trans_point[1][0]
