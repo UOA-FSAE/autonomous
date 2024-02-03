@@ -15,8 +15,9 @@ class pub_viz(Node):
 
         self.pubviz = self.create_publisher(SceneUpdate, 'visualization_trajectories', 5)
         # sub to all trajectories points and states
-        self.all_paths = self.create_subscription(AllTrajectories, "moa/trajectories", self.show_paths, 5)
-        self.all_states = self.create_subscription(AllStates, "moa/states", self.get_all_states, 5)
+        self.all_paths = self.create_subscription(AllTrajectories, "moa/inbound_trajectories", self.show_paths, 5)
+        # self.all_paths = self.create_subscription(AllTrajectories, "moa/trajectories", self.show_paths, 5)
+        self.all_states = self.create_subscription(AllStates, "moa/inbound_states", self.get_all_states, 5)
         # selected path
         self.chosen_states = self.create_subscription(AckermannDrive, "moa/selected_trajectory", self.get_chosen_state_idx, 5)
 
@@ -39,6 +40,8 @@ class pub_viz(Node):
         for i in range(len(pths)):
             if i == self.chosen_idx:
                 tcols = Color(r=255.0, g=255.0, b=255.0, a=1.0)
+            elif i == len(pths) - 1:
+                tcols = Color(r=0.0, g=255.0, b=0.0, a=1.0)
             else:
                 tcols = Color(r=255.0, g=0.0, b=0.0, a=1.0)
             pts = []
@@ -54,7 +57,7 @@ class pub_viz(Node):
                     'color': tcols}
             line_list.append(LinePrimitive(**args))
 
-        # arrow primitive code
+        # arrow primitive code if needed
         # args = {'pose': Pose(position=Point(x=1.0,y=0.0,z=0.0), orientation=Quaternion(x=0.0,y=0.0,z=0.0,w=0.0)),
         #         'shaft_length': 1.0,
         #         'shaft_diameter': 0.1,
@@ -62,12 +65,6 @@ class pub_viz(Node):
         #         'head_diameter': 0.5,
         #         'color': Color(r=67.0,g=125.0,b=100.0,a=1.0)} 
         # msg = ArrowPrimitive(**args)
-
-        # args = {'timestamp':Time(sec=0,nanosec=0),
-        #         'frame_id': 'global frame',
-        #         'pose':Pose(position=Point(x=self.x,y=0.0,z=0.0), orientation=Quaternion(x=1.0,y=0.0,z=0.0,w=0.0))}
-
-        # msg = PoseInFrame(**args)
 
         # scene entity encapsulates these primitive objects
         sargs = {'timestamp': Time(sec=0,nanosec=0),

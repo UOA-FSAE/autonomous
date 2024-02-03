@@ -1,11 +1,16 @@
 #!/usr/bin/python3
+
 import numpy as np
 import time
+from shapely import LineString, intersection
+from shapely import Point as shapelyPoint
+from scipy import interpolate 
 
 import rclpy
 from rclpy.node import Node
-from rclpy.executors import SingleThreadedExecutor, MultiThreadedExecutor
-from geometry_msgs.msg import Pose, PoseArray
+from rclpy.executors import SingleThreadedExecutor
+
+from geometry_msgs.msg import Pose, PoseArray, Point
 from moa_msgs.msg import Cone, ConeMap, BoundaryStamped, AllTrajectories, AllStates
 from ackermann_msgs.msg import AckermannDrive
 
@@ -24,7 +29,7 @@ class path_planning(Node):
         self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.get_cone_map, 5)
 
         self.id = 0
-        self.timer = self.create_timer(7, self.publish_trajectories)
+        self.timer = self.create_timer(3, self.publish_trajectories)
 
     # BEST TRAJECTORY PUBLISHER
     def publish_trajectories(self):
@@ -33,32 +38,35 @@ class path_planning(Node):
         '''
         self.get_logger().info("3 seconds up - generating trajectories")
 
-        # if not hasattr(self,"current_speed") and not hasattr(self,"cone_map"):
-        if not hasattr(self,"cone_map"):
-            self.get_logger().info("Attribute cone map not initialised")
-            return
+        # if hasattr(self,"current_speed") and hasattr(self,"cone_map"):
+        if hasattr(self,"cone_map"):
     
-        # generate trajectories
-        paths, states = self.trajectory_generator(self.cone_map)
-        
-        # publish states and trajectories
-        state_list = []
-        for i in range(len(states)):
-            args = {"steering_angle": float(states[i]),
-                    "steering_angle_velocity": 0.0,
-                    # "speed": self.current_speed,
-                    "speed": 0.0,
-                    "acceleration": 0.0,
-                    "jerk": 0.0}
-            state_list.append(AckermannDrive(**args))
-        
-        msg = AllStates(id = self.id, states = state_list)
-        self.all_states_pub.publish(msg)
+            # generate trajectories
+            paths, states = self.trajectory_generator(self.cone_map)
+            
+            # publish states and trajectories
+            state_list = []
+            for i in range(len(states)):
+                args = {"steering_angle": float(states[i]),
+                        "steering_angle_velocity": 0.0,
+                        # "speed": self.current_speed,
+                        "speed": 0.0,
+                        "acceleration": 0.0,
+                        "jerk": 0.0}
+                state_list.append(AckermannDrive(**args))
+            
+            msg = AllStates(id = self.id, states = state_list)
+            self.all_states_pub.publish(msg)
 
-        msg1 = AllTrajectories(id = self.id, trajectories = paths)
-        self.all_traj_pub.publish(msg1)
+            msg1 = AllTrajectories(id = self.id, trajectories = paths)
+            self.all_traj_pub.publish(msg1)
 
-        self.id += 1
+            self.id += 1
+
+            return
+        
+        self.get_logger().info("Attribute cone map and/or current speed not initialised")
+        return
 
     def get_current_states(self, msg:AckermannDrive) -> None: self.current_speed = msg.speed
     
@@ -131,10 +139,17 @@ class trajectory_optimization(Node):
 
         # publish best trajectory
         self.best_traj_pub = self.create_publisher(AckermannDrive, "moa/selected_trajectory", 5)
+        # publish deleted trajecotries to same topic
+        self.inbound_paths = self.create_publisher(AllTrajectories, 'moa/inbound_trajectories', 5)
+        self.inbound_states = self.create_publisher(AllStates, "moa/inbound_states", 5)
 
         # subscribe to cone map and track boundaries
         self.boundl_sub = self.create_subscription(BoundaryStamped, "track/bound_l", self.get_left_boundary, 5)
         self.boundr_sub = self.create_subscription(BoundaryStamped, "track/bound_r", self.get_right_boundary, 5)
+
+        # ONLY TO TEST TRAJECTORY DELETION (LEAVE COMMENTED)
+        self.cone_map = self.create_subscription(ConeMap, "cone_map", self.get_bounds, 1)
+        self.once = True
 
 
     def get_states(self, msg: AllStates) -> None: self.state_msg = msg
@@ -145,38 +160,84 @@ class trajectory_optimization(Node):
     
     def get_right_boundary(self, msg: BoundaryStamped) -> None: self.rightbound = msg.coords
 
+    def get_bounds(self, msg: ConeMap):
+        id = 1
+        cones = msg.cones
+        # loop through each cone
+        self.leftbound = []
+        self.rightbound = []
+        for i in range(len(cones)):
+            x = cones[i].pose.pose.position.x
+            y = cones[i].pose.pose.position.y
+            if i <= len(cones) // 2:
+                self.rightbound.append([x,y])
+            else:
+                self.leftbound.append([x,y])
+        
+        # print coordinate lists
+        if self.once:
+            print(f'xl={[i[0] for i in self.leftbound]}')
+            print(f'yl={[i[1] for i in self.leftbound]}')
+            print(f'xr={[i[0] for i in self.rightbound]}')
+            print(f'yr={[i[1] for i in self.rightbound]}')
+            self.once = False
+        
 
     def get_all_trajectories(self, msg: AllTrajectories) -> None: 
-        # if not hasattr(self,"states") and not hasattr(self,"current_speed") and not hasattr(self,"leftbound") \
-            # and not hasattr(self,"rightbound"):
-        if not hasattr(self,"state_msg"):
-            self.get_logger().info("Attribute states, current speed, left and right bound not initialised")
-            return
+        # if hasattr(self,"state_msg") and hasattr(self,"current_speed") and hasattr(self,"leftbound") \
+            # and hasattr(self,"rightbound"):
+        if hasattr(self,"state_msg"):
 
-        # check ids
-        if self.state_msg.id != msg.id:
-            self.get_logger().info(f"Ids state:{self.state_msg.id} and trajectory:{msg.id} do not match")
-            return
+            # check ids
+            if self.state_msg.id != msg.id:
+                self.get_logger().info(f"Ids state:{self.state_msg.id} and trajectory:{msg.id} do not match")
+                return
 
-        # get list of paths and states
-        states = [self.state_msg.states[i].steering_angle for i in range(len(self.state_msg.states))]
-        trajectories = msg.trajectories
+            # get list of paths and states
+            states = [self.state_msg.states[i].steering_angle for i in range(len(self.state_msg.states))]
+            trajectories = msg.trajectories
+
+            # To test Trajectory deletion with cone map
+            self.get_logger().info(f"num paths before deletion = {len(trajectories)}")
+
+            # trajectory deletion
+            self.trajectory_deletion(trajectories, states)
+            self.get_logger().info(f"num paths after deletion = {len(trajectories)}")
+
+            # optimisation
+            best_state = self.optimisation(trajectories,states)
+            self.get_logger().info(f"best state is = {best_state}")
+
+            # publish to moa/selected_trajectory
+            args = {"steering_angle": float(best_state),
+                    "steering_angle_velocity": 0.0,
+                    # "speed": self.current_speed,
+                    "speed": 0.0,
+                    "acceleration": 0.0,
+                    "jerk": 0.0}
+            ack_msg = AckermannDrive(**args)
+            self.best_traj_pub.publish(ack_msg)
+
+            # publish in bound trajectories
+            # add center line
+            ps = [Pose(position=Point(x=shapelyPoint(P).x, y=shapelyPoint(P).y, z=0.0)) for P in self.cntcoods]
+            trajectories.append(PoseArray(poses=ps))
+            self.inbound_paths.publish(AllTrajectories(id=msg.id, trajectories=trajectories))
+            states_msg = []
+            for sta in states:
+                sargs = {"steering_angle": sta,
+                        "steering_angle_velocity": 0.0,
+                        # "speed": self.current_speed,
+                        "speed": 0.0,
+                        "acceleration": 0.0,
+                        "jerk": 0.0}
+                states_msg.append(AckermannDrive(**sargs))
+            self.inbound_states.publish(AllStates(id=msg.id, states=states_msg))
+            
+            return
         
-        # trajectory deletion
-        # self.trajectory_deletion(trajectories, states)
-        # optimisation
-        best_state = self.optimisation(trajectories,states)
-        self.get_logger().info(f"best state is = {best_state}")
-
-        # publish to moa/selected_trajectory
-        args = {"steering_angle": float(best_state),
-                "steering_angle_velocity": 0.0,
-                # "speed": self.current_speed,
-                "speed": 0.0,
-                "acceleration": 0.0,
-                "jerk": 0.0}
-        msg = AckermannDrive(**args)
-        self.best_traj_pub.publish(msg)
+        self.get_logger().info("Attribute states, current speed, left and right bounds not initialised")
+        return
 
     # ===========================================================
     # TRAJECTORY DELETION
@@ -200,19 +261,38 @@ class trajectory_optimization(Node):
             trajectories (1darray): a list of PoseArrays 
         '''
         rm_inds = []
+        
+        # if shapely code fails use this below (not 100%)
+        # for i, T in enumerate(trajectories):
+        #     if i == 25:
+        #         print("stop here")
+        #     for cpose in T.poses:
+        #         x = cpose.position.x 
+        #         y = cpose.position.y
+        #         # compare points with boundaries
+        #         onBound = self.compare_with_boundary(x,y,2)
+        #         if onBound:  
+        #             rm_inds.append(i)
+        #             # trajectories.pop([i for i in range(len(trajectories)) if T==trajectories[i]][0])
+        #             break
+
+        # shapely library use
+        # line strings for left and right boundaries
+        self.leftb_line = LineString([(P[0], P[1]) for P in self.leftbound])
+        pts_list = [(P[0], P[1]) for P in self.rightbound]
+        # IF DEBUGGING TRAJECTORY DELETION USING FAKE DATA
+        pts_list.pop(0)
+        self.rightb_line = LineString(pts_list)
         for i, T in enumerate(trajectories):
-            for cpose in T.poses:
-                x = cpose.position.x 
-                y = cpose.position.y
-                # compare points with boundaries
-                onBound = self.compare_with_boundary(x,y)
-                if onBound:  
-                    rm_inds.append(i)
-                    # trajectories.pop([i for i in range(len(trajectories)) if T==trajectories[i]][0])
-                    break
+            trajectory = LineString([(P.position.x,P.position.y) for P in T.poses])
+
+            # check path intersects boundaries
+            if trajectory.intersects(self.leftb_line) or trajectory.intersects(self.rightb_line):
+                rm_inds.append(i)
+
         [(trajectories.pop(index), states.pop(index)) for index in list(reversed(rm_inds))]
     
-    def compare_with_boundary(self, x, y):
+    def compare_with_boundary(self, x, y, tol):
         '''
         Compares a coordinate with the left and right boundary coordinates of the track map
 
@@ -224,17 +304,25 @@ class trajectory_optimization(Node):
         
         * Assumes same number of points are given for left and right boundary
         '''
-        for i in range(len(self.leftbound)):
+        lxyt = []
+        rxyt = []
+        for i in range(len(self.rightbound)):
             blx, bly = self.leftbound[i]
             brx, bry = self.rightbound[i]
             # on left boundary
-            lxyt = abs(x-blx) <= 1e-3 and abs(y-bly) <= 1e-3
+            if i != 0:
+                # lxyt = abs(x-blx) <= 1e-1 and abs(y-bly) <= 1e-1
+                lxyt.append(np.sqrt(((x-blx)**2 + (y-bly)**2)))
+            else:
+                lxyt.append(np.inf)
             # on right boundary
-            rxyt = abs(x-brx) <= 1e-3 and abs(y-bry) <= 1e-3
-            # check if near boundary
-            if lxyt or rxyt:
-                return True
-        return False
+            # rxyt = abs(x-brx) <= 1e-1 and abs(y-bry) <= 1e-1
+            rxyt.append(np.sqrt(((x-brx)**2 + (y-bry)**2)))
+        # check if near boundary
+        if min(lxyt) <= tol or min(rxyt) <= tol:
+            return True
+        else:
+            return False
 
     # ===========================================================
     # OPTIMISATION
@@ -247,23 +335,87 @@ class trajectory_optimization(Node):
         return best_state
 
     def get_best_trajectory_state(self, trajectories, states):
-        tlens = np.zeros(len(trajectories))
+        tdist = np.zeros(len(trajectories))
+        tlen = np.zeros(len(trajectories))
+        # get track width
+        wdth = self.get_track_width()
+        # get center line
+        cntLine, self.cntcoods = self.get_center_line()
         for i in range(len(trajectories)):
-            tlens[i] = self.get_trajectory_length(trajectories[i])
-        states = self.get_trajectory_state(states,np.argmax(tlens))
+            plist = trajectories[i].poses
+            # tlens[i] = self.get_trajectory_length(trajectories[i])
+            trajectory = LineString([(P.position.x,P.position.y) for P in trajectories[i].poses])
+            # endpt = Point([plist[len(plist)//2].position.x, plist[len(plist)//2].position.y])
+            tdist[i] = self.get_geometry_distance(trajectory, cntLine)
+        # check which one is close to center and largest
+        # tdist = abs(tdist - (wdth / 2))
 
-        return states
+        state = self.get_trajectory_state(states, tdist)
 
-    def get_trajectory_length(self, trajectory: PoseArray):
-        poses = trajectory.poses
-        p0 = np.array([poses[0].position.x, poses[0].position.y])
-        p1 = np.array([poses[1].position.x, poses[1].position.y])
-        intL = np.linalg.norm(p1-p0,ord=2)
-        arc_length = (len(poses)-1) * intL
+        return state
+    
+    def get_track_width(self):
+        return self.rightb_line.distance(self.leftb_line)
+    
+    def get_center_line(self):
+        # the midpoint is the average of the coordinates
+        coods = []
+        for i in range(len(self.leftbound)):
+            x1 = self.leftbound[i][0]
+            y1 = self.leftbound[i][1]
+            x2 = self.rightbound[i+1][0]
+            y2 = self.rightbound[i+1][1]
+            coods.append(self.get_avg_point(x1,y1,x2,y2))
 
-        return arc_length
+        # perform extrapolation to extend line
+        f = interpolate.interp1d([i[0] for i in coods],[i[1] for i in coods], kind='cubic', fill_value='extrapolate')
+        # check which direction 
+        into_future_pts = 8
+        into_future_dist = 0
+        if coods[-1][0] > coods[-2][0]:
+            # positive/right
+            update = 1
+        elif coods[-1][0] < coods[-2][0]:
+            # negative/left
+            update = -1
+        elif abs(coods[-1][0] - coods[-2][0]) <= 1e-3:
+            # straight 
+            into_future_dist = 0
+            into_future_pts = 0
+        xnew = []
+        into_future_dist += update
+        for i in range(into_future_pts):
+            xnew.append(coods[-1][0] + into_future_dist)
+            into_future_dist += update
+        
+        if into_future_pts != 0:
+            # get new pts
+            ynew = f(xnew)
+            # add to coods
+            for i in range(into_future_pts):
+                coods.append((xnew[i],ynew[i]))
 
-    def get_trajectory_state(self, states, idx):
+        return LineString(coods), coods
+    
+    def get_avg_point(self, x1, y1, x2, y2):
+        return (((x1 + x2)/2), ((y1 + y2)/2))
+
+    def get_geometry_distance(self, geometry, cntLine):
+        # this is to calculate trajectory length (DECAP)
+        # poses = trajectory.poses
+        # p0 = np.array([poses[0].position.x, poses[0].position.y])
+        # p1 = np.array([poses[1].position.x, poses[1].position.y])
+        # intL = np.linalg.norm(p1-p0,ord=2)
+        # arc_length = (len(poses)-1) * intL
+        
+        return geometry.distance(cntLine)
+
+    def get_trajectory_state(self, states, tdist: np.array):
+        # to get second best index
+        # mv = min(np.setdiff1d(tdist,min(tdist)))
+        # idx = [i for i, t in enumerate(tdist) if t == mv][0]
+
+        idx = np.argmin(tdist)
         return states[idx]
 
     def DEBUG_generate_trajectories(self, n):
@@ -311,29 +463,33 @@ class trajectory_following(Node):
     def get_best_state(self, msg: AckermannDrive):
         self.get_logger().info(f"chosen recieved state is = {msg.steering_angle}")
 
-        # DELETE THIS WHEN MERGING INTO NIGHTLY
-        self.current_angle = self.current_speed = 0.0
+        # COMMENT THIS WHEN MERGING INTO NIGHTLY
+        # self.current_angle = self.current_speed = 0.0
 
-        error = self.get_control_error(self.current_angle, msg.steering_angle)
-        # constant gain multiplier
-        p_gain = 0.5
+        if hasattr(self,"current_speed") and hasattr(self,"current_angle"):
 
-        # if not hasattr(self,"current_speed") and not hasattr(self,"current_angle"):
-        #     self.get_logger().info("Attributes current speed and angle not initialised - waiting...")
-        #     return
+            error = self.get_control_error(self.current_angle, msg.steering_angle)
+            # constant gain multiplier
+            p_gain = 0.5
 
-        # new steering angle output
-        chosen_state = self.current_angle + error * p_gain
+            # new steering angle output
+            chosen_state = self.current_angle + error * p_gain
 
-        # publish msg to /moa/drive
-        args = {"steering_angle": float(chosen_state),
-                "steering_angle_velocity": 0.0,
-                "speed": self.current_speed,
-                "acceleration": 0.0,
-                "jerk": 0.0}
-        msg = AckermannDrive(**args)
-        self.p_controlled_pub.publish(msg)
-        self.get_logger().info(f"P-controlled state published = {chosen_state}")
+            # publish msg to /moa/drive
+            args = {"steering_angle": float(chosen_state),
+                    "steering_angle_velocity": 0.0,
+                    "speed": self.current_speed,
+                    "acceleration": 0.0,
+                    "jerk": 0.0}
+            
+            msg = AckermannDrive(**args)
+            self.p_controlled_pub.publish(msg)
+            self.get_logger().info(f"P-controlled state published = {chosen_state}")
+
+            return
+        
+        self.get_logger().info("Attributes current speed and angle not initialised")
+        return
 
 
 def main():
@@ -354,20 +510,6 @@ def main():
     exe.spin()
 
     rclpy.shutdown()
-
-# def main1():
-#     rclpy.init()
-#     NDE = trajectory_optimization()
-#     rclpy.spin(NDE)
-#     NDE.destroy_node()
-#     rclpy.shutdown()
-
-# def main2():
-#     rclpy.init()
-#     NDE = trajectory_following()
-#     rclpy.spin(NDE)
-#     NDE.destroy_node()
-#     rclpy.shutdown()
 
 if __name__ == "__main__":
     main()
