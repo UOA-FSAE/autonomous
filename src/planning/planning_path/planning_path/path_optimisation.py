@@ -167,13 +167,15 @@ class trajectory_optimization(Node):
         self.leftbound = []
         self.rightbound = []
         for i in range(len(cones)):
-            x = cones[i].pose.pose.position.x
-            y = cones[i].pose.pose.position.y
-            if i <= len(cones) // 2:
-                self.rightbound.append([x,y])
-            else:
-                self.leftbound.append([x,y])
-        
+            if i != 0:
+                x = cones[i].pose.pose.position.x
+                y = cones[i].pose.pose.position.y
+                # blue - left
+                if cones[i].colour == 0:
+                    self.leftbound.append([x,y])
+                elif cones[i].colour == 2:
+                    self.rightbound.append([x,y])
+            
         # print coordinate lists
         if self.once:
             print(f'xl={[i[0] for i in self.leftbound]}')
@@ -338,7 +340,7 @@ class trajectory_optimization(Node):
         tdist = np.zeros(len(trajectories))
         tlen = np.zeros(len(trajectories))
         # get track width
-        wdth = self.get_track_width()
+        # wdth = self.get_track_width()
         # get center line
         cntLine, self.cntcoods = self.get_center_line()
         for i in range(len(trajectories)):
@@ -360,17 +362,17 @@ class trajectory_optimization(Node):
     def get_center_line(self):
         # the midpoint is the average of the coordinates
         coods = []
-        for i in range(len(self.leftbound)):
+        for i in range(min(len(self.leftbound),len(self.rightbound))):
             x1 = self.leftbound[i][0]
             y1 = self.leftbound[i][1]
-            x2 = self.rightbound[i+1][0]
-            y2 = self.rightbound[i+1][1]
+            x2 = self.rightbound[i][0]
+            y2 = self.rightbound[i][1]
             coods.append(self.get_avg_point(x1,y1,x2,y2))
 
         # perform extrapolation to extend line
         f = interpolate.interp1d([i[0] for i in coods],[i[1] for i in coods], kind='cubic', fill_value='extrapolate')
         # check which direction 
-        into_future_pts = 8
+        into_future_pts = 6
         into_future_dist = 0
         if coods[-1][0] > coods[-2][0]:
             # positive/right
@@ -382,13 +384,14 @@ class trajectory_optimization(Node):
             # straight 
             into_future_dist = 0
             into_future_pts = 0
-        xnew = []
-        into_future_dist += update
-        for i in range(into_future_pts):
-            xnew.append(coods[-1][0] + into_future_dist)
-            into_future_dist += update
         
         if into_future_pts != 0:
+            xnew = []
+            into_future_dist += update
+            for i in range(into_future_pts):
+                xnew.append(coods[-1][0] + into_future_dist)
+                into_future_dist += update
+        
             # get new pts
             ynew = f(xnew)
             # add to coods
@@ -458,13 +461,13 @@ class trajectory_following(Node):
         self.current_speed = msg.speed
         self.current_angle = msg.steering_angle
 
-    def get_control_error(self, csa, dsa): return csa-dsa
+    def get_control_error(self, csa, dsa): return dsa-csa
 
     def get_best_state(self, msg: AckermannDrive):
         self.get_logger().info(f"chosen recieved state is = {msg.steering_angle}")
 
         # COMMENT THIS WHEN MERGING INTO NIGHTLY
-        # self.current_angle = self.current_speed = 0.0
+        self.current_angle = self.current_speed = 0.0
 
         if hasattr(self,"current_speed") and hasattr(self,"current_angle"):
 
