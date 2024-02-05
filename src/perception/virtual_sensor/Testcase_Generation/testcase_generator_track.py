@@ -1,4 +1,4 @@
-
+#!/usr/bin/python3
 '''
 A ros bag generator for generation of desired cone map and the raw sensor data.
 Useful resources: https://www.bilibili.com/video/BV1FW4y1M7PV/?spm_id_from=333.337.search-card.all.click

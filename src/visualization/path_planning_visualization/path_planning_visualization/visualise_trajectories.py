@@ -3,7 +3,9 @@ from foxglove_msgs.msg import LinePrimitive, Color, SceneEntity, SceneUpdate, Ar
 from geometry_msgs.msg import Point, Quaternion, Pose, Vector3, Quaternion 
 from moa_msgs.msg import AllTrajectories, AllStates
 from ackermann_msgs.msg import AckermannDrive
+
 from builtin_interfaces.msg import Time, Duration
+
 import rclpy
 from rclpy.node import Node
 import numpy as np
@@ -27,7 +29,7 @@ class pub_viz(Node):
 
     def get_chosen_state_idx(self, msg:AckermannDrive) -> None: 
         if hasattr(self, "states"): 
-            self.chosen_idx = np.where(np.isclose(self.states, msg.steering_angle, 1e-3))[0][-1]
+            self.chosen_idx = np.where(np.isclose(self.states, msg.steering_angle, 1e-3))[0][0]
 
     def show_paths(self, msg: AllTrajectories):
         if not hasattr(self,"chosen_idx"):

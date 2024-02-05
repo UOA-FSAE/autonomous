@@ -36,11 +36,11 @@ class Virtual_Cone_Detection(Node):
 
     def __init__(self):
         super().__init__('virtual_cone_detection')
-        self.publisher_ = self.create_publisher(ConeMap, 'cone_detection', 10)
+        self.publisher_ = self.create_publisher(ConeMap, 'cone_map', 10)
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
-        with open('/home/dyu056/fsae/autonomous/autonomous/src/perception/virtual_sensor/TESTDATA.txt') as f:
+        with open('/ws/src/perception/virtual_sensor/TESTDATA.txt') as f:
         	self.stored_data_list = f.readlines()
         	self.total_length = len(self.stored_data_list)
         	#print(self.stored_data_list)
