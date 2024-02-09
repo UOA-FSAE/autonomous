@@ -17,6 +17,7 @@
 import rclpy
 import random
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
 from std_msgs.msg import String
 from moa_msgs.msg import ConeMap
@@ -37,11 +38,16 @@ class Cone_Mapper(Node):
     def __init__(self):
         super().__init__('cone_mapper')
         print("started")
+        qos_profile = QoSProfile(
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=10
+        )
         self.subscription = self.create_subscription(
             ConeMap,
             'cone_detection',
             self.listener_callback,
-            10)
+            qos_profile)
         self.subscription  # prevent unused variable warning
 
         # Create cone map publisher
@@ -84,6 +90,7 @@ class Cone_Mapper(Node):
     def listener_callback(self, msg):
         # self.get_logger().info('Mapped result: "%s"' % msg.cones)
         print("Listened")
+        #self.publisher.publish(msg) # for debug
         self.kalman_filter_update(msg)
         self.publisher.publish(self.Cone_map)
 
@@ -134,7 +141,7 @@ class Cone_Mapper(Node):
         matching_flag = False;
         for cone in predicted_cones:
             #For each existing cone, check whether there is any measurement that is within the specified radius match_radius, and append the measurement if there is any and remove the measurement from measured_cones to avoid this measurement to be checked again
-            match_radius = 0.2;
+            match_radius = 0.5;
             matching_flag = False;
             predict_x, predict_y, predict_theta, predict_covaraince, predicted_color = self.extract_data_from_cone(cone)
             for measured_cone in measured_cones:
