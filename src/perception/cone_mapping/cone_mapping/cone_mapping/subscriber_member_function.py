@@ -90,6 +90,7 @@ class Cone_Mapper(Node):
     def listener_callback(self, msg):
         # self.get_logger().info('Mapped result: "%s"' % msg.cones)
         print("Listened")
+        #self.Transformation_test(msg);
         #self.publisher.publish(msg) # for debug
         self.kalman_filter_update(msg)
         self.publisher.publish(self.Cone_map)
@@ -112,6 +113,33 @@ class Cone_Mapper(Node):
         #     plt.scatter(self.real_x,self.real_y, marker = ".") #. marker for true position
         #     plt.show();
         #     time.sleep(1)
+####Temporal test functions##############################################################################################
+
+    def Transformation_test(self, msg : ConeMap):
+        """Extract measurement state from the Cone Map message subscription
+
+        Args:
+            msg: Input ConeMap message from Cone detection
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+        # Convert Cone Map message into position (x and y), orientation (theta) and list of cones
+        x, y, theta, list_of_cones = self.convert_message_to_data(msg)
+        # Use list of cones and states (x, y and theta) to get the position vector and rotation matrix
+        # position_vector, rotation_matrix, list_of_cones = self.convert_to_input_matrix(x, y, theta - np.pi / 2, list_of_cones);
+        position_vector, rotation_matrix, list_of_cones = self.convert_to_input_matrix(x, y, theta, list_of_cones);
+        # Conversion from local reference frame to global reference frame
+        new_cone_columns = self.create_cone_map(position_vector, rotation_matrix, list_of_cones)
+        self.cone_map_array_measured = new_cone_columns;  # Produce latest measurement
+
+        # Get unsorted Cone Map that contains all measured cone map at moment
+        cone_map_measurement_unsorted = self.produce_cone_map_message(x, y, theta,
+                                                                      self.cone_map_array_measured)  # Produce map message
+        self.publisher.publish(cone_map_measurement_unsorted);
 
 ####SLAM fucntion below################################################################################################################################
 
@@ -189,7 +217,7 @@ class Cone_Mapper(Node):
         #Convert Cone Map message into position (x and y), orientation (theta) and list of cones
         x, y, theta, list_of_cones = self.convert_message_to_data(msg)
         #Use list of cones and states (x, y and theta) to get the position vector and rotation matrix
-        position_vector, rotation_matrix, list_of_cones = self.convert_to_input_matrix(x, y, theta - np.pi/2, list_of_cones);
+        position_vector, rotation_matrix, list_of_cones = self.convert_to_input_matrix(x, y, theta, list_of_cones);
         #Conversion from local reference frame to global reference frame
         new_cone_columns = self.create_cone_map(position_vector, rotation_matrix, list_of_cones)
         self.cone_map_array_measured = new_cone_columns;  #Produce latest measurement
@@ -199,6 +227,15 @@ class Cone_Mapper(Node):
         
         #Sort cones that is measured into the cones that are logged into the map. If the cone is new, add new logged cone.
         self.Cone_map_measured = self.sort_and_add_cones(cone_map_measurement_unsorted);
+
+        #Reset orientation whenever prediction to measurement differences of orientation has 2 pi differencnes\
+        self.periodic_orientation();
+
+    def periodic_orientation(self):
+        predicted_orientation = self.Cone_map.cones[0].pose.pose.orientation.w;
+        measured_orientation = self.Cone_map_measured.cones[0].pose.pose.orientation.w;
+        if abs(predicted_orientation - measured_orientation) > 6:
+            self.Cone_map.cones[0].pose.pose.orientation.w = measured_orientation;
 
     def kalman_filter_update(self, msg : ConeMap):
         """Perform Kalman filtering step and store updated state into the class attribute
@@ -382,6 +419,7 @@ class Cone_Mapper(Node):
         return x, y, theta, list_of_cones;
 
     def extract_data_from_cone(self, cone_input : Cone) -> (float, float, float, list[float], int):
+        # For later process: We need to use quaternion orientation
         x = cone_input.pose.pose.position.x;
         y = cone_input.pose.pose.position.y;
         theta = cone_input.pose.pose.orientation.w;
