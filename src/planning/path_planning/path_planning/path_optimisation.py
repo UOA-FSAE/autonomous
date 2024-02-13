@@ -53,10 +53,11 @@ class path_planning(Node):
         if self.debug:
             self.current_speed = 0.0
 
+        self.get_logger().info(f"current speed: {hasattr(self,'current_speed')} and cone map: {hasattr(self,'cone_map')}")
+
         if hasattr(self,"current_speed") and hasattr(self,"cone_map"):
             # generate trajectories
             paths, states = self.trajectory_generator(self.cone_map)
-            
             # publish states and trajectories
             state_list = []
             for i in range(len(states)):
