@@ -43,7 +43,7 @@ class Occupancy_grid(Node):
         )
 
         self.resolution = 0.1 # in m/pixel 
-        self.car_width = 0 # in m TODO change to acutal width
+        self.car_width = 1 # in m TODO change to acutal width
     
     def publish_occ_grid(self, msg):
         bound_l, bound_r, occ_grid = self.gen_occ_grid(msg)

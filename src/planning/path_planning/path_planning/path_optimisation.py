@@ -30,7 +30,7 @@ class path_planning(Node):
 
         self.id = 0
         self.debug = self.get_parameter('debug').get_parameter_value().bool_value
-        
+
         # all trajectories publisher 
         self.all_traj_pub = self.create_publisher(AllTrajectories, "moa/trajectories", 5)
         self.all_states_pub = self.create_publisher(AllStates, "moa/states", 5)
@@ -125,7 +125,8 @@ class path_planning(Node):
         return x, y, theta
 
     def get_transformation_matrix(self, position_and_orientation):
-        theta = position_and_orientation[2] - np.pi/2
+        # theta = position_and_orientation[2] - np.pi/2
+        theta = position_and_orientation[2]
         cart_x = position_and_orientation[0]
         cart_y = position_and_orientation[1]
 
@@ -138,7 +139,6 @@ class path_planning(Node):
         point = np.array([[point_x], [point_y]])
         transformed_point = np.matmul(rotation_matrix, point) + position_vector
         return transformed_point
-
 
 class trajectory_optimization(Node):
     def __init__(self):
@@ -160,8 +160,9 @@ class trajectory_optimization(Node):
         self.current_states = self.create_subscription(AckermannDrive, "moa/cur_vel", self.get_current_states, 5)
 
         # publish best trajectory
-        self.best_traj_pub = self.create_publisher(AckermannDrive, "moa/selected_trajectory", 5)
-        # publish non-deleted trajecotries 
+        #self.best_traj_pub = self.create_publisher(AckermannDrive, "moa/selected_trajectory", 5)
+        self.best_traj_pub = self.create_publisher(PoseArray, "moa/selected_trajectory", 5)
+        # publish non-deleted trajecotries
         self.inbound_paths = self.create_publisher(AllTrajectories, 'moa/inbound_trajectories', 5)
         self.inbound_states = self.create_publisher(AllStates, "moa/inbound_states", 5)
 
@@ -170,16 +171,17 @@ class trajectory_optimization(Node):
         self.boundr_sub = self.create_subscription(BoundaryStamped, "track/bound_r", self.get_right_boundary, 5)
 
         if self.debug:
+            self.get_logger().info("Debug mode on")
             self.cone_map = self.create_subscription(ConeMap, "cone_map", self.get_bounds, 5)
             self.once = True
 
 
     def get_states(self, msg: AllStates) -> None: self.state_msg = msg
-    
+
     def get_current_states(self, msg: AckermannDrive) -> None: self.current_speed = msg.speed
 
     def get_left_boundary(self, msg: BoundaryStamped) -> None: self.leftbound = msg.coords
-    
+
     def get_right_boundary(self, msg: BoundaryStamped) -> None: self.rightbound = msg.coords
 
     def get_bounds(self, msg: ConeMap):
@@ -373,6 +375,7 @@ class trajectory_optimization(Node):
             # tlens[i] = self.get_trajectory_length(trajectories[i])
             trajectory = LineString([(P.position.x, P.position.y) for P in trajectories[i].poses])
             tdist[i] = self.get_geometry_distance(trajectory, cntLine)
+        print(tdist);
 
         # check which one is close to center and largest
         # tdist = abs(tdist - (wdth / 2))
@@ -387,6 +390,8 @@ class trajectory_optimization(Node):
     def get_center_line(self):
         # the midpoint is the average of the coordinates
         coods = []
+        print(len(self.leftbound));
+        print(len(self.rightbound));
         for i in range(min(len(self.leftbound),len(self.rightbound))):
             x1 = self.leftbound[i][0]
             y1 = self.leftbound[i][1]
@@ -465,7 +470,6 @@ class trajectory_optimization(Node):
 
         return all_traj, all_states
 
-
 class trajectory_following(Node):
     def __init__(self):
         super().__init__("Trajectory_Following")
@@ -524,21 +528,152 @@ class trajectory_following(Node):
         self.get_logger().info("Attributes current speed/angle not initialised")
         return
 
+class center_line_publisher(Node):
+    def __init__(self):
+        super().__init__("Center_Line_Path")
+        self.get_logger().info("Center Line Path Planning Node Started")
+
+        self.id = 0
+
+        # subscribe to car states and cone map
+        self.best_traj_pub = self.create_publisher(PoseArray, "moa/selected_trajectory", 5)
+        self.next_destination = self.create_publisher(Pose, "moa/next_destination", 5)
+        self.cone_map = self.create_subscription(ConeMap, "cone_map", self.center_line_publisher, 5)
+
+    # CENTER LINE PUBLISHER
+    def center_line_publisher(self, msg: ConeMap):
+        self.get_bounds(msg)
+        # get center line
+        self.cntcoods = self.get_center_line()
+        center_line_path = self.pack_to_pose_array(self.cntcoods)
+
+        ## get next point and unreached trajectory
+        # get position, orientation of car, and transformation matrices
+        x, y, self.theta = self.get_position_of_cart(msg)
+        self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.get_transformation_matrix((x,y), self.theta)
+        visible_poses, next_destination = self.get_visible_pose_array_and_destination(center_line_path)
+
+        self.best_traj_pub.publish(visible_poses)
+        self.next_destination.publish(next_destination)
+
+    def get_bounds(self, msg: ConeMap):
+        id = 1
+        cones = msg.cones
+        # loop through each cone
+        self.leftbound = []
+        self.rightbound = []
+        for i in range(len(cones)):
+            if i != 0:
+                x = cones[i].pose.pose.position.x
+                y = cones[i].pose.pose.position.y
+                # blue - left
+                if cones[i].colour == 0:
+                    self.leftbound.append([x, y])
+                elif cones[i].colour == 2:
+                    self.rightbound.append([x, y])
+
+    def get_center_line(self):
+        # the midpoint is the average of the coordinates
+        coods = []
+        for i in range(min(len(self.leftbound), len(self.rightbound))):
+            x1 = self.leftbound[i][0]
+            y1 = self.leftbound[i][1]
+            x2 = self.rightbound[i][0]
+            y2 = self.rightbound[i][1]
+            if self.get_point_distance(x1, y1, x2, y2) < 15:
+                coods.append(self.get_avg_point(x1, y1, x2, y2))
+
+        return coods
+
+    def pack_to_pose_array(self, coordinates):
+        output = PoseArray()
+        for cood in coordinates:
+            output_pose = Pose()
+            output_pose.position.x = cood[0]
+            output_pose.position.y = cood[1]
+            output.poses.append(output_pose)
+        return output
+
+    def get_avg_point(self, x1, y1, x2, y2):
+        return (((x1 + x2)/2), ((y1 + y2)/2))
+
+    def get_point_distance(self, x1, y1, x2, y2):
+        return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+    def get_position_of_cart(self, cone_map):
+        localization_data = cone_map.cones[0]
+        x = localization_data.pose.pose.position.x
+        y = localization_data.pose.pose.position.y
+        theta = localization_data.pose.pose.orientation.w
+        return x, y, theta
+
+    def get_transformation_matrix(self, position, orientation):
+        # theta = position_and_orientation[2] - np.pi/2
+        cart_x = position[0]
+        cart_y = position[1]
+        theta = orientation
+
+        rotation_matrix_l2g = np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]])
+        rotation_matrix_g2l = np.array([[np.cos(theta), np.sin(theta)],[-np.sin(theta), np.cos(theta)]])
+        position_vector = np.array([[cart_x], [cart_y]])
+
+        return position_vector, rotation_matrix_l2g, rotation_matrix_g2l
+
+    def get_visible_pose_array_and_destination(self, msg: PoseArray):
+        if hasattr(self, "position_vector") and hasattr(self, "rotation_matrix_l2g") and hasattr(self, "rotation_matrix_g2l"):
+            visible_poses = PoseArray()
+            sorted_visible_poses = PoseArray()
+            for individual_pose in msg.poses:
+                if self.is_visible(individual_pose):
+                    visible_poses.poses.append(individual_pose)
+
+            sorted_visible_poses.poses = sorted(visible_poses.poses, key=lambda item: self.get_distance_from_car(item))
+            next_destination = sorted_visible_poses.poses[0];
+            return visible_poses, next_destination
+
+    def globaL2local(self, pose_in_global : Pose):
+        pose_output = Pose()
+        position_input = np.array([[pose_in_global.position.x], [pose_in_global.position.y]])
+        position_output = np.matmul(self.rotation_matrix_g2l, (position_input - self.position_vector))
+        pose_output.position.x = float(position_output[0])
+        pose_output.position.y = float(position_output[1])
+        return pose_output
+
+    def local2global(self, pose_in_global : Pose):
+        pose_output = Pose()
+        position_input = np.array([[pose_in_global.position.x], [pose_in_global.position.y]])
+        position_output = np.matmul(self.rotation_matrix_l2g, position_input) + self.position_vector
+        pose_output.position.x = float(position_output[0])
+        pose_output.position.y = float(position_output[1])
+        return pose_output
+
+    def is_visible(self, pose : Pose):
+        pose_in_local = self.globaL2local(pose)
+        return pose_in_local.position.y >= 0
+
+    def get_distance_from_car(self, pose):
+        return self.get_distance_from_origin(self.globaL2local(pose))
+
+    def get_distance_from_origin(self, pose):
+        return pose.position.x ** 2 + pose.position.y ** 2
 
 def main():
     rclpy.init()
     exe = SingleThreadedExecutor()
 
     # path planning
-    nd1 = path_planning()
+    # nd1 = path_planning()
     # trajectory optimisation
-    nd2 = trajectory_optimization()
+    # nd2 = trajectory_optimization()
     # trajectory following
-    nd3 = trajectory_following()
+    # nd3 = trajectory_following()
+    # center line
+    center_line_node = center_line_publisher()
 
-    exe.add_node(nd1)
-    exe.add_node(nd2)
-    exe.add_node(nd3)
+    # exe.add_node(nd1)
+    # exe.add_node(nd2)
+    # exe.add_node(nd3)
+    exe.add_node(center_line_node)
 
     exe.spin()
 
