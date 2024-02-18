@@ -2,8 +2,8 @@
 ### ------- Testing of the path_planning node ------------ ###
 ## Notes/Info:
 
-from path_planning.path_optimisation import trajectory_optimization as to
-from path_planning.path_optimisation import trajectory_following as tf
+from planning.path_planning.path_planning.trajectory_optimisation_CS import trajectory_optimization as to
+from planning.path_planning.path_planning.trajectory_optimisation_CS import trajectory_following as tf
 import numpy as np
 
 def test_get_control_error():
