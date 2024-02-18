@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'occupancy_grid'
+package_name = 'path_planning'
 
 setup(
     name=package_name,
@@ -13,15 +13,14 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='dyu056',
-    maintainer_email='daniel.yu@fsae.co.nz',
-    description='TODO: Package description',
+    maintainer='Tanish',
+    maintainer_email='Tanish.Bhatt@fsae.co.nz',
+    description='Package for path planning implementation',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-        	'occupancy_grid = occupancy_grid.occupancy_grid_service:main',
-        	'client = occupancy_grid.testing_client:main',
+            'path_planning = path_planning.path_optimisation:main'
         ],
     },
 )

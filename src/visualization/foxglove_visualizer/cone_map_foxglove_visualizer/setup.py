@@ -1,11 +1,11 @@
-from setuptools import setup
+from setuptools import find_packages, setup
 
-package_name = 'occupancy_grid'
+package_name = 'cone_map_foxglove_visualizer'
 
 setup(
     name=package_name,
     version='0.0.0',
-    packages=[package_name],
+    packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -14,14 +14,13 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='dyu056',
-    maintainer_email='daniel.yu@fsae.co.nz',
+    maintainer_email='yudaniel888@hotmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-        	'occupancy_grid = occupancy_grid.occupancy_grid_service:main',
-        	'client = occupancy_grid.testing_client:main',
+                'visualizer = cone_map_foxglove_visualizer.visualizer:main',
         ],
     },
 )

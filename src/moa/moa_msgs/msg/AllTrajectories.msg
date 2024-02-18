@@ -1,1 +1,3 @@
-ackermann_msgs/AckermannDrive[] trajectories
+uint16 id 
+
+geometry_msgs/PoseArray[] trajectories
