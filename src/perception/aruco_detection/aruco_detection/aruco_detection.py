@@ -41,31 +41,29 @@ class ArucoDetectionNode(Node):
         #Visualization of detection result
         aruco.drawDetectedMarkers(cv_image,corners,ids)
 
-        if np.all(ids is not None) and (self.camera_matrix is not None) and (self.dist_coeffs is not None):
+        if (self.camera_matrix is not None) and (self.dist_coeffs is not None):
+            #Doesn't allow further processing unless the camera info is known
             if(self.edit_msg):
                 single_cone = Cone()
-                for indx,id in enumerate(ids):
-                    _,rvec,tvec = cv2.solvePnP(self.marker_points,corners[indx],self.camera_matrix,self.dist_coeffs)
+                if np.all(ids is not None):
+                    for indx,id in enumerate(ids):
+                        _,rvec,tvec = cv2.solvePnP(self.marker_points,corners[indx],self.camera_matrix,self.dist_coeffs)
 
-                    single_cone.id = indx
-                    single_cone.confidence = 100
-                    single_cone.colour = id
+                        single_cone.id = indx
+                        single_cone.confidence = 100
+                        single_cone.colour = id
 
-                    single_cone.pose.pose.position.x = tvec[0]
-                    single_cone.pose.pose.position.y = tvec[1]
-                    single_cone.pose.pose.position.z = tvec[2]
-                    single_cone.radius = 1
-                    single_cone.height = 1
-                    self.aruco_msg.cones.append(single_cone)
-
-        self.publisher.publish(self.aruco_msg)
-        self.edit_msg = False
+                        single_cone.pose.pose.position.x = tvec[0]
+                        single_cone.pose.pose.position.y = tvec[1]
+                        single_cone.pose.pose.position.z = tvec[2]
+                        single_cone.radius = 1
+                        single_cone.height = 1
+                        self.aruco_msg.cones.append(single_cone)
+                
+                self.publisher.publish(self.aruco_msg)
+                self.edit_msg = False
 
     def pose_callback(self,msg):
-        self.camera_matrix = msg.K
-        self.dist_coeffs = msg.D
-
-    def camera_callback(self,msg):
         self.aruco_msg = ConeMap()
         localization_cone = Cone()
         localization_cone.id = 99999;
@@ -74,6 +72,10 @@ class ArucoDetectionNode(Node):
         localization_cone.pose.pose.orientation.w =  msg.pose.orientation.w
         self.aruco_msg.cones.append(localization_cone)
         self.edit_msg = True
+
+    def camera_callback(self,msg):
+        self.camera_matrix = msg.K
+        self.dist_coeffs = msg.D
 
 def main(args=None):
     rclpy.init(args=args)
