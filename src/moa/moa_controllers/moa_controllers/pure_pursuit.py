@@ -24,9 +24,14 @@ class path_planning(Node):
         self.best_trajectory_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
         self.cone_map_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.cone_map_handler, 5)
         self.cmd_vel_pub = self.create_publisher(AckermannDrive, "cmd/vel", 5)
+        
 
     def cone_map_handler(msg: ConeMap):
         self.car_pose = msg.cones[0].pose.position
+        # The cars orientation is stored as radians from the car's initial
+        # orientation (following right hand rule for positive and negative
+        # direction) as the manitude of the quaternion (w). 
+        self.car_orientation = msg.cones[0].pose.orientation.w
 
     def selected_trajectory_handler():
         self.set_steering_angle(self.curvator())
@@ -41,7 +46,8 @@ class path_planning(Node):
         msg = AckermannDrive(**args)
         self.cmd_vel_pub.publish(msg)
 
-    def lateral_distance
+    def lateral_distance()
+        
 
     def arc_radius():
         y = self.lateral_distance(self.way_point)
