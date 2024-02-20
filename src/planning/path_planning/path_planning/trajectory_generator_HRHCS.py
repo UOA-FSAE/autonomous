@@ -6,7 +6,8 @@ from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
 
 from geometry_msgs.msg import Pose, PoseArray
-from moa_msgs.msg import ConeMap
+from moa_msgs.msg import ConeMap, AllStates, AllTrajectories
+from ackermann_msgs.msg import AckermannDrive
 
 
 class trajectory_generator(Node):
@@ -119,8 +120,8 @@ class trajectory_generator(Node):
         return x, y, theta
 
     def get_transformation_matrix(self, position_and_orientation):
-        # theta = position_and_orientation[2] - np.pi/2
-        theta = position_and_orientation[2]
+        theta = position_and_orientation[2] - np.pi/2
+        # theta = position_and_orientation[2]
         cart_x = position_and_orientation[0]
         cart_y = position_and_orientation[1]
 

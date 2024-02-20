@@ -1,9 +1,8 @@
 #!/usr/bin/python3
-
-
 import rclpy
 from rclpy.node import Node
 from ackermann_msgs.msg import AckermannDrive
+from rclpy.executors import SingleThreadedExecutor
 
 class trajectory_following(Node):
     def __init__(self):
@@ -63,3 +62,14 @@ class trajectory_following(Node):
         self.get_logger().info("Attributes current speed/angle not initialised")
         return
 
+def main():
+    rclpy.init()
+    exe = SingleThreadedExecutor()
+    node = trajectory_following()
+    exe.add_node(node)
+    exe.spin()
+
+    rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()

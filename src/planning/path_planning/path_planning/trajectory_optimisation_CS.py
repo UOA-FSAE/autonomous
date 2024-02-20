@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 import numpy as np
 from shapely import LineString
 from shapely import Point as shapelyPoint
@@ -22,7 +21,7 @@ class trajectory_optimization(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('debug', False)
+                ('debug', True)
             ]
         )
 
@@ -34,8 +33,8 @@ class trajectory_optimization(Node):
         self.current_states = self.create_subscription(AckermannDrive, "moa/cur_vel", self.get_current_states, 5)
 
         # publish best trajectory
-        #self.best_traj_pub = self.create_publisher(AckermannDrive, "moa/selected_trajectory", 5)
-        self.best_traj_pub = self.create_publisher(PoseArray, "moa/selected_trajectory", 5)
+        self.best_traj_pub = self.create_publisher(AckermannDrive, "moa/selected_trajectory", 5)
+        # self.best_traj_pub = self.create_publisher(PoseArray, "moa/selected_trajectory", 5)
         # publish non-deleted trajecotries
         self.inbound_paths = self.create_publisher(AllTrajectories, 'moa/inbound_trajectories', 5)
         self.inbound_states = self.create_publisher(AllStates, "moa/inbound_states", 5)
