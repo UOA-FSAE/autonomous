@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'path_planning = path_planning.path_optimisation:main'
+            'trajectory_generator = path_planning.trajectory_generator_HRHCS:main',
+            'trajectory_optimisation = path_planning.trajectory_optimisation_CS:main',
         ],
     },
 )
