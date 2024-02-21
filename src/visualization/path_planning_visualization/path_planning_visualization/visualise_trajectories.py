@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 from foxglove_msgs.msg import LinePrimitive, Color, SceneEntity, SceneUpdate, ArrowPrimitive, SpherePrimitive, PoseInFrame, PosesInFrame
 from geometry_msgs.msg import Point, Quaternion, Pose, Vector3, Quaternion, PoseArray
-from moa_msgs.msg import AllTrajectories, AllStates
+#from moa_msgs.msg import AllTrajectories, AllStates
+from moa_msgs.msg import AllTrajectories
 from ackermann_msgs.msg import AckermannDrive
 
 from builtin_interfaces.msg import Time, Duration
@@ -19,9 +20,9 @@ class pub_viz(Node):
 
         self.pubviz = self.create_publisher(SceneUpdate, 'visualization_trajectories', 5)
         # sub to all trajectories points and states
-        self.all_paths = self.create_subscription(AllTrajectories, "moa/inbound_trajectories", self.show_paths, 5)
+        #self.all_paths = self.create_subscription(AllTrajectories, "moa/inbound_trajectories", self.show_paths, 5)
         # self.all_paths = self.create_subscription(AllTrajectories, "moa/trajectories", self.show_paths, 5)
-        self.all_states = self.create_subscription(AllStates, "moa/inbound_states", self.get_all_states, 5)
+        #self.all_states = self.create_subscription(AllStates, "moa/inbound_states", self.get_all_states, 5)
         # selected path
         #self.chosen_states = self.create_subscription(AckermannDrive, "moa/selected_trajectory", self.get_chosen_state_idx, 5)
         #self.chosen_path = self.create_subscription(PoseArray, "moa/selected_trajectory", self.get_chosen_trajectory, 5)
@@ -30,7 +31,7 @@ class pub_viz(Node):
 
         self.id = 1
 
-    def get_all_states(self, msg:AllStates) -> None: self.states = [i.steering_angle for i in msg.states]
+    # def get_all_states(self, msg:AllStates) -> None: self.states = [i.steering_angle for i in msg.states]
 
     def get_chosen_state_idx(self, msg:AckermannDrive) -> None: 
         if hasattr(self, "states"): 

@@ -19,37 +19,38 @@ class pure_pursuit_algorithm(Node):
 
         # Constant to tune (touch me please it makes me feel horny ahhhhhhh!)
         ## Tuning for look ahead distance
-        self.look_ahead = 100
-        ## Tuning for determining steering vs 1 / r
-        self.P = 1
+        self.look_up_distance = 10
+        ## Tuning for matching steering in theory with steering in actual
+        self.P = 100
         ## Current speed setting
-        self.current_speed = 5
+        self.current_speed = 2
 
         # Initializer (normally don't touch)
         self.steering_angle = 0
-        self.look_ahead = 100
         self.pos = (0,0)
 
         # subscribe to best trajectory
         self.best_trajectory_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
         self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.main_hearback, 5)
         self.cmd_vel_pub = self.create_publisher(AckermannDrive, "/drive", 5)
+        self.cmd_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
         self.track_point_pub = self.create_publisher(Pose, "moa/track_point", 5)
 
     def main_hearback(self, msg: ConeMap):
         # Update car's current location and update transformation matrix
-        self.car_pose = msg.cones[0].pose
+        self.car_pose = msg.cones[0].pose.pose
         self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.convert_to_transformation_matrix(self.car_pose.position.x, self.car_pose.position.y, self.car_pose.orientation.w)
 
         # Before proceed, check whether we have a trajectory input
-        if hasattr("trajectory_in_global_frame"):
+        if hasattr(self, "trajectory_in_global_frame"):
             # Update destination point to track
             self.update_track_point(self.trajectory_in_global_frame)
 
             # Get expected steering angle to publish
             self.steering_angle = self.get_steering_angle(self.Pose_to_track_in_global_frame)
 
-            self.get_logger().info(f"Set steering angle to {self.steering_angle}")
+            self.steering_angle = self.saturating_steering(self.steering_angle)
+            # self.get_logger().info(f"Set steering angle to {self.steering_angle * self.P}")
 
         else:
             self.steering_angle = 0
@@ -60,6 +61,15 @@ class pure_pursuit_algorithm(Node):
 
     def selected_trajectory_handler(self, msg: PoseArray):
         self.trajectory_in_global_frame = msg
+
+    def saturating_steering(self, steering_angle):
+        saturation = 10
+        if steering_angle > saturation:
+            steering_angle = saturation
+        elif steering_angle < -1 * saturation:
+            steering_angle = -1 * saturation
+
+        return steering_angle
 
 
     # Coordinate tranformer
@@ -93,7 +103,7 @@ class pure_pursuit_algorithm(Node):
 
 
     def get_track_point_in_local_frame(self, track_point_in_global_frame: Pose):
-        if (hasattr("position_vector") and hasattr("rotation_matrix_l2g") and hasattr("rotation_matrix_g2l")):
+        if (hasattr(self, "position_vector") and hasattr(self, "rotation_matrix_l2g") and hasattr(self, "rotation_matrix_g2l")):
             track_point_in_local_frame = Pose()
             position_input = np.array(
                 [[track_point_in_global_frame.position.x], [track_point_in_global_frame.position.y]])
@@ -107,7 +117,7 @@ class pure_pursuit_algorithm(Node):
 
 
     def get_track_point_in_global_frame(self, track_point_in_local_frame: Pose):
-        if (hasattr("position_vector") and hasattr("rotation_matrix_l2g") and hasattr("rotation_matrix_g2l")):
+        if (hasattr(self, "position_vector") and hasattr(self, "rotation_matrix_l2g") and hasattr(self, "rotation_matrix_g2l")):
             track_point_in_global_frame = Pose()
             position_input = np.array(
                 [[track_point_in_local_frame.position.x], [track_point_in_local_frame.position.y]])
@@ -163,7 +173,7 @@ class pure_pursuit_algorithm(Node):
         L = self.get_distance(Pose_to_track_in_local_frame) # Length from origin
         x = Pose_to_track_in_local_frame.position.x
         arc_radius = self.get_arc_radius(L,x)
-        steering_angle = self.P / arc_radius
+        steering_angle = 1 / arc_radius
         if Pose_to_track_in_local_frame.position.x > 0:
             return abs(steering_angle)
         elif Pose_to_track_in_local_frame.position.x < 0:
@@ -179,13 +189,23 @@ class pure_pursuit_algorithm(Node):
 
     def publish_ackermann(self):
 
-        args = {"steering_angle": self.steering_angle,
+        args1 = {"steering_angle": float(self.steering_angle * self.P),
                 "steering_angle_velocity": 0.0,
-                "speed": self.current_speed,
+                "speed": float(self.current_speed),
                 "acceleration": 0.0,
                 "jerk": 0.0}
-        msg = AckermannDrive(**args)
-        self.cmd_vel_pub.publish(msg)
+        msg1 = AckermannDrive(**args1)
+
+        print(msg1)
+
+        args2 = {"steering_angle": float(self.steering_angle),
+                "steering_angle_velocity": 0.0,
+                "speed": float(self.current_speed),
+                "acceleration": 0.0,
+                "jerk": 0.0}
+        msg2 = AckermannDrive(**args2)
+        self.cmd_vel_pub.publish(msg1)
+        self.cmd_vis_pub.publish(msg2)
 
 def main(args=None):
     rclpy.init(args=args)

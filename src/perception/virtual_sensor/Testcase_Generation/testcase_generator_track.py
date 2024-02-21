@@ -1,4 +1,4 @@
-
+#!/usr/bin/python3
 '''
 A ros bag generator for generation of desired cone map and the raw sensor data.
 Useful resources: https://www.bilibili.com/video/BV1FW4y1M7PV/?spm_id_from=333.337.search-card.all.click
@@ -173,8 +173,8 @@ number_of_cones  = 25;
 # Clearing a file
 decimal_place = 4;
 
-head_for_cone_list = "List of cones" + "\n" + "x, y\n"
-head_for_sensor_data = "List of real time data" + "\n" + "t, x, y, theta, (distance(unit), theta(rad)) lists\n"
+#head_for_cone_list = "List of cones" + "\n" + "x, y\n"
+#head_for_sensor_data = "List of real time data" + "\n" + "t, x, y, theta, (distance(unit), theta(rad)) lists\n"
 
 # Initialize world and car 
 CAR = car(0,0,np.pi/2,1,np.pi/180,25);  #It is setted such that for each second, the rotation is one degree, and the translation is one unit
@@ -183,11 +183,10 @@ cone_list = np.array([real_cone_x, real_cone_y, type_list])
 print(cone_list)
 
 # Write existing cone into the file
-test_data_output_string = test_data_output_string + head_for_cone_list
-for index in range(0,len(real_cone_x),1):
-    append_string = str(round(real_cone_x[index],decimal_place)) + "," + str(round(real_cone_y[index],decimal_place)) + ',' + str(type_list[index]) + "\n";
-    test_data_output_string = test_data_output_string + append_string
-print(test_data_output_string);
+#test_data_output_string = test_data_output_string + head_for_cone_list
+#for index in range(0,len(real_cone_x),1):
+#    append_string = str(round(real_cone_x[index],decimal_place)) + "," + str(round(real_cone_y[index],decimal_place)) + ',' + str(type_list[index]) + "\n";
+#    test_data_output_string = test_data_output_string + append_string
 
 animation_scale = 1;     #animation scale: the animation speed is animation_scale x real time
 # Define landmarks
@@ -234,7 +233,7 @@ time_lapsing(cart_symbol, point_detected_cones, CAR, 10, animation_scale, cone_l
 ##
 
 # Record all sensor data in format
-test_data_output_string = test_data_output_string + head_for_sensor_data
+#test_data_output_string = test_data_output_string + head_for_sensor_data
 
 sensor_data = CAR.return_recorded_data();
 for index in range(0, len(sensor_data), 1):
@@ -247,7 +246,7 @@ for index in range(0, len(sensor_data), 1):
     test_data_output_string = test_data_output_string + append_string
     append_string = ""
 
-test_data_output_string = test_data_output_string + "end\n"
+#test_data_output_string = test_data_output_string + "end\n"
 print(test_data_output_string)
 
 # Write output string to file

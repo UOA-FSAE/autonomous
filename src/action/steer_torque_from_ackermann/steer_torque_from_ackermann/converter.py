@@ -65,7 +65,7 @@ class ackermann_to_steer(Node):
 
         # Tune these two only if need
         self.abs_integral_speed_max = 400
-        self.abs_integral_angle_max = 30
+        self.abs_integral_angle_max = 20.000
 
         print("Initialized")
 
@@ -82,7 +82,7 @@ class ackermann_to_steer(Node):
         msg_torque = Float32()
 
         msg_torque.data = output_torque
-        print(current_speed)
+        #print(current_speed)
         self.torque_publisher.publish(msg_torque)
 
     def set_reference(self, msg):
@@ -91,11 +91,12 @@ class ackermann_to_steer(Node):
 
         msg_steer = Float32()
         if target_steer > self.abs_integral_angle_max:
-            target_steer = self.abs_integral_angle_max
-        elif target_steer < -self.abs_integral_angle_max:
-            target_steer = -self.abs_integral_angle_max
+            target_steer = float(self.abs_integral_angle_max)
+        elif target_steer < -1 * self.abs_integral_angle_max:
+            target_steer = float(-1 * self.abs_integral_angle_max)
 
         msg_steer.data = target_steer
+        print(target_steer)
         self.steering_publisher.publish(msg_steer)
 
 def main(args=None):

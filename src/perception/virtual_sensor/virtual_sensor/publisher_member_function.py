@@ -16,8 +16,8 @@ import rclpy
 from rclpy.node import Node
 
 from std_msgs.msg import String
-from mapping_interfaces.msg import ConeMap
-from mapping_interfaces.msg import Cone
+from moa_msgs.msg import ConeMap
+from moa_msgs.msg import Cone
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import PoseWithCovariance;
@@ -36,11 +36,11 @@ class Virtual_Cone_Detection(Node):
 
     def __init__(self):
         super().__init__('virtual_cone_detection')
-        self.publisher_ = self.create_publisher(ConeMap, 'cone_detect', 10)
+        self.publisher_ = self.create_publisher(ConeMap, 'cone_map', 10)
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
-        with open('/home/dyu056/FSAE/autonomous/src/cone_mapping/test_data.txt') as f:
+        with open('/ws/src/perception/virtual_sensor/TESTDATA.txt') as f:
         	self.stored_data_list = f.readlines()
         	self.total_length = len(self.stored_data_list)
         	#print(self.stored_data_list)
@@ -65,7 +65,7 @@ class Virtual_Cone_Detection(Node):
         x = float(list_of_messages[1]);
         y = float(list_of_messages[2]);
         theta = float(list_of_messages[3]);
-        cart = self.pack_cone_message(x,y,theta)
+        cart = self.pack_cone_message(x,y,theta,0)
         cones_list.append(cart);
 
         #Create cone object for recording cart position and rotation status
@@ -75,13 +75,14 @@ class Virtual_Cone_Detection(Node):
         #list_of_local_cones_y = [];
         
         for index in range(0,len(list_of_cone_messages),1):
-            if index % 2 == 0:
+            if index % 3 == 0:
                 if list_of_cone_messages[index] != "\n":
                     individual_x = float(list_of_cone_messages[index].strip()[1::1]);
-                    individual_y = float(list_of_cone_messages[index + 1].strip()[0:len(list_of_cone_messages[index + 1].strip()) - 1:1]);
+                    individual_y = float(list_of_cone_messages[index + 1].strip()[0:len(list_of_cone_messages[index + 2].strip()):1]);
+                    individual_color = float(list_of_cone_messages[index + 2].strip()[0:len(list_of_cone_messages[index + 2].strip()) - 1:1]);
                     #list_of_local_cones_x.append(float(individual_x));
                     #list_of_local_cones_y.append(float(individual_y));
-                    individual_cone = self.pack_cone_message(individual_x,individual_y,0.00)
+                    individual_cone = self.pack_cone_message(individual_x,individual_y,0.00, individual_color)
                     cones_list.append(individual_cone); #Add to cone messaage
 
         #list_of_cones = np.array([list_of_local_cones_x, list_of_local_cones_y])
@@ -91,19 +92,20 @@ class Virtual_Cone_Detection(Node):
         #return x, y, theta, list_of_cones;
         return output_message
 
-    def pack_cone_message(self,x,y,theta):
+    def pack_cone_message(self,x,y,theta, color):
         output_cone = Cone();
         position = Point();
         orientation = Quaternion();
         pose_with_covariance = PoseWithCovariance();
         pose = Pose();
-        position.x = self.contaminate_message(x, 0.05);
-        position.y = self.contaminate_message(y, 0.05);
-        orientation.w = self.contaminate_message(theta, 0.02);
+        position.x = self.contaminate_message(x, 1e-6);
+        position.y = self.contaminate_message(y, 1e-6);
+        orientation.w = self.contaminate_message(theta, 1e-6);
         pose.position = position;
         pose.orientation = orientation;
         pose_with_covariance.pose = pose;
         output_cone.pose = pose_with_covariance;
+        output_cone.colour = int(color);
         return output_cone
 
     def contaminate_message(self, data_input, noise_scale):

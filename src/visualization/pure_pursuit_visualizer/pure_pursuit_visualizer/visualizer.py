@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from foxglove_msgs.msg import LinePrimitive, Color, SceneEntity, SceneUpdate, ArrowPrimitive, SpherePrimitive, PoseInFrame, PosesInFrame
 from geometry_msgs.msg import Point, Quaternion, Pose, Vector3, Quaternion, PoseArray
-from moa_msgs.msg import ConeMap, AllTrajectories, AllStates
+from moa_msgs.msg import ConeMap
 from ackermann_msgs.msg import AckermannDrive
 import math
 
@@ -13,24 +13,24 @@ import numpy as np
 
 class pure_pursuit_visualizer(Node):
     def __init__(self):
-        super().__init__("publish_path_planning_msgs")
-        self.get_logger().info("path planning visulisation node started")
+        super().__init__("publish_pure_pursuit_msgs")
+        self.get_logger().info("pure pursuit visulisation node started")
 
         self.next_destination_vis = []
 
         self.pubviz = self.create_publisher(SceneUpdate, 'control_visualization', 5)
         # selected path
-        self.chosen_path = self.create_subscription(AckermannDrive, "/drive", self.show_drive_path, 5)
+        self.chosen_path = self.create_subscription(AckermannDrive, "/drive_vis", self.show_drive_path, 5)
         self.next_destination = self.create_subscription(Pose, "moa/track_point", self.save_pursue_destination, 5)
         self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.get_transformations, 5)
-
-        self.P = 1
 
         self.id = 1
 
     def show_drive_path(self, msg: AckermannDrive):
         steering_angle = msg.steering_angle
-        steering_radius = self.P / steering_angle
+        if steering_angle == 0:
+            steering_angle = 1e-9
+        steering_radius = 1 / steering_angle
         trajectory_from_steer = self.single_trajectory_generator(steering_radius)
         self.show_chosen_path(trajectory_from_steer)
 
@@ -40,7 +40,7 @@ class pure_pursuit_visualizer(Node):
         R = steering_radius
         t_range = np.arange(0, np.pi/2, 0.01);
         trajectory_output = PoseArray();
-        if hasattr("position_vector") and hasattr("rotation_matrix_l2g") and hasattr("rotation_matrix_g2l"):
+        if hasattr(self, "position_vector") and hasattr(self, "rotation_matrix_l2g") and hasattr(self, "rotation_matrix_g2l"):
             for individual_t in t_range:
                 pose_input = Pose();
                 x_pre_trans = np.cos(individual_t) * R - R
@@ -60,7 +60,7 @@ class pure_pursuit_visualizer(Node):
 
     def get_transformations(self, msg: ConeMap):
         # Update car's current location and update transformation matrix
-        self.car_pose = msg.cones[0].pose
+        self.car_pose = msg.cones[0].pose.pose
         self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.convert_to_transformation_matrix(self.car_pose.position.x, self.car_pose.position.y, self.car_pose.orientation.w)
 
     # Coordinate tranformer
@@ -93,7 +93,7 @@ class pure_pursuit_visualizer(Node):
         return position_vector, rotation_matrix_l2g, rotation_matrix_g2l
 
     def get_track_point_in_local_frame(self, track_point_in_global_frame: Pose):
-        if hasattr("position_vector") and hasattr("rotation_matrix_l2g") and hasattr("rotation_matrix_g2l"):
+        if hasattr(self, "position_vector") and hasattr(self, "rotation_matrix_l2g") and hasattr(self, "rotation_matrix_g2l"):
             track_point_in_local_frame = Pose()
             position_input = np.array(
                 [[track_point_in_global_frame.position.x], [track_point_in_global_frame.position.y]])
@@ -106,7 +106,7 @@ class pure_pursuit_visualizer(Node):
             return track_point_in_global_frame
 
     def get_track_point_in_global_frame(self, track_point_in_local_frame: Pose):
-        if hasattr("position_vector") and hasattr("rotation_matrix_l2g") and hasattr("rotation_matrix_g2l"):
+        if hasattr(self, "position_vector") and hasattr(self, "rotation_matrix_l2g") and hasattr(self, "rotation_matrix_g2l"):
             track_point_in_global_frame = Pose()
             position_input = np.array(
                 [[track_point_in_local_frame.position.x], [track_point_in_local_frame.position.y]])

@@ -31,11 +31,11 @@ class center_line_publisher(Node):
 
         ## get next point and unreached trajectory
         # get position, orientation of car, and transformation matrices
-        x, y, self.theta = self.get_position_of_cart(msg)
-        self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.get_transformation_matrix((x,y), self.theta)
-        visible_poses, next_destination = self.get_visible_pose_array_and_destination(center_line_path)
+        #x, y, self.theta = self.get_position_of_cart(msg)
+        #self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.get_transformation_matrix((x,y), self.theta)
+        #visible_poses, next_destination = self.get_visible_pose_array_and_destination(center_line_path)
 
-        self.best_traj_pub.publish(visible_poses)
+        self.best_traj_pub.publish(center_line_path)
         #self.next_destination.publish(next_destination)
 
     def get_bounds(self, msg: ConeMap):

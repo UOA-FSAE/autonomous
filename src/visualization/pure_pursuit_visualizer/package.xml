@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>path_planning_visualization</name>
+  <name>pure_pursuit_visualizer</name>
   <version>0.0.0</version>
-  <description>Package for path planning visulization</description>
-  <maintainer email="Tanish.Bhatt@fsae.co.nz">Tanish Bhatt</maintainer>
+  <description>TODO: Package description</description>
+  <maintainer email="yudaniel888@hotmail.com">dyu056</maintainer>
   <license>TODO: License declaration</license>
 
   <test_depend>ament_copyright</test_depend>
