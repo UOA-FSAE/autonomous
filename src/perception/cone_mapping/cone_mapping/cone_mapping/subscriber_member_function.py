@@ -408,7 +408,7 @@ class Cone_Mapper(Node):
         position_vector = np.array([[x],[y]]);
         rotation_matrix = np.array([[math.cos(theta), -math.sin(theta)],[math.sin(theta), math.cos(theta)]]) #Inverse DCM
 
-        return position_vector, rotation_matrix, list_of_cones;
+        return position_vector, rotation_matrix, list_of_cones
 
     def create_cone_map(self, position_vector : np.array, rotation_matrix : np.array, list_of_cones : np.array) -> np.array:
         list_of_cones_unrotated = np.matmul(rotation_matrix, list_of_cones)
