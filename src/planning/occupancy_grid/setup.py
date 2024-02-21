@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-        	'service = occupancy_grid.occupancy_grid_service:main',
+        	'occupancy_grid = occupancy_grid.occupancy_grid_service:main',
         	'client = occupancy_grid.testing_client:main',
         ],
     },
