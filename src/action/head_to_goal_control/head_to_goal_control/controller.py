@@ -19,11 +19,13 @@ class head_to_goal_control_algorithm(Node):
 
         # Constant to tune (touch me please it makes me feel horny ahhhhhhh!)
         ## Tuning for look ahead distance
-        self.look_up_distance = 5
-        self.cancel_distance = 2;
+        self.look_up_distance = 10
+        self.cancel_distance = 4;
         ## Tuning for PID controller
         self.P = 10
         self.max_steering_angle = 20.0
+        self.max_speed = 2.5
+        self.speed_adjuster_width = 15
         ## Current speed setting
         self.current_speed = 1
 
@@ -58,6 +60,9 @@ class head_to_goal_control_algorithm(Node):
             self.steering_angle = 0
             self.get_logger().info("Warning: no trajectory found, will set steering angle to 0!!!!")
 
+        # Experimental: speed adjuster
+        self.current_speed = self.steer_to_speed(self.steering_angle)
+
         # Publish command for velocity
         self.publish_ackermann()
 
@@ -73,6 +78,10 @@ class head_to_goal_control_algorithm(Node):
 
         return steering_angle
 
+    def steer_to_speed(self, steering_angle):
+        # RF with NN can be used here
+        speed = self.max_speed * np.exp(- (steering_angle ** 2) / (2 * (self.speed_adjuster_width ** 2)))
+        return speed
 
     # Coordinate tranformer
     def convert_to_transformation_matrix(self, x: float, y: float, theta: float) -> (

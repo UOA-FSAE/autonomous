@@ -15,7 +15,7 @@ class center_line_publisher(Node):
         super().__init__("Center_Line_Path")
         self.get_logger().info("Center Line Path Planning Node Started")
 
-        self.view_horizon = 30
+        self.view_horizon = 1000
 
         self.id = 0
 
@@ -66,9 +66,6 @@ class center_line_publisher(Node):
             y2 = self.rightbound[i][1]
             if self.get_point_distance(x1, y1, x2, y2) < 30:
                 coods.append(self.get_avg_point(x1, y1, x2, y2))
-            else:
-                #print(self.get_point_distance(x1, y1, x2, y2))
-                pass
 
         return coods
 
@@ -111,11 +108,15 @@ class center_line_publisher(Node):
             visible_poses = PoseArray()
             sorted_visible_poses = PoseArray()
             for individual_pose in msg.poses:
-                if self.is_visible(individual_pose):
+                if self.is_visible(individual_pose) and self.is_not_too_far(individual_pose):
                     visible_poses.poses.append(individual_pose)
 
             sorted_visible_poses.poses = sorted(visible_poses.poses, key=lambda item: self.get_distance_from_car(item))
-            next_destination = sorted_visible_poses.poses[0];
+            if len(sorted_visible_poses.poses) == 0:
+                self.get_logger().info("Warning: no trajectory found!")
+                next_destination = Pose()
+            else:
+                next_destination = sorted_visible_poses.poses[0];
             return visible_poses, next_destination
 
     def globaL2local(self, pose_in_global : Pose):
@@ -138,8 +139,8 @@ class center_line_publisher(Node):
         pose_in_local = self.globaL2local(pose)
         return pose_in_local.position.y >= 0
 
-    def is_too_far(self, pose: Pose):
-        return self.get_distance_from_origin(pose) <= self.view_horizon
+    def is_not_too_far(self, pose: Pose):
+        return self.get_distance_from_car(pose) <= self.view_horizon
 
     def get_distance_from_car(self, pose):
         return self.get_distance_from_origin(self.globaL2local(pose))
