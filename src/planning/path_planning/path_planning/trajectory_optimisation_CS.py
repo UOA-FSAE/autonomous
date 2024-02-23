@@ -30,7 +30,7 @@ class trajectory_optimization(Node):
 
         # attributes
         self._debug = self.get_parameter('debug').get_parameter_value().bool_value
-        self._once = False
+        self._once = True
 
         # subscribers
         self.create_subscription(AllStates, "moa/states", self.set_states, 10)
@@ -74,13 +74,33 @@ class trajectory_optimization(Node):
                 
             # print coordinate lists
             if self._once:
-                print("------------------coordinates------------------")
-                print(f'xl={[i[0] for i in self._leftboundary]}')
-                print(f'yl={[i[1] for i in self._leftboundary]}')
-                print(f'xr={[i[0] for i in self._rightboundary]}')
-                print(f'yr={[i[1] for i in self._rightboundary]}')
-                print("------------------------------------------------")
+                with open('/home/tanish/Documents/autonomous/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
+                        xl=[i[0] for i in self._leftboundary]
+                        yl=[i[1] for i in self._leftboundary]
+                        xr=[i[0] for i in self._rightboundary]
+                        yr=[i[1] for i in self._rightboundary]
+                        for P in xl:
+                            fh.write("{} ".format(P))
+                        fh.write("\n")
+                        for P in yl:
+                            fh.write("{} ".format(P))
+                        fh.write("\n")
+                        for P in xr:
+                            fh.write("{} ".format(P))
+                        fh.write("\n")
+                        for P in yr:
+                            fh.write("{} ".format(P))
+                        fh.write("\n")
                 self._once = False
+
+            # if self._once:
+            #     print("------------------coordinates------------------")
+            #     print(f'xl={[i[0] for i in self._leftboundary]}')
+            #     print(f'yl={[i[1] for i in self._leftboundary]}')
+            #     print(f'xr={[i[0] for i in self._rightboundary]}')
+            #     print(f'yr={[i[1] for i in self._rightboundary]}')
+            #     print("------------------------------------------------")
+            #     self._once = False
         
 
     def delete_optimise_trajectories(self, msg: AllTrajectories): 
