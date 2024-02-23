@@ -27,7 +27,7 @@ class ArucoDetectionNode(Node):
         self.parameters = aruco.DetectorParameters()
         self.detector = aruco.ArucoDetector(self.aruco_dict, self.parameters)
         #THe length of marker in real life, Unit:m
-        marker_size = 0.05
+        marker_size = 0.19
         self.marker_points = np.array([[-marker_size / 2, marker_size / 2, 0],[marker_size / 2, marker_size / 2, 0],[marker_size / 2, -marker_size / 2, 0],[-marker_size / 2, -marker_size / 2, 0]], dtype=np.float32)
         self.edit_msg = False
         self.aruco_msg = None
@@ -59,9 +59,12 @@ class ArucoDetectionNode(Node):
                         # assuming id 1 is blue cone and id 2 is yellow cone
                         single_cone.colour = 0 if idc==1 else 2 if idc==2 else 3
 
+                        # x-axis is forward/backward
                         single_cone.pose.pose.position.x = float(tvec[0][0])
-                        single_cone.pose.pose.position.y = float(tvec[1][0])
-                        single_cone.pose.pose.position.z = float(tvec[2][0])
+                        # y-axis is left/right
+                        single_cone.pose.pose.position.y = float(tvec[2][0])
+                        # z-axis is up/down
+                        single_cone.pose.pose.position.z = float(tvec[1][0])
                         single_cone.radius = 1.0
                         single_cone.height = 1.0
                         self.aruco_msg.cones.append(single_cone)
