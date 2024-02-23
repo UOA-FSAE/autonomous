@@ -74,8 +74,14 @@ class Cone_Mapper(Node):
         #Kalman filter constants
         self.Q_constant = 0.00025; # Processing noise (need to be tuned)
         self.R_constant = 0.01; # Measurement noise
-        self.Q_matrix = np.eye(self.matrix_size) * self.Q_constant;
-        self.R_matrix = np.eye(self.matrix_size) * self.R_constant;
+        self.Q_matrix = np.eye(self.matrix_size) * self.Q_constant
+        self.R_matrix = np.eye(self.matrix_size) * self.R_constant
+        self.Q_matrix[0][0] = 1e-9
+        self.Q_matrix[1][1] = 1e-9
+        self.Q_matrix[2][2] = 1e-9
+        self.R_matrix[0][0] = 1e-9
+        self.R_matrix[1][1] = 1e-9
+        self.R_matrix[2][2] = 1e-9
 
         #Generate covariance matrix
         identity_3x3 = np.eye(3)
@@ -89,10 +95,12 @@ class Cone_Mapper(Node):
 
     def listener_callback(self, msg):
         # self.get_logger().info('Mapped result: "%s"' % msg.cones)
-        print("Listened")
+        #print("Listened")
         #self.Transformation_test(msg);
         #self.publisher.publish(msg) # for debug
         self.kalman_filter_update(msg)
+
+        self.always_trust_position()
         self.publisher.publish(self.Cone_map)
 
         # print("######################New Message##########################")
@@ -197,10 +205,16 @@ class Cone_Mapper(Node):
         return output;
 
     def update_matrix(self):
-        self.number_of_cones = len(self.Cone_map.cones) - 1; #Used for second iteration only, later on would need to have this number be dynamic
-        self.matrix_size = 3 + self.number_of_cones * 2;
-        self.Q_matrix = np.eye(self.matrix_size) * self.Q_constant;
-        self.R_matrix = np.eye(self.matrix_size) * self.R_constant;
+        self.number_of_cones = len(self.Cone_map.cones) - 1 #Used for second iteration only, later on would need to have this number be dynamic
+        self.matrix_size = 3 + self.number_of_cones * 2
+        self.Q_matrix = np.eye(self.matrix_size) * self.Q_constant
+        self.R_matrix = np.eye(self.matrix_size) * self.R_constant
+        self.Q_matrix[0][0] = 1e-9
+        self.Q_matrix[1][1] = 1e-9
+        self.Q_matrix[2][2] = 1e-9
+        self.R_matrix[0][0] = 1e-9
+        self.R_matrix[1][1] = 1e-9
+        self.R_matrix[2][2] = 1e-9
 
     def get_measurement(self, msg : ConeMap):
         """Extract measurement state from the Cone Map message subscription
@@ -229,13 +243,16 @@ class Cone_Mapper(Node):
         self.Cone_map_measured = self.sort_and_add_cones(cone_map_measurement_unsorted);
 
         #Reset orientation whenever prediction to measurement differences of orientation has 2 pi differencnes\
-        self.periodic_orientation();
+        #self.periodic_orientation();
 
     def periodic_orientation(self):
         predicted_orientation = self.Cone_map.cones[0].pose.pose.orientation.w;
         measured_orientation = self.Cone_map_measured.cones[0].pose.pose.orientation.w;
-        if abs(predicted_orientation - measured_orientation) > 6:
+        if abs(predicted_orientation - measured_orientation) > 1:
             self.Cone_map.cones[0].pose.pose.orientation.w = measured_orientation;
+
+    def always_trust_position(self):
+        self.Cone_map.cones[0] = self.Cone_map_measured.cones[0]
 
     def kalman_filter_update(self, msg : ConeMap):
         """Perform Kalman filtering step and store updated state into the class attribute
@@ -348,7 +365,7 @@ class Cone_Mapper(Node):
                 output_conemap.cones.append(individual_cone);
                 index_for_color += 1;
 
-        print(output_conemap);
+        #print(output_conemap);
         return output_conemap;
 
     def convert_covariance_to_covariance_vector(self, covariance_matrix : np.array) -> list[float]:
