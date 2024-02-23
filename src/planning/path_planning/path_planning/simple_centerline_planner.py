@@ -15,6 +15,8 @@ class center_line_publisher(Node):
         super().__init__("Center_Line_Path")
         self.get_logger().info("Center Line Path Planning Node Started")
 
+        self.view_horizon = 30
+
         self.id = 0
 
         # subscribe to car states and cone map
@@ -31,11 +33,11 @@ class center_line_publisher(Node):
 
         ## get next point and unreached trajectory
         # get position, orientation of car, and transformation matrices
-        #x, y, self.theta = self.get_position_of_cart(msg)
-        #self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.get_transformation_matrix((x,y), self.theta)
-        #visible_poses, next_destination = self.get_visible_pose_array_and_destination(center_line_path)
+        x, y, self.theta = self.get_position_of_cart(msg)
+        self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.get_transformation_matrix((x,y), self.theta)
+        visible_poses, next_destination = self.get_visible_pose_array_and_destination(center_line_path)
 
-        self.best_traj_pub.publish(center_line_path)
+        self.best_traj_pub.publish(visible_poses)
         #self.next_destination.publish(next_destination)
 
     def get_bounds(self, msg: ConeMap):
@@ -62,8 +64,11 @@ class center_line_publisher(Node):
             y1 = self.leftbound[i][1]
             x2 = self.rightbound[i][0]
             y2 = self.rightbound[i][1]
-            if self.get_point_distance(x1, y1, x2, y2) < 15:
+            if self.get_point_distance(x1, y1, x2, y2) < 30:
                 coods.append(self.get_avg_point(x1, y1, x2, y2))
+            else:
+                #print(self.get_point_distance(x1, y1, x2, y2))
+                pass
 
         return coods
 
@@ -129,9 +134,12 @@ class center_line_publisher(Node):
         pose_output.position.y = float(position_output[1])
         return pose_output
 
-    def is_visible(self, pose : Pose):
+    def is_visible(self, pose: Pose):
         pose_in_local = self.globaL2local(pose)
         return pose_in_local.position.y >= 0
+
+    def is_too_far(self, pose: Pose):
+        return self.get_distance_from_origin(pose) <= self.view_horizon
 
     def get_distance_from_car(self, pose):
         return self.get_distance_from_origin(self.globaL2local(pose))

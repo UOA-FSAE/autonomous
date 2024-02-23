@@ -193,7 +193,7 @@ class head_to_goal_control_algorithm(Node):
                 "jerk": 0.0}
         msg1 = AckermannDrive(**args1)
 
-        print(msg1)
+        #print(msg1)
 
         args2 = {"steering_angle": float(self.steering_angle),
                 "steering_angle_velocity": 0.0,

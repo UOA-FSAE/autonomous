@@ -101,9 +101,6 @@ class Cone_Mapper(Node):
         self.kalman_filter_update(msg)
 
         self.always_trust_position()
-        print("theta is trusted or not?")
-        print(self.Cone_map.cones[0].pose.pose.orientation.w)
-        print(self.Cone_map_measured.cones[0].pose.pose.orientation.w)
         self.publisher.publish(self.Cone_map)
 
         # print("######################New Message##########################")
