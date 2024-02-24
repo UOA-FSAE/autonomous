@@ -12,8 +12,8 @@ from ackermann_msgs.msg import AckermannDrive
 
 class trajectory_generator(Node):
     def __init__(self):
-        super().__init__("Path_Planning")
-        self.get_logger().info("Path Planning Node Started")
+        super().__init__("trajectory_generation")
+        self.get_logger().info("Trajectory generation Node Started")
 
         self.declare_parameters(
             namespace='',
@@ -23,62 +23,62 @@ class trajectory_generator(Node):
             ]
         )
 
-        self.id = 0
-        self.debug = self.get_parameter('debug').get_parameter_value().bool_value
+        # attributes
+        self._id = 0
+        self._debug = self.get_parameter('debug').get_parameter_value().bool_value
+        self._timer = self.get_parameter('timer').get_parameter_value().double_value
 
-        # all trajectories publisher 
-        self.all_traj_pub = self.create_publisher(AllTrajectories, "moa/trajectories", 5)
-        self.all_states_pub = self.create_publisher(AllStates, "moa/states", 5)
+        # publishers
+        self.all_trajectories_publisher = self.create_publisher(AllTrajectories, "moa/trajectories", 10)
+        self.all_states_publisher = self.create_publisher(AllStates, "moa/states", 10)
 
-        # subscribe to car states and cone map
-        self.current_states = self.create_subscription(AckermannDrive, "moa/cur_vel", self.get_current_states, 5)
-        self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.get_cone_map, 5)
+        # subscribers
+        self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed, 5)
+        self.create_subscription(ConeMap, "cone_map", self.set_cone_map, 5)
 
-        # time in between
-        self.tib = self.get_parameter('timer').get_parameter_value().double_value
-        self.timer = self.create_timer(self.tib, self.publish_trajectories)
+        # time in between trajectory generation
+        self.create_timer(self._timer, self.generate_trajectories)
+
+
+    def set_current_speed(self, msg:AckermannDrive) -> None: self._current_speed = msg.speed
+    
+    def set_cone_map(self, msg:ConeMap) -> None: self._cone_map = msg
+
 
     # BEST TRAJECTORY PUBLISHER
-    def publish_trajectories(self):
-        '''
-        Publishes all generated trajectories once created every n seconds
-        '''
-        self.get_logger().info(f"{self.tib} seconds up - generating trajectories")
+    def generate_trajectories(self):
+        '''Generates trajectories every few seconds'''
 
-        if self.debug:
-            self.current_speed = 0.0
+        if self._debug: self._current_speed = 0.0
 
-        self.get_logger().info(f"current speed: {hasattr(self,'current_speed')} and cone map: {hasattr(self,'cone_map')}")
+        self.get_logger().info(f"{self._timer} seconds up - generating trajectories")
+        self.get_logger().info(f"current speed: {hasattr(self,'_current_speed')}"\
+                               f" | cone map: {hasattr(self,'_cone_map')}")
 
-        if hasattr(self,"current_speed") and hasattr(self,"cone_map"):
+        if hasattr(self,"_current_speed") and hasattr(self,"_cone_map"):
             # generate trajectories
-            paths, states = self.trajectory_generator(self.cone_map)
+            paths, states = self.trajectory_generator(self._cone_map)
             # publish states and trajectories
             state_list = []
             for i in range(len(states)):
                 args = {"steering_angle": float(states[i]),
                         "steering_angle_velocity": 0.0,
-                        "speed": self.current_speed,
+                        "speed": self._current_speed,
                         "acceleration": 0.0,
                         "jerk": 0.0}
                 state_list.append(AckermannDrive(**args))
             
-            msg = AllStates(id = self.id, states = state_list)
-            self.all_states_pub.publish(msg)
+            msg = AllStates(id = self._id, states = state_list)
+            self.all_states_publisher.publish(msg)
 
-            msg1 = AllTrajectories(id = self.id, trajectories = paths)
-            self.all_traj_pub.publish(msg1)
+            msg = AllTrajectories(id = self._id, trajectories = paths)
+            self.all_trajectories_publisher.publish(msg)
 
-            self.id += 1
+            self._id += 1
 
             return
-        
-        self.get_logger().info("Attributes cone map and/or current speed not initialised")
-        return
 
-    def get_current_states(self, msg:AckermannDrive) -> None: self.current_speed = msg.speed
-    
-    def get_cone_map(self, msg:ConeMap) -> None: self.cone_map = msg
+        return
 
     # ===========================================================
     # TRAJECTORY GENERATION
@@ -120,8 +120,8 @@ class trajectory_generator(Node):
         return x, y, theta
 
     def get_transformation_matrix(self, position_and_orientation):
-        theta = position_and_orientation[2] - np.pi/2
-        # theta = position_and_orientation[2]
+        # theta = position_and_orientation[2] - np.pi/2
+        theta = position_and_orientation[2]
         cart_x = position_and_orientation[0]
         cart_y = position_and_orientation[1]
 
