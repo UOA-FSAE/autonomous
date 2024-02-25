@@ -24,20 +24,20 @@ class EventController(Node):
 
         self.assi_finished_pub = self.create_publisher(
             Pulse,
-            'assi_mission_finished',
+            'mission_finished',
             10,
         )
 
 
         self.start_desc_pub = self.create_publisher(
             String,
-            'assi_mission_finished',
+            'start_description',
             10,
         )
 
         self.end_desc_pub = self.create_publisher(
             String,
-            'assi_mission_finished',
+            'end_description',
             10,
         )
 
@@ -63,13 +63,14 @@ class EventController(Node):
                 self.at_start = True
                 self.at_finish = False
 
-            elif msg.event_type == 'finish':
+            elif msg.event_type == 'end':
                 if self.round < MAXLAPS:
                     self.round += 1
                 else:
                     self.at_finish = True
                     self.at_start = False
                     msgToSend.value = True
+                    msgToSend.event_type = 'finish'
 
             self.self.assi_finished_pub.publish(msg)
 
