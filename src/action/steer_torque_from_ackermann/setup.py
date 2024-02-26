@@ -1,11 +1,11 @@
-from setuptools import setup
+from setuptools import find_packages, setup
 
-package_name = 'occupancy_grid'
+package_name = 'steer_torque_from_ackermann'
 
 setup(
     name=package_name,
     version='0.0.0',
-    packages=[package_name],
+    packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -13,15 +13,14 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='dyu056',
+    maintainer='Daniel Yu',
     maintainer_email='daniel.yu@fsae.co.nz',
-    description='TODO: Package description',
+    description='Controller node for simulation car to control its speed and steering angle',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-        	'occupancy_grid = occupancy_grid.occupancy_grid_service:main',
-        	'client = occupancy_grid.testing_client:main',
+            'steer_torque_from_ackermann = steer_torque_from_ackermann.converter:main',
         ],
     },
 )

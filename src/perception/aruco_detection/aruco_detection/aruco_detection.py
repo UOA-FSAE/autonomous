@@ -18,6 +18,7 @@ class ArucoDetectionNode(Node):
     def __init__(self):
         super().__init__('Aruco_detection_node')
         self.bridge = CvBridge()
+        
         self.create_subscription(CameraInfo,'zed/zed_node/rgb/camera_info',self.camera_callback,10)
         self.create_subscription(PoseStamped,'zed/zed_node/pose',self.pose_callback,10)
         self.create_subscription(Image,'/zed/zed_node/rgb/image_rect_color',self.image_callback,10)

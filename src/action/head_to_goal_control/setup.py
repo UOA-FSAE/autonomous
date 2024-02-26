@@ -1,11 +1,11 @@
-from setuptools import setup
+from setuptools import find_packages, setup
 
-package_name = 'occupancy_grid'
+package_name = 'head_to_goal_control'
 
 setup(
     name=package_name,
     version='0.0.0',
-    packages=[package_name],
+    packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -20,8 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-        	'occupancy_grid = occupancy_grid.occupancy_grid_service:main',
-        	'client = occupancy_grid.testing_client:main',
+        	'controller = head_to_goal_control.controller:main',
         ],
     },
 )
