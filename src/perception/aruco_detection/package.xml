@@ -26,6 +26,7 @@
   <exec_depend>torch</exec_depend>
   <exec_depend>cv2</exec_depend>
   <exec_depend>pyzed</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
   
 
   <test_depend>ament_copyright</test_depend>
