@@ -38,7 +38,6 @@ class ackermann_to_steer(Node):
         steering_topic = "/" + car_name + "/cmd_steering"
         torque_topic = "/" + car_name + "/cmd_throttle"
         speed_topic = "/" + car_name + "/speed"
-        print(steering_topic)
 
         self.steering_publisher = self.create_publisher(Float32, steering_topic, 10)
         self.torque_publisher = self.create_publisher(Float32, torque_topic, 10)
@@ -96,7 +95,6 @@ class ackermann_to_steer(Node):
             target_steer = float(-1 * self.abs_integral_angle_max)
 
         msg_steer.data = target_steer
-        print(target_steer)
         self.steering_publisher.publish(msg_steer)
 
 def main(args=None):

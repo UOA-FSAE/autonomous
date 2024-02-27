@@ -50,6 +50,8 @@ class Cone_Mapper(Node):
             qos_profile)
         self.subscription  # prevent unused variable warning
 
+        self.get_logger().info("Cone Map Node Started")
+
         # Create cone map publisher
         self.publisher = self.create_publisher(ConeMap, 'cone_map', 10)
 
@@ -102,6 +104,8 @@ class Cone_Mapper(Node):
 
         self.always_trust_position()
         self.publisher.publish(self.Cone_map)
+
+        self.get_logger().info("Cone Map Published")
 
         # print("######################New Message##########################")
         # is_first = True
