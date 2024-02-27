@@ -15,19 +15,19 @@ from ackermann_msgs.msg import AckermannDrive
 class head_to_goal_control_algorithm(Node):
     def __init__(self):
         super().__init__("Head_To_Goal_Controller")
-        self.get_logger().info("Head to Goal Controller Node Started")
+        self.get_logger().info("Head to Goal Controller Node v2 Started")
 
         # Constant to tune (touch me please it makes me feel horny ahhhhhhh!)
         ## Tuning for look ahead distance
         self.look_up_distance = 10
-        self.cancel_distance = 4;
+        self.cancel_distance = 4
         ## Tuning for PID controller
         self.P = 10
         self.max_steering_angle = 20.0
         self.max_speed = 2.5
         self.speed_adjuster_width = 15
         ## Current speed setting
-        self.current_speed = 1
+        self.current_speed = 2
 
         # Initializer (normally don't touch)
         self.steering_angle = 0
@@ -35,14 +35,16 @@ class head_to_goal_control_algorithm(Node):
 
         # subscribe to best trajectory
         self.best_trajectory_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
-        self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.main_hearback, 5)
+        #self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.main_hearback, 5)
+        self.car_pos_sub = self.create_subscription(Pose, "car_position", self.main_hearback, 5)
         self.cmd_vel_pub = self.create_publisher(AckermannDrive, "/drive", 5)
         self.cmd_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
         self.track_point_pub = self.create_publisher(Pose, "moa/track_point", 5)
 
-    def main_hearback(self, msg: ConeMap):
+    def main_hearback(self, msg: Pose):
         # Update car's current location and update transformation matrix
-        self.car_pose = msg.cones[0].pose.pose
+        #self.car_pose = msg.cones[0].pose.pose
+        self.car_pose = msg
         self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.convert_to_transformation_matrix(self.car_pose.position.x, self.car_pose.position.y, self.car_pose.orientation.w)
 
         # Before proceed, check whether we have a trajectory input
@@ -61,7 +63,7 @@ class head_to_goal_control_algorithm(Node):
             self.get_logger().info("Warning: no trajectory found, will set steering angle to 0!!!!")
 
         # Experimental: speed adjuster
-        self.current_speed = self.steer_to_speed(self.steering_angle)
+        # self.current_speed = self.steer_to_speed(self.steering_angle)
 
         # Publish command for velocity
         self.publish_ackermann()
@@ -144,6 +146,7 @@ class head_to_goal_control_algorithm(Node):
     def update_track_point(self, msg: PoseArray): #Main logic
         # Pick new tracking point if no tracking point is selected or old tracking point is no longer visible
         if self.need_new_track_point():
+            self.get_logger().info("Update track point")
             self.Pose_to_track_in_global_frame = self.get_track_point_in_global_frame(msg)
         self.track_point_pub.publish(self.Pose_to_track_in_global_frame)
 
