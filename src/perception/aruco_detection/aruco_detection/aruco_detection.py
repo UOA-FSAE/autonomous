@@ -16,12 +16,12 @@ from moa_msgs.msg import Cone
 class ArucoDetectionNode(Node):
 
     def __init__(self):
-        super().__init__('Aruco detection node')
+        super().__init__('Aruco_detection_node')
         self.bridge = CvBridge()
         self.create_subscription(CameraInfo,'/zed2i/zed_node/rgb/camera_info',self.camera_callback,10)
         self.create_subscription(PoseStamped,'/zed2i/zed_node/pose',self.pose_callback,10)
         self.create_subscription(Image,'/zed2i/zed_node/rgb/image_rect_color',self.image_callback,10)
-        self.publisher = self.create_publisher(ConeMap, 'cone_detection', 10)
+        self.publisher = self.create_publisher(ConeMap, 'cone_map', 10)
         
         self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
         self.parameters = aruco.DetectorParameters()
