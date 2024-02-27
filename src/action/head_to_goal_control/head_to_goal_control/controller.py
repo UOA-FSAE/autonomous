@@ -15,7 +15,7 @@ from ackermann_msgs.msg import AckermannDrive
 class head_to_goal_control_algorithm(Node):
     def __init__(self):
         super().__init__("Head_To_Goal_Controller")
-        self.get_logger().info("Head to Goal Controller Node v2 Started")
+        self.get_logger().info("Head to Goal Controller Node v4 Started")
 
         # Constant to tune (touch me please it makes me feel horny ahhhhhhh!)
         ## Tuning for look ahead distance
@@ -24,14 +24,16 @@ class head_to_goal_control_algorithm(Node):
         ## Tuning for PID controller
         self.P = 10
         self.max_steering_angle = 20.0
-        self.max_speed = 2.5
+        #self.max_speed = 2.5
+        self.max_speed = 2
         self.speed_adjuster_width = 15
         ## Current speed setting
-        self.current_speed = 2
+        self.current_speed = 0
 
         # Initializer (normally don't touch)
         self.steering_angle = 0
         self.pos = (0,0)
+        self.speed_decay_constant = 0
 
         # subscribe to best trajectory
         self.best_trajectory_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
@@ -51,10 +53,8 @@ class head_to_goal_control_algorithm(Node):
         if hasattr(self, "trajectory_in_global_frame"):
             # Update destination point to track
             self.update_track_point(self.trajectory_in_global_frame)
-
             # Get expected steering angle to publish
             self.steering_angle = self.get_steering_angle(self.Pose_to_track_in_global_frame)
-
             self.steering_angle = self.saturating_steering(self.steering_angle)
             # self.get_logger().info(f"Set steering angle to {self.steering_angle * self.P}")
 
@@ -64,6 +64,8 @@ class head_to_goal_control_algorithm(Node):
 
         # Experimental: speed adjuster
         # self.current_speed = self.steer_to_speed(self.steering_angle)
+        # Adjust the speed base on the performance of the path planning (if takes long time to locate next destination then stop until refresh)
+        self.apply_speed_decay()
 
         # Publish command for velocity
         self.publish_ackermann()
@@ -84,6 +86,10 @@ class head_to_goal_control_algorithm(Node):
         # RF with NN can be used here
         speed = self.max_speed * np.exp(- (steering_angle ** 2) / (2 * (self.speed_adjuster_width ** 2)))
         return speed
+
+    def apply_speed_decay(self):
+        self.current_speed = (0.61 ** self.speed_decay_constant) * self.max_speed
+        self.get_logger().info(f"Speed decay applied: {self.speed_decay_constant}, set current speed to {self.current_speed}")
 
     # Coordinate tranformer
     def convert_to_transformation_matrix(self, x: float, y: float, theta: float) -> (
@@ -148,6 +154,9 @@ class head_to_goal_control_algorithm(Node):
         if self.need_new_track_point():
             self.get_logger().info("Update track point")
             self.Pose_to_track_in_global_frame = self.get_track_point_in_global_frame(msg)
+            self.speed_decay_constant += 1
+        else:
+            self.speed_decay_constant = 0
         self.track_point_pub.publish(self.Pose_to_track_in_global_frame)
 
     def need_new_track_point(self):

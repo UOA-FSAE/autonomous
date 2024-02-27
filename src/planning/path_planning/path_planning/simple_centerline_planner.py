@@ -118,7 +118,7 @@ class center_line_publisher(Node):
                 self.get_logger().info("Warning: no trajectory found!")
                 next_destination = Pose()
             else:
-                next_destination = sorted_visible_poses.poses[0];
+                next_destination = sorted_visible_poses.poses[0]
             return visible_poses, next_destination
 
     def globaL2local(self, pose_in_global : Pose):
