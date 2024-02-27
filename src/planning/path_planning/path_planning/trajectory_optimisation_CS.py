@@ -8,7 +8,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
 
-from std_msgs.msg import Header
+from std_msgs.msg import Header, Float32
 from builtin_interfaces.msg import Time
 from geometry_msgs.msg import Pose, PoseArray, Point
 from moa_msgs.msg import Cone, ConeMap, BoundaryStamped, AllTrajectories, AllStates
@@ -40,6 +40,7 @@ class trajectory_optimization(Node):
         self.create_subscription(BoundaryStamped, "track/bound_r", self.set_right_boundary, 10)
         # only debugging
         self.create_subscription(ConeMap, "cone_map", self.set_boundaries, 10)
+        self.best_steering_angle_pub = self.create_publisher(Float32, "moa/selected_steering_angle", 10)
 
         # publishers
         # self.best_trajectory_publisher = self.create_publisher(AckermannDrive, "moa/selected_trajectory", 10)
@@ -128,7 +129,11 @@ class trajectory_optimization(Node):
             self.trajectory_deletion(trajectories, states)
             self.get_logger().info(f"number of paths after deletion = {len(trajectories)}")
             best_trajectory_idx = self.optimisation(trajectories, states)
-            self.get_logger().info(f"best state is = {best_trajectory_idx}")
+            # check for no trajectories
+            if best_trajectory_idx == None:
+                self.get_logger().info("no valid trajectories found")
+                return
+            self.get_logger().info(f"best state is = {states[best_trajectory_idx]}")
 
             # publish best trajectory
             args = {"header": Header(stamp=Time(sec=0,nanosec=0), frame_id='best_trajectory'),
@@ -155,6 +160,11 @@ class trajectory_optimization(Node):
                         "jerk": 0.0}
                 states_msg.append(AckermannDrive(**sargs))
             self.within_boundary_states_publisher.publish(AllStates(id=msg.id, states=states_msg))
+
+            # publish best steering angle
+            self.best_steering_angle_pub.publish(Float32(data=states[best_trajectory_idx]))
+
+            self.get_logger().info("msg published")
             
             return
 
@@ -257,7 +267,6 @@ class trajectory_optimization(Node):
         for i in range(len(trajectories)):
             trajectory = LineString([(P.position.x, P.position.y) for P in trajectories[i].poses])
             trajectory_distances[i] = self.get_geometry_distance(trajectory, center_linestring)
-        print(trajectory_distances);
 
         # check which one is close to center and largest
         # tdist = abs(tdist - (wdth / 2))
@@ -271,8 +280,6 @@ class trajectory_optimization(Node):
         '''approximates the track's center line'''
         # the midpoint is the average of the coordinates
         coods = []
-        print(len(self._leftboundary));
-        print(len(self._rightboundary));
         for i in range(min(len(self._leftboundary),len(self._rightboundary))):
             x1 = self._leftboundary[i][0]
             y1 = self._leftboundary[i][1]
@@ -283,7 +290,7 @@ class trajectory_optimization(Node):
         # perform extrapolation to extend line
         func = interpolate.interp1d([P[0] for P in coods], [P[1] for P in coods], kind='cubic', fill_value='extrapolate')
 
-        into_future_points = 6
+        into_future_points = 0
         into_future_distance = 0
 
         # track direction 
@@ -326,7 +333,11 @@ class trajectory_optimization(Node):
         
         return geometry1.distance(geometry2)
 
-    def get_best_trajectory_index(self, states, trajectory_distances: np.array): return np.argmin(trajectory_distances)
+    def get_best_trajectory_index(self, states, trajectory_distances: np.array): 
+        try:
+            return np.argmin(trajectory_distances)
+        except ValueError:
+            return None
 
     def DEBUG_generate_trajectories(self, n):
         # list of all trajectories and states (for now just steering angle in rads)
