@@ -3,12 +3,13 @@ import numpy as np
 from shapely import LineString
 from shapely import Point as shapelyPoint
 from scipy import interpolate 
+import os
 
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
 
-from std_msgs.msg import Header, Float32
+from std_msgs.msg import Header, Float32, Int16
 from builtin_interfaces.msg import Time
 from geometry_msgs.msg import Pose, PoseArray, Point
 from moa_msgs.msg import Cone, ConeMap, BoundaryStamped, AllTrajectories, AllStates
@@ -47,6 +48,7 @@ class trajectory_optimization(Node):
         self.best_trajectory_publisher = self.create_publisher(PoseArray, "moa/selected_trajectory", 10)
         self.within_boundary_trajectories_publisher = self.create_publisher(AllTrajectories, 'moa/inbound_trajectories', 10)
         self.within_boundary_states_publisher = self.create_publisher(AllStates, "moa/inbound_states", 10)
+        self.best_trajectory_index = self.create_publisher(Int16, "moa/best_trajectory_index", 10)
 
 
     def set_states(self, msg: AllStates) -> None: self._state_msg = msg
@@ -75,7 +77,7 @@ class trajectory_optimization(Node):
                 
             # print coordinate lists
             if self._once:
-                with open('/home/tanish/autonomous/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
+                with open('/home/tanish/Documents/autonomous/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
                         xl=[i[0] for i in self._leftboundary]
                         yl=[i[1] for i in self._leftboundary]
                         xr=[i[0] for i in self._rightboundary]
@@ -92,6 +94,7 @@ class trajectory_optimization(Node):
                         for P in yr:
                             fh.write("{} ".format(P))
                         fh.write("\n")
+                        fh.close()
                 self._once = False
 
             # if self._once:
@@ -215,7 +218,7 @@ class trajectory_optimization(Node):
             # if trajectory too long shorten it within acceptable bounds
             if trajectory_length > track_width:
                 # shorten trajectory
-                up_to = 75
+                up_to = 30
                 trajectories[i].poses = trajectories[i].poses[:up_to] 
                 trajectory = LineString([(P.position.x, P.position.y) for P in trajectories[i].poses])
 
@@ -277,14 +280,20 @@ class trajectory_optimization(Node):
         center_linestring, self._center_line_coordinates = self.get_center_line()
 
         for i in range(len(trajectories)):
-            trajectory = LineString([(P.position.x, P.position.y) for P in trajectories[i].poses])
+            # trajectory = LineString([(P.position.x, P.position.y) for P in trajectories[i].poses])
             # shorten trajectory is too long
             # end point of trajectory
             # end_pose = trajectories[i].poses[-1]
             # end_point = shapelyPoint(end_pose.position.x, end_pose.position.y)
             # print(end_point)
+            tr_poses = len(trajectories[i].poses)
+            total_distance = 0
+            for j in range(tr_poses):
+                ps = trajectories[i].poses[j]
+                point = shapelyPoint(ps.position.x, ps.position.y)
+                total_distance += self.get_geometry_distance(point, center_linestring)
             # trajectory distance from center line
-            trajectory_distances[i] = self.get_geometry_distance(trajectory, center_linestring)
+            trajectory_distances[i] = total_distance / tr_poses
             # trajectory_distances[i] = center_linestring.distance(end_point)
 
         # check which one is close to center and largest
@@ -351,10 +360,15 @@ class trajectory_optimization(Node):
         # arc_length = (len(poses)-1) * intL
         
         return geometry1.distance(geometry2)
+        # return frechet_distance(geometry1, geometry2)
 
     def get_best_trajectory_index(self, trajectory_distances: np.array): 
         try:
-            return np.argmin(trajectory_distances)
+            idx = int(np.argmin(trajectory_distances))
+            print(f"chosen index is={idx}")
+            # print(f"dist: {trajectory_distances[idx]}")
+            self.best_trajectory_index.publish(Int16(data=idx))
+            return idx
         except ValueError:
             return None
 

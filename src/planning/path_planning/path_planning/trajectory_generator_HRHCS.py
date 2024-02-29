@@ -110,7 +110,7 @@ class trajectory_generator(Node):
 
     def trajectory_generator(self, cone_map):
         # steering angles
-        candidate_steering_angle = np.deg2rad(np.arange(-10, 10, 0.1))
+        candidate_steering_angle = np.deg2rad(np.arange(-1, 1, 0.01))
         trajectories = []
         # get position of car (first cone in cone map data)
         position_and_orientation = self.get_position_of_cart(cone_map)

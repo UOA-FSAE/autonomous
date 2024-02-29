@@ -6,6 +6,7 @@ from moa_msgs.msg import AllTrajectories
 from ackermann_msgs.msg import AckermannDrive
 
 from builtin_interfaces.msg import Time, Duration
+from std_msgs.msg import Int16
 
 import rclpy
 from rclpy.node import Node
@@ -18,16 +19,17 @@ class pub_viz(Node):
 
         self.next_destination_vis = []
 
-        self.pubviz = self.create_publisher(SceneUpdate, 'visualization_trajectories', 5)
+        self.pubviz = self.create_publisher(SceneUpdate, 'visualization_trajectories', 10)
         # sub to all trajectories points and states
         self.all_paths = self.create_subscription(AllTrajectories, "moa/inbound_trajectories", self.show_paths, 5)
-        # self.all_paths = self.create_subscription(AllTrajectories, "moa/trajectories", self.show_paths, 5)
+        # self.create_subscription(AllTrajectories, "moa/trajectories", self.show_paths, 10)
         #self.all_states = self.create_subscription(AllStates, "moa/inbound_states", self.get_all_states, 5)
         # selected path
         #self.chosen_states = self.create_subscription(AckermannDrive, "moa/selected_trajectory", self.get_chosen_state_idx, 5)
-        self.chosen_path = self.create_subscription(PoseArray, "moa/selected_trajectory", self.get_chosen_trajectory, 5)
+        # self.create_subscription(PoseArray, "moa/selected_trajectory", self.get_chosen_trajectory, 5)
         # self.chosen_path = self.create_subscription(PoseArray, "moa/selected_trajectory", self.show_chosen_paths, 5)
         # self.next_destination = self.create_subscription(Pose, "moa/next_destination", self.save_next_destination, 5)
+        self.create_subscription(Int16, "moa/best_trajectory_index", self.get_chosen_trajectory, 10)
 
         self.id = 1
 
@@ -37,8 +39,9 @@ class pub_viz(Node):
         if hasattr(self, "states"): 
             self.chosen_idx = np.where(np.isclose(self.states, msg.steering_angle, 1e-3))[0][0]
 
-    def get_chosen_trajectory(self, msg: PoseArray) -> None:
-        self.chosen_trajectory = msg
+    def get_chosen_trajectory(self, msg: Int16) -> None:
+        print(f"chosen idx got={msg.data}")
+        self.chosen_trajectory = msg.data
 
 
     def show_paths(self, msg: AllTrajectories):
@@ -49,11 +52,11 @@ class pub_viz(Node):
         line_list = []
         # list of pose array
         pths = msg.trajectories
-        pths.append(self.chosen_trajectory)
+        # pths.append(self.chosen_trajectory)
         for i in range(len(pths)):
-            if i == len(pths) - 1:
+            if i == self.chosen_trajectory:
                 tcols = Color(r=255.0, g=255.0, b=255.0, a=1.0)
-            elif i == len(pths) - 2:
+            elif i == len(pths) - 1:
                 tcols = Color(r=0.0, g=255.0, b=0.0, a=1.0)
             else:
                 tcols = Color(r=255.0, g=0.0, b=0.0, a=1.0)
