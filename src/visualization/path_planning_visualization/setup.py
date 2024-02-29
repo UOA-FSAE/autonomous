@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'visualize = path_planning_visualization.visualise_trajectories:main'
+            'visualize = path_planning_visualization.visualise_trajectories:main',
+            'visualize2 = path_planning_visualization.visualise_trajectories_demo:main',
         ],
     },
 )

@@ -46,12 +46,13 @@ class trajectory_following(Node):
     def get_control_error(self, csa, dsa): return dsa-csa
 
     def get_best_state(self, msg: Float32):
-        steering_angle_deg = (msg.data*180)/-3.14
-        if steering_angle_deg < -9.0:
-            steering_angle_deg = -45.0
-        elif steering_angle_deg > 9.0:
-            steering_angle_deg = 45.0
-        self.get_logger().info(f'published steering angle = {steering_angle_deg}')
+        p_gain = 1.5
+        steering_angle_deg = (msg.data*180)/-3.14 * p_gain
+        # if steering_angle_deg < -9.0:
+        #     steering_angle_deg = -30.0
+        # elif steering_angle_deg > 9.0:
+        #     steering_angle_deg = 30.0
+        self.get_logger().info(f"before and after gain: {steering_angle_deg/2}, {steering_angle_deg}")
         self.steering_publisher.publish(Float32(data=steering_angle_deg))
         # self.get_logger().info(f"chosen recieved state is = {msg.steering_angle}")
 

@@ -18,7 +18,7 @@ class trajectory_generator(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('debug', True),
+                ('debug', False),
                 ('timer', 3.0),
             ]
         )
@@ -94,8 +94,8 @@ class trajectory_generator(Node):
         trajectory_output = PoseArray();
         for i, individual_t in enumerate(t_range):
             # shorten trajectory lengths
-            if i > 25:
-                break
+            # if i > 25:
+            #     break
             # pose for current time in space
             pose_input = Pose();
             # pre transformation coordinates

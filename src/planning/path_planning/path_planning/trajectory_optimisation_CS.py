@@ -75,7 +75,7 @@ class trajectory_optimization(Node):
                 
             # print coordinate lists
             if self._once:
-                with open('/home/tanish/Documents/autonomous/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
+                with open('/home/tanish/autonomous/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
                         xl=[i[0] for i in self._leftboundary]
                         yl=[i[1] for i in self._leftboundary]
                         xr=[i[0] for i in self._rightboundary]
@@ -204,8 +204,20 @@ class trajectory_optimization(Node):
             pts_list.pop(0)
         self._right_boundary_linestring = LineString(pts_list)
 
-        for i, T in enumerate(trajectories):
-            trajectory = LineString([(P.position.x, P.position.y) for P in T.poses])
+        # track width 
+        track_width = self.get_track_width()
+
+        for i in range(len(trajectories)):
+            # trajectory line string
+            trajectory = LineString([(P.position.x, P.position.y) for P in trajectories[i].poses])
+            trajectory_length = trajectory.length
+
+            # if trajectory too long shorten it within acceptable bounds
+            if trajectory_length > track_width:
+                # shorten trajectory
+                up_to = 75
+                trajectories[i].poses = trajectories[i].poses[:up_to] 
+                trajectory = LineString([(P.position.x, P.position.y) for P in trajectories[i].poses])
 
             # check intersection
             if trajectory.intersects(self._left_boundary_linestring) \
@@ -260,21 +272,28 @@ class trajectory_optimization(Node):
         trajectory_distances = np.zeros(len(trajectories))
 
         # get track width
-        # wdth = self.get_track_width()
+        # width = self.get_track_width()
         # get center line
         center_linestring, self._center_line_coordinates = self.get_center_line()
 
         for i in range(len(trajectories)):
             trajectory = LineString([(P.position.x, P.position.y) for P in trajectories[i].poses])
+            # shorten trajectory is too long
+            # end point of trajectory
+            # end_pose = trajectories[i].poses[-1]
+            # end_point = shapelyPoint(end_pose.position.x, end_pose.position.y)
+            # print(end_point)
+            # trajectory distance from center line
             trajectory_distances[i] = self.get_geometry_distance(trajectory, center_linestring)
+            # trajectory_distances[i] = center_linestring.distance(end_point)
 
         # check which one is close to center and largest
         # tdist = abs(tdist - (wdth / 2))
 
-        return self.get_best_trajectory_index(states, trajectory_distances)
+        return self.get_best_trajectory_index(trajectory_distances)
     
     def get_track_width(self):
-        return self.rightb_line.distance(self.leftb_line)
+        return self._right_boundary_linestring.distance(self._left_boundary_linestring)
     
     def get_center_line(self):
         '''approximates the track's center line'''
@@ -322,7 +341,7 @@ class trajectory_optimization(Node):
     def get_avg_point(self, x1, y1, x2, y2):
         return (((x1 + x2)/2), ((y1 + y2)/2))
 
-    def get_geometry_distance(self, geometry1:LineString, geometry2:LineString):
+    def get_geometry_distance(self, geometry1, geometry2):
         '''calculates the eucledian distance bewteen two shapely geometries'''
         # this is to calculate trajectory length using only poses/points (DECAP)
         # poses = trajectory.poses
@@ -333,7 +352,7 @@ class trajectory_optimization(Node):
         
         return geometry1.distance(geometry2)
 
-    def get_best_trajectory_index(self, states, trajectory_distances: np.array): 
+    def get_best_trajectory_index(self, trajectory_distances: np.array): 
         try:
             return np.argmin(trajectory_distances)
         except ValueError:
