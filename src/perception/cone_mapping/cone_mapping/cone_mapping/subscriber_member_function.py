@@ -30,7 +30,7 @@ from geometry_msgs.msg import Pose;
 #Plotting and mathematic related
 import math
 import numpy as np
-import matplotlib.pyplot as plt 
+#import matplotlib.pyplot as plt 
 import time
 
 class Cone_Mapper(Node):
@@ -372,7 +372,7 @@ class Cone_Mapper(Node):
         #print(output_conemap);
         return output_conemap;
 
-    def convert_covariance_to_covariance_vector(self, covariance_matrix : np.array) -> list[float]:
+    def convert_covariance_to_covariance_vector(self, covariance_matrix):
         #Input: covariance_matrix: n x n numpy array matrix
         #Output: float64[36] array
         matrix_size = len(covariance_matrix);
@@ -384,7 +384,7 @@ class Cone_Mapper(Node):
                 output_vector.append(element);
         return output_vector;
 
-    def convert_covariance_vector_to_matrix(self, covariance_vector : list[float], is_cart : bool) -> np.array:
+    def convert_covariance_vector_to_matrix(self, covariance_vector, is_cart : bool) -> np.array:
         #Input: covariance_vector: float[36] array;
         #Output: covariance_matrix: either 3x3 or 2x2 (if is cart then 3x3 otherwise 2x2)
         full_covariance_matrix = np.zeros((6,6));
@@ -439,7 +439,7 @@ class Cone_Mapper(Node):
                 
         return x, y, theta, list_of_cones;
 
-    def extract_data_from_cone(self, cone_input : Cone) -> (float, float, float, list[float], int):
+    def extract_data_from_cone(self, cone_input : Cone):
         # For later process: We need to use quaternion orientation
         x = cone_input.pose.pose.position.x;
         y = cone_input.pose.pose.position.y;
@@ -475,7 +475,7 @@ class Cone_Mapper(Node):
         list_of_cones_output = list_of_cones_unrotated + position_vector;
         return list_of_cones_output;
 
-    def pack_cone_message(self, x : float, y : float, theta : float, cone_id : int, covariance_vector : list[float], color : int) -> Cone:
+    def pack_cone_message(self, x : float, y : float, theta : float, cone_id : int, covariance_vector, color : int) -> Cone:
         output_cone = Cone();
         position = Point();
         orientation = Quaternion();
@@ -519,7 +519,7 @@ class Cone_Mapper(Node):
             output_map.cones.append(cone_input);
         return output_map;
 
-    def is_repeating(self, cone_x : float, cone_y : float, target_cone_x_list : list[float], target_cone_y_list : list[float], tolerance : float) -> bool:
+    def is_repeating(self, cone_x : float, cone_y : float, target_cone_x_list, target_cone_y_list, tolerance : float) -> bool:
         number_of_cones = len(target_cone_x_list);
         for index in range(0, number_of_cones, 1):
             if self.is_same_cone(target_cone_x_list[index], target_cone_y_list[index], cone_x, cone_y, tolerance):

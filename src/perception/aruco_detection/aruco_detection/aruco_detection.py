@@ -1,10 +1,10 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, CameraInfo
-from geometry_msgs.msg import PoseStamped
-from cv_bridge import CvBridge
+from geometry_msgs.msg import PoseStamped, Pose
 
 import cv2
+from cv_bridge import CvBridge
 #If error happens, pip install opencv-contrib-python
 import cv2.aruco as aruco
 import numpy as np
@@ -21,7 +21,8 @@ class ArucoDetectionNode(Node):
         self.create_subscription(CameraInfo,'zed/zed_node/rgb/camera_info',self.camera_callback,10)
         self.create_subscription(PoseStamped,'zed/zed_node/pose',self.pose_callback,10)
         self.create_subscription(Image,'/zed/zed_node/rgb/image_rect_color',self.image_callback,10)
-        self.publisher = self.create_publisher(ConeMap, 'cone_map', 10)
+        self.publisher = self.create_publisher(ConeMap, 'cone_detection', 10)
+        self.localization_publisher = self.create_publisher(Pose, 'car_position', 5)
         
         self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
         self.parameters = aruco.DetectorParameters()
@@ -41,9 +42,9 @@ class ArucoDetectionNode(Node):
         corners, ids, _ = self.detector.detectMarkers(cv_image)
 
         #Visualization of detection result
-        detected_markers = aruco.drawDetectedMarkers(cv_image,corners,ids)
-        if np.all(ids is not None):
-            cv2.imshow('out', detected_markers)
+        #detected_markers = aruco.drawDetectedMarkers(cv_image,corners,ids)
+        #if np.all(ids is not None):
+        #    cv2.imshow('out', detected_markers)
 
         if (self.camera_matrix is not None) and (self.dist_coeffs is not None):
             #Doesn't allow further processing unless the camera info is known
@@ -76,16 +77,27 @@ class ArucoDetectionNode(Node):
     def pose_callback(self,msg):
         self.aruco_msg = ConeMap()
         localization_cone = Cone()
+        localization_pose = Pose()
         localization_cone.id = 99999;
-        localization_cone.pose.pose.position.x = msg.pose.position.x
-        localization_cone.pose.pose.position.y =  msg.pose.position.y
-        localization_cone.pose.pose.orientation.w =  msg.pose.orientation.w
+        euler = self.convert_quaternion_to_euler(msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w)
+        localization_pose.position.x = -msg.pose.position.y
+        localization_pose.position.y = msg.pose.position.x
+        localization_pose.orientation.w = euler[1]
+        localization_cone.pose.pose = localization_pose
         self.aruco_msg.cones.append(localization_cone)
         self.edit_msg = True
+        self.localization_publisher.publish(localization_pose)
 
     def camera_callback(self,msg):
         self.camera_matrix = np.reshape(msg.k, (3,3))
         self.dist_coeffs = np.array(msg.d)
+
+    def convert_quaternion_to_euler(self, x, y, z, w):
+        pitch = np.arcsin(2*(w*y-z*x))
+        yaw = np.arctan2(2*(w*z+x*y), 1-(2*(y**2 + z**2)))
+        roll = np.arctan2(2*(w*x+y*z), 1-(2*(x**2+y**2)))
+        return pitch, yaw, roll
+
 
 def main(args=None):
     rclpy.init(args=args)
