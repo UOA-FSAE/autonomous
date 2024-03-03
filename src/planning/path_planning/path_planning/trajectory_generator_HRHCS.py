@@ -33,8 +33,8 @@ class trajectory_generator(Node):
         self.all_states_publisher = self.create_publisher(AllStates, "moa/states", 10)
 
         # subscribers
-        self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed, 5)
-        self.create_subscription(ConeMap, "cone_map", self.set_cone_map, 5)
+        self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed, 10)
+        self.create_subscription(ConeMap, "cone_map", self.set_cone_map, 10)
 
         # time in between trajectory generation
         self.create_timer(self._timer, self.generate_trajectories)
@@ -74,6 +74,8 @@ class trajectory_generator(Node):
             msg = AllTrajectories(id = self._id, trajectories = paths)
             self.all_trajectories_publisher.publish(msg)
 
+            self.get_logger().info("msg published")
+
             self._id += 1
 
             return
@@ -87,12 +89,19 @@ class trajectory_generator(Node):
         # bicycle steering
         L = 1;
         R = L / np.tan(steering_angle);
+        # list of time in space
         t_range = np.arange(0, np.pi/2, 0.01);
         trajectory_output = PoseArray();
-        for individual_t in t_range:
+        for i, individual_t in enumerate(t_range):
+            # shorten trajectory lengths
+            # if i > 25:
+            #     break
+            # pose for current time in space
             pose_input = Pose();
+            # pre transformation coordinates
             x_pre_trans = np.cos(individual_t) * R - R
             y_pre_trans = abs(np.sin(individual_t) * R)
+            # post transformation coordinates (relative to car)
             post_trans_point = self.apply_transformation(position_vector, rotation_matrix, x_pre_trans, y_pre_trans);
             pose_input.position.x = post_trans_point[0][0]
             pose_input.position.y = post_trans_point[1][0]
@@ -100,19 +109,23 @@ class trajectory_generator(Node):
         return trajectory_output
 
     def trajectory_generator(self, cone_map):
-        candidate_steering_angle = np.deg2rad(np.arange(-10, 10, 0.4))
+        # steering angles
+        candidate_steering_angle = np.deg2rad(np.arange(-10, 10, 0.1))
         trajectories = []
+        # get position of car (first cone in cone map data)
         position_and_orientation = self.get_position_of_cart(cone_map)
+        # get transformation matrix 
         position_vector, rotation_matrix = self.get_transformation_matrix(position_and_orientation)
         for steering_angle in candidate_steering_angle:
             if steering_angle == 0:
                 steering_angle = 1e-6;
+            # generate trajectory for this angle
             added_trajectory = self.single_trajectory_generator(steering_angle, position_vector, rotation_matrix)
-            # Add transformation
             trajectories.append(added_trajectory)
         return trajectories, candidate_steering_angle
 
     def get_position_of_cart(self, cone_map):
+        # first cone
         localization_data = cone_map.cones[0]
         x = localization_data.pose.pose.position.x
         y = localization_data.pose.pose.position.y
@@ -121,10 +134,10 @@ class trajectory_generator(Node):
 
     def get_transformation_matrix(self, position_and_orientation):
         # theta = position_and_orientation[2] - np.pi/2
-        theta = position_and_orientation[2]
         cart_x = position_and_orientation[0]
         cart_y = position_and_orientation[1]
-
+        theta = position_and_orientation[2]
+        # 2d trasformation matrix 
         rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]])
         position_vector = np.array([[cart_x], [cart_y]])
 
@@ -132,6 +145,7 @@ class trajectory_generator(Node):
 
     def apply_transformation(self, position_vector, rotation_matrix, point_x, point_y):
         point = np.array([[point_x], [point_y]])
+        # matrix multiplication for rotation then translate from car position
         transformed_point = np.matmul(rotation_matrix, point) + position_vector
         return transformed_point
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import numpy as np
-from shapely import LineString
+from shapely import LineString, MultiPoint
 from shapely import Point as shapelyPoint
 from scipy import interpolate 
 
@@ -8,7 +8,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
 
-from std_msgs.msg import Header
+from std_msgs.msg import Header, Float32, Int16, Int32MultiArray
 from builtin_interfaces.msg import Time
 from geometry_msgs.msg import Pose, PoseArray, Point
 from moa_msgs.msg import Cone, ConeMap, BoundaryStamped, AllTrajectories, AllStates
@@ -40,12 +40,14 @@ class trajectory_optimization(Node):
         self.create_subscription(BoundaryStamped, "track/bound_r", self.set_right_boundary, 10)
         # only debugging
         self.create_subscription(ConeMap, "cone_map", self.set_boundaries, 10)
+        self.best_steering_angle_pub = self.create_publisher(Float32, "moa/selected_steering_angle", 10)
 
         # publishers
         # self.best_trajectory_publisher = self.create_publisher(AckermannDrive, "moa/selected_trajectory", 10)
         self.best_trajectory_publisher = self.create_publisher(PoseArray, "moa/selected_trajectory", 10)
         self.within_boundary_trajectories_publisher = self.create_publisher(AllTrajectories, 'moa/inbound_trajectories', 10)
-        self.within_boundary_states_publisher = self.create_publisher(AllStates, "moa/inbound_states", 10)
+        self.best_trajectory_index = self.create_publisher(Int16, "moa/best_trajectory_index", 10)
+        self.out_of_bounds_indicies = self.create_publisher(Int32MultiArray, "moa/out_of_bounds", 10)
 
 
     def set_states(self, msg: AllStates) -> None: self._state_msg = msg
@@ -74,7 +76,7 @@ class trajectory_optimization(Node):
                 
             # print coordinate lists
             if self._once:
-                with open('/home/tanish/Documents/autonomous/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
+                with open('/home/tanish/autonomous/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
                         xl=[i[0] for i in self._leftboundary]
                         yl=[i[1] for i in self._leftboundary]
                         xr=[i[0] for i in self._rightboundary]
@@ -91,16 +93,8 @@ class trajectory_optimization(Node):
                         for P in yr:
                             fh.write("{} ".format(P))
                         fh.write("\n")
+                        fh.close()
                 self._once = False
-
-            # if self._once:
-            #     print("------------------coordinates------------------")
-            #     print(f'xl={[i[0] for i in self._leftboundary]}')
-            #     print(f'yl={[i[1] for i in self._leftboundary]}')
-            #     print(f'xr={[i[0] for i in self._rightboundary]}')
-            #     print(f'yr={[i[1] for i in self._rightboundary]}')
-            #     print("------------------------------------------------")
-            #     self._once = False
         
 
     def delete_optimise_trajectories(self, msg: AllTrajectories): 
@@ -117,7 +111,7 @@ class trajectory_optimization(Node):
             # check ids
             if self._state_msg.id != msg.id:
                 self.get_logger().info(f"Ids state:{self._state_msg.id} and trajectory:{msg.id} do not match")
-                return
+                # return
 
             # set trajectories and states as a list
             # states = [self._state_msg.states[i].steering_angle for i in range(len(self._state_msg.states))]
@@ -128,7 +122,12 @@ class trajectory_optimization(Node):
             self.trajectory_deletion(trajectories, states)
             self.get_logger().info(f"number of paths after deletion = {len(trajectories)}")
             best_trajectory_idx = self.optimisation(trajectories, states)
-            self.get_logger().info(f"best state is = {best_trajectory_idx}")
+
+            # check for no trajectories
+            if best_trajectory_idx == None:
+                self.get_logger().info("no valid trajectories found")
+                return
+            self.get_logger().info(f"best state is = {states[best_trajectory_idx]}")
 
             # publish best trajectory
             args = {"header": Header(stamp=Time(sec=0,nanosec=0), frame_id='best_trajectory'),
@@ -137,7 +136,7 @@ class trajectory_optimization(Node):
             self.best_trajectory_publisher.publish(posearray_msg)
 
             # publish valid (within boundaries) trajectories including center line
-            ps = [Pose(position=Point(x=shapelyPoint(P).x, y=shapelyPoint(P).y, z=0.0)) for P in self._center_line_coordinates]
+            ps = [Pose(position=Point(x=P[0], y=P[1], z=0.0)) for P in self._center_line_coordinates]
             trajectories.append(PoseArray(poses=ps))
             alltrajectories_msg = {
                 "id": msg.id,
@@ -146,15 +145,20 @@ class trajectory_optimization(Node):
             self.within_boundary_trajectories_publisher.publish(AllTrajectories(**alltrajectories_msg))
 
             # publish within boundary trajectory states
-            states_msg = []
-            for sta in states:
-                sargs = {"steering_angle": sta,
-                        "steering_angle_velocity": 0.0,
-                        "speed": self._current_speed,
-                        "acceleration": 0.0,
-                        "jerk": 0.0}
-                states_msg.append(AckermannDrive(**sargs))
-            self.within_boundary_states_publisher.publish(AllStates(id=msg.id, states=states_msg))
+            # states_msg = []
+            # for sta in states:
+            #     sargs = {"steering_angle": sta,
+            #             "steering_angle_velocity": 0.0,
+            #             "speed": self._current_speed,
+            #             "acceleration": 0.0,
+            #             "jerk": 0.0}
+            #     states_msg.append(AckermannDrive(**sargs))
+            # self.within_boundary_states_publisher.publish(AllStates(id=msg.id, states=states_msg))
+
+            # publish best steering angle
+            self.best_steering_angle_pub.publish(Float32(data=states[best_trajectory_idx]))
+
+            self.get_logger().info("msg published")
             
             return
 
@@ -194,13 +198,56 @@ class trajectory_optimization(Node):
             pts_list.pop(0)
         self._right_boundary_linestring = LineString(pts_list)
 
-        for i, T in enumerate(trajectories):
-            trajectory = LineString([(P.position.x, P.position.y) for P in T.poses])
+        # track width 
+        track_width = self.get_track_width()
+
+        for i in range(len(trajectories)):
+            # trajectory line string
+            trajectory = LineString([(P.position.x, P.position.y) for P in trajectories[i].poses])
+            trajectory_length = trajectory.length
+
+            if i == len(trajectories)/2 - 1:
+                print('the long one')
 
             # check intersection
-            if trajectory.intersects(self._left_boundary_linestring) \
-                or trajectory.intersects(self._right_boundary_linestring):
-                remove_trajectories_indices.append(i)
+            if trajectory.intersects(self._left_boundary_linestring):
+                tmp = trajectory.intersection(self._left_boundary_linestring)
+                idx = 0
+                if type(tmp) is MultiPoint:
+                    tmp_x = tmp.centroid.x
+                else:
+                    tmp_x = tmp.x
+                for j, P in enumerate(trajectories[i].poses):
+                    if tmp_x < P.position.x:
+                        idx += 1
+                    else:
+                        if idx < 1:
+                            # idx += 1
+                            remove_trajectories_indices.append(i)
+                        break
+                if idx != 0:
+                    trajectories[i].poses = trajectories[i].poses[:idx]
+
+            elif trajectory.intersects(self._right_boundary_linestring):
+                tmp = trajectory.intersection(self._right_boundary_linestring)
+                idx = 0
+                if type(tmp) is MultiPoint:
+                    tmp_x = tmp.centroid.x
+                else:
+                        tmp_x = tmp.x
+                for j, P in enumerate(trajectories[i].poses):
+                    if tmp_x > P.position.x:
+                        idx += 1
+                    else:
+                        if idx < 1:
+                            # idx += 1
+                            remove_trajectories_indices.append(i)
+                        break
+                if idx != 0:
+                    trajectories[i].poses = trajectories[i].poses[:idx]
+        
+        # publish indicies
+        self.out_of_bounds_indicies.publish(Int32MultiArray(data=remove_trajectories_indices))
 
         [(trajectories.pop(index), states.pop(index)) for index in list(reversed(remove_trajectories_indices))]
     
@@ -248,31 +295,80 @@ class trajectory_optimization(Node):
         '''finds the best trajectory'''
 
         trajectory_distances = np.zeros(len(trajectories))
+        trajectory_lengths = np.zeros(len(trajectories))
 
         # get track width
-        # wdth = self.get_track_width()
+        width = self.get_track_width()
         # get center line
         center_linestring, self._center_line_coordinates = self.get_center_line()
 
+        # decide average from centerline to trajectory or vice versa
+        to_center_line = True
+
         for i in range(len(trajectories)):
-            trajectory = LineString([(P.position.x, P.position.y) for P in trajectories[i].poses])
-            trajectory_distances[i] = self.get_geometry_distance(trajectory, center_linestring)
-        print(trajectory_distances);
+            # trajectory linestring 
+            if len(trajectories[i].poses) > 1:
+                trajectory = self.get_shapely_linestring(trajectories[i].poses)
+                trajectory_length = trajectory.length
+            else:
+                trajectory_length = np.inf    
 
-        # check which one is close to center and largest
-        # tdist = abs(tdist - (wdth / 2))
+            if len(trajectories[i].poses) < 2:
+                to_center_line = True
 
-        return self.get_best_trajectory_index(states, trajectory_distances)
+            if to_center_line:
+                arg = trajectories[i]
+                arg2 = center_linestring
+            else:
+                arg = trajectory
+                arg2 = self._center_line_coordinates
+
+            # average trajectory distance from center line
+            average_distance = self.get_average_distance_to_center_trajectory(arg, arg2, to_center_line)
+
+            # if trajectory.length < width/2:
+            #     average_distance = np.inf
+
+            trajectory_distances[i] = average_distance
+            trajectory_lengths[i] = trajectory_length
+
+        return self.get_best_trajectory_index(trajectory_distances, trajectory_lengths)
     
+    def get_average_distance_to_center_trajectory(self, trajectory, center_linestring, toCenterLine=True):
+        # if distance to centerline (from trajecotry) or other way round
+        if toCenterLine:
+            num_points = len(trajectory.poses)
+        else:
+            num_points = len(center_linestring)
+
+        total_distance = np.zeros(num_points)
+
+        for j in range(num_points):
+            if toCenterLine:
+                ps = trajectory.poses[j]
+                point = self.get_shapely_point(ps.position.x, ps.position.y)
+                total_distance[j] = point.distance(center_linestring)
+            else:
+                ps = center_linestring[j]
+                point = self.get_shapely_point(ps[0], ps[1])
+                # TRAJECTORY MUST BE A LINESTRING NOT A POSEARRAY
+                total_distance[j] = point.distance(trajectory)
+        
+        return np.mean(total_distance)
+    
+    def get_shapely_point(self, x, y) -> shapelyPoint:
+        return shapelyPoint(x,y)
+    
+    def get_shapely_linestring(self, poses) -> LineString:
+        return LineString([(P.position.x, P.position.y) for P in poses])
+
     def get_track_width(self):
-        return self.rightb_line.distance(self.leftb_line)
+        return self._right_boundary_linestring.distance(self._left_boundary_linestring)
     
     def get_center_line(self):
         '''approximates the track's center line'''
         # the midpoint is the average of the coordinates
         coods = []
-        print(len(self._leftboundary));
-        print(len(self._rightboundary));
         for i in range(min(len(self._leftboundary),len(self._rightboundary))):
             x1 = self._leftboundary[i][0]
             y1 = self._leftboundary[i][1]
@@ -283,7 +379,7 @@ class trajectory_optimization(Node):
         # perform extrapolation to extend line
         func = interpolate.interp1d([P[0] for P in coods], [P[1] for P in coods], kind='cubic', fill_value='extrapolate')
 
-        into_future_points = 6
+        into_future_points = 0
         into_future_distance = 0
 
         # track direction 
@@ -315,7 +411,7 @@ class trajectory_optimization(Node):
     def get_avg_point(self, x1, y1, x2, y2):
         return (((x1 + x2)/2), ((y1 + y2)/2))
 
-    def get_geometry_distance(self, geometry1:LineString, geometry2:LineString):
+    def get_geometry_distance(self, geometry1, geometry2):
         '''calculates the eucledian distance bewteen two shapely geometries'''
         # this is to calculate trajectory length using only poses/points (DECAP)
         # poses = trajectory.poses
@@ -325,8 +421,20 @@ class trajectory_optimization(Node):
         # arc_length = (len(poses)-1) * intL
         
         return geometry1.distance(geometry2)
+        # return frechet_distance(geometry1, geometry2)
 
-    def get_best_trajectory_index(self, states, trajectory_distances: np.array): return np.argmin(trajectory_distances)
+    def get_best_trajectory_index(self, trajectory_distances: np.array, trajectory_lengths: np.array): 
+        try:
+            ratios = trajectory_distances/trajectory_lengths
+            idx = int(np.argmin(trajectory_distances))
+            # sorted_indices = np.argsort(ratios)
+            # idx = int(sorted_indices[1])
+            print(f"chosen index is={idx}")
+            # print(f"dist: {trajectory_distances[idx]}")
+            self.best_trajectory_index.publish(Int16(data=idx))
+            return idx
+        except ValueError:
+            return None
 
     def DEBUG_generate_trajectories(self, n):
         # list of all trajectories and states (for now just steering angle in rads)
