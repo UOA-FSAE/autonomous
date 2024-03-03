@@ -33,8 +33,8 @@ class trajectory_generator(Node):
         self.all_states_publisher = self.create_publisher(AllStates, "moa/states", 10)
 
         # subscribers
-        self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed, 5)
-        self.create_subscription(ConeMap, "cone_map", self.set_cone_map, 5)
+        self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed, 10)
+        self.create_subscription(ConeMap, "cone_map", self.set_cone_map, 10)
 
         # time in between trajectory generation
         self.create_timer(self._timer, self.generate_trajectories)
@@ -110,7 +110,7 @@ class trajectory_generator(Node):
 
     def trajectory_generator(self, cone_map):
         # steering angles
-        candidate_steering_angle = np.deg2rad(np.arange(-1, 1, 0.01))
+        candidate_steering_angle = np.deg2rad(np.arange(-10, 10, 0.1))
         trajectories = []
         # get position of car (first cone in cone map data)
         position_and_orientation = self.get_position_of_cart(cone_map)
@@ -133,7 +133,6 @@ class trajectory_generator(Node):
         return x, y, theta
 
     def get_transformation_matrix(self, position_and_orientation):
-        # theta = position_and_orientation[2] - np.pi/6
         # theta = position_and_orientation[2] - np.pi/2
         cart_x = position_and_orientation[0]
         cart_y = position_and_orientation[1]
