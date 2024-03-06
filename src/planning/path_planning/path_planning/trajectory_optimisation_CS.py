@@ -221,7 +221,7 @@ class trajectory_optimization(Node):
                     if tmp_x < P.position.x:
                         idx += 1
                     else:
-                        if idx < 1:
+                        if idx < 2:
                             # idx += 1
                             remove_trajectories_indices.append(i)
                         break
@@ -239,7 +239,7 @@ class trajectory_optimization(Node):
                     if tmp_x > P.position.x:
                         idx += 1
                     else:
-                        if idx < 1:
+                        if idx < 2:
                             # idx += 1
                             remove_trajectories_indices.append(i)
                         break
@@ -294,7 +294,7 @@ class trajectory_optimization(Node):
     def get_best_trajectory_state(self, trajectories, states):
         '''finds the best trajectory'''
 
-        trajectory_distances = np.zeros(len(trajectories))
+        trajectory_distances = np.ones(len(trajectories)) * np.inf
         trajectory_lengths = np.zeros(len(trajectories))
 
         # get track width
@@ -303,7 +303,7 @@ class trajectory_optimization(Node):
         center_linestring, self._center_line_coordinates = self.get_center_line()
 
         # decide average from centerline to trajectory or vice versa
-        to_center_line = True
+        to_center_line = False
 
         for i in range(len(trajectories)):
             # trajectory linestring 
@@ -325,6 +325,7 @@ class trajectory_optimization(Node):
 
             # average trajectory distance from center line
             average_distance = self.get_average_distance_to_center_trajectory(arg, arg2, to_center_line)
+            # average_distance = trajectory.distance(center_linestring)
 
             # if trajectory.length < width/2:
             #     average_distance = np.inf
@@ -332,7 +333,7 @@ class trajectory_optimization(Node):
             trajectory_distances[i] = average_distance
             trajectory_lengths[i] = trajectory_length
 
-        return self.get_best_trajectory_index(trajectory_distances, trajectory_lengths)
+        return self.get_best_trajectory_index(trajectory_distances, trajectory_lengths, states)
     
     def get_average_distance_to_center_trajectory(self, trajectory, center_linestring, toCenterLine=True):
         # if distance to centerline (from trajecotry) or other way round
@@ -423,13 +424,14 @@ class trajectory_optimization(Node):
         return geometry1.distance(geometry2)
         # return frechet_distance(geometry1, geometry2)
 
-    def get_best_trajectory_index(self, trajectory_distances: np.array, trajectory_lengths: np.array): 
+    def get_best_trajectory_index(self, trajectory_distances: np.array, trajectory_lengths: np.array, steering_angles): 
         try:
-            ratios = trajectory_distances/trajectory_lengths
-            idx = int(np.argmin(trajectory_distances))
+            objective_function = trajectory_distances + np.abs(steering_angles) + (trajectory_lengths/1.5)
+            # ratios = trajectory_distances/trajectory_lengths
+            idx = int(np.argmin(abs(objective_function)))
             # sorted_indices = np.argsort(ratios)
             # idx = int(sorted_indices[1])
-            print(f"chosen index is={idx}")
+            print(f"idx,trajectory_distance,steering_angle,score = {idx},{trajectory_distances[idx]},{steering_angles[idx]},{abs(objective_function)[idx]}")
             # print(f"dist: {trajectory_distances[idx]}")
             self.best_trajectory_index.publish(Int16(data=idx))
             return idx

@@ -90,7 +90,7 @@ class trajectory_generator(Node):
         L = 1;
         R = L / np.tan(steering_angle);
         # list of time in space
-        t_range = np.arange(0, np.pi/2, 0.01);
+        t_range = np.arange(0, np.pi/6, 0.01);
         trajectory_output = PoseArray();
         for i, individual_t in enumerate(t_range):
             # shorten trajectory lengths
@@ -110,7 +110,7 @@ class trajectory_generator(Node):
 
     def trajectory_generator(self, cone_map):
         # steering angles
-        candidate_steering_angle = np.deg2rad(np.arange(-10, 10, 0.1))
+        candidate_steering_angle = np.deg2rad(np.arange(-20, 20, 0.1))
         trajectories = []
         # get position of car (first cone in cone map data)
         position_and_orientation = self.get_position_of_cart(cone_map)
@@ -122,7 +122,37 @@ class trajectory_generator(Node):
             # generate trajectory for this angle
             added_trajectory = self.single_trajectory_generator(steering_angle, position_vector, rotation_matrix)
             trajectories.append(added_trajectory)
+
+        # straight trajectory
+        candidate_steering_angle = np.append(candidate_steering_angle, 0)
+        trajectories.append(self.get_straight_trajectory(cone_map))
         return trajectories, candidate_steering_angle
+    
+    def get_straight_trajectory(self, cone_map):
+        first_cone = cone_map.cones[0].pose.pose
+        posearray = PoseArray()
+        # number of points in y direction
+        num_y = 158
+        # num spacing (m?)
+        spacing = 2.0
+        # starting point
+        x_start = first_cone.position.x
+        y_start = first_cone.position.y
+        for i in range(num_y):
+            pose = Pose()
+            y_point = (i+1)*spacing
+            position_and_orientation = self.get_position_of_cart(cone_map)
+            # get transformation matrix 
+            position_vector, rotation_matrix = self.get_transformation_matrix(position_and_orientation)
+            x_pre_trans = x_start
+            y_pre_trans = y_start + y_point
+            out = self.apply_transformation(position_vector, rotation_matrix, x_pre_trans, y_pre_trans)
+            pose.position.x = out[0][0]
+            pose.position.y = out[1][0]
+            # append to pose list
+            posearray.poses.append(pose)
+
+        return posearray
 
     def get_position_of_cart(self, cone_map):
         # first cone

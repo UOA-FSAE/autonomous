@@ -26,8 +26,8 @@ class ConePublisher(Node):
     def listener_callback(self, msg):
         # self.get_logger().info('Mapped result: "%s"' % msg.cones)
         list_of_cones = msg.cones
-        localization_cone = list_of_cones[0]
-        self.publish_transform(localization_cone)
+        local_cone = msg.cones[0].pose.pose
+        self.localization_callback(local_cone)
         self.publish_cones(list_of_cones)
 
     def convert_rotation_to_quaternion(self, angle):
