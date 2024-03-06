@@ -3,7 +3,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
-from geometry_msgs.msg import Vector3
+from geometry_msgs.msg import Vector3, Pose
 from geometry_msgs.msg import TransformStamped
 from moa_msgs.msg import ConeMap
 from moa_msgs.msg import Cone
@@ -12,23 +12,27 @@ import numpy as np
 class ConePublisher(Node):
     def __init__(self):
         super().__init__('cone_publisher')
-        self.markers_publisher_ = self.create_publisher(MarkerArray, 'visualization_marker', 10)
+        self.markers_publisher_ = self.create_publisher(MarkerArray, 'visualization_marker_cones', 10)
+        self.localization_marker_publisher = self.create_publisher(MarkerArray, 'visualization_marker_car', 10)
         self.frame_publisher_ = self.create_publisher(TransformStamped, 'base_tf', 10)
-        self.subscription = self.create_subscription(
-            ConeMap,
-            'cone_map',
-            self.listener_callback,
-            10)
-        self.subscription  # prevent unused variable warning
+        self.subscription_cone_map = self.create_subscription(ConeMap, 'cone_map',  self.cone_map_callback, 10)
+        self.subscription_localization = self.create_subscription(Pose, 'car_position', self.localization_callback, 10)
         #self.marker_timer = self.create_timer(1, self.publish_cones)
         #self.frame_timer = self.create_timer(1, self.publish_transform)
 
-    def listener_callback(self, msg):
+    def cone_map_callback(self, msg):
         # self.get_logger().info('Mapped result: "%s"' % msg.cones)
         list_of_cones = msg.cones
         local_cone = msg.cones[0].pose.pose
         self.localization_callback(local_cone)
         self.publish_cones(list_of_cones)
+        self.get_logger().info('Cone map visualizing data published')
+
+    def localization_callback(self, msg):
+        self.publish_transform(msg)
+        self.publish_car(msg)
+        self.get_logger().info('Car position visualizing data published')
+
 
     def convert_rotation_to_quaternion(self, angle):
         qw = np.cos(angle / 2)
@@ -37,34 +41,44 @@ class ConePublisher(Node):
         qz = np.sin(angle / 2) * 1
         return qx, qy, qz, qw
 
-    def publish_transform(self, localization_cone):
+    def publish_transform(self, localization_pose):
         t = TransformStamped()
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = 'global_frame'
         t.child_frame_id = 'local_frame'
 
         # No translation
-        t.transform.translation.x = localization_cone.pose.pose.position.x
-        t.transform.translation.y = localization_cone.pose.pose.position.y
-        t.transform.translation.z = localization_cone.pose.pose.position.z
+        t.transform.translation.x = localization_pose.position.x
+        t.transform.translation.y = localization_pose.position.y
+        t.transform.translation.z = localization_pose.position.z
 
         # No rotation (identity quaternion)
-        t.transform.rotation.x = self.convert_rotation_to_quaternion(localization_cone.pose.pose.orientation.w)[0]
-        t.transform.rotation.y = self.convert_rotation_to_quaternion(localization_cone.pose.pose.orientation.w)[1]
-        t.transform.rotation.z = self.convert_rotation_to_quaternion(localization_cone.pose.pose.orientation.w)[2]
-        t.transform.rotation.w = self.convert_rotation_to_quaternion(localization_cone.pose.pose.orientation.w)[3]
+        t.transform.rotation.x = self.convert_rotation_to_quaternion(localization_pose.orientation.w)[0]
+        t.transform.rotation.y = self.convert_rotation_to_quaternion(localization_pose.orientation.w)[1]
+        t.transform.rotation.z = self.convert_rotation_to_quaternion(localization_pose.orientation.w)[2]
+        t.transform.rotation.w = self.convert_rotation_to_quaternion(localization_pose.orientation.w)[3]
 
         #self.broadcaster.sendTransform(t)
         self.frame_publisher_.publish(t)
 
-    def publish_cones(self, rest_of_cones):
+    def publish_car(self, pose_of_car):
         Markers = MarkerArray()
         is_localization = True
-        id_assign = 0;
+        id_assign = 0
         Markers.markers.append(self.delete_all_cone())
-        for cone in rest_of_cones:
+
+        car_cone = Cone()
+        car_cone.pose.pose = pose_of_car
+        Markers.markers.append(self.convert_to_visualization(car_cone, is_localization, id_assign))
+        self.localization_marker_publisher.publish(Markers)
+
+    def publish_cones(self, rest_of_cones):
+        Markers = MarkerArray()
+        is_localization = False
+        id_assign = 1
+        Markers.markers.append(self.delete_all_cone())
+        for cone in rest_of_cones[1:]:
             Markers.markers.append(self.convert_to_visualization(cone, is_localization, id_assign))
-            is_localization = False
             id_assign += 1
         self.markers_publisher_.publish(Markers)
 

@@ -64,9 +64,6 @@ class pub_viz(Node):
                         # green
                         tcols = Color(r=0.0, g=255.0, b=0.0, a=1.0)
                         thickness = 5.0
-                    elif i == len(pths) - 2:
-                        tcols = Color(r=0.0, g=255.0, b=255.0, a=1.0)
-                        thickness = 3.0
                     # center line
                     elif i == len(pths) - 1:
                         # blue
@@ -105,7 +102,7 @@ class pub_viz(Node):
             sargs = {'timestamp': Time(sec=0,nanosec=0),
                         'frame_id': 'global_frame',
                         'id': f'{self.id}',
-                        'lifetime': Duration(sec=1,nanosec=0),
+                        'lifetime': Duration(sec=2,nanosec=100),
                         'frame_locked': False,
                         'lines': line_list,
                         'spheres': self.next_destination_vis}

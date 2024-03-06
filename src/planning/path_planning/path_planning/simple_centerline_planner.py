@@ -6,7 +6,7 @@ from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
 
 from geometry_msgs.msg import Pose, PoseArray
-from moa_msgs.msg import ConeMap
+from moa_msgs.msg import ConeMap, Cone
 
 
 
@@ -15,7 +15,7 @@ class center_line_publisher(Node):
         super().__init__("Center_Line_Path")
         self.get_logger().info("Center Line Path Planning Node Started")
 
-        self.view_horizon = 1000
+        self.view_horizon = 2000
 
         self.id = 0
 
@@ -26,19 +26,19 @@ class center_line_publisher(Node):
 
     # CENTER LINE PUBLISHER
     def center_line_publisher(self, msg: ConeMap):
+        # get position, orientation of car, and transformation matrices
+        self.x, self.y, self.theta = self.get_position_of_cart(msg)
+        self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.get_transformation_matrix((self.x,self.y), self.theta)
+
+        # get visible boundaries
         self.get_bounds(msg)
         # get center line
         self.cntcoods = self.get_center_line()
         center_line_path = self.pack_to_pose_array(self.cntcoods)
 
-        ## get next point and unreached trajectory
-        # get position, orientation of car, and transformation matrices
-        x, y, self.theta = self.get_position_of_cart(msg)
-        self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.get_transformation_matrix((x,y), self.theta)
-        visible_poses, next_destination = self.get_visible_pose_array_and_destination(center_line_path)
+        self.best_traj_pub.publish(center_line_path)
 
-        self.best_traj_pub.publish(visible_poses)
-        #self.next_destination.publish(next_destination)
+        self.get_logger().info("Center line published")
 
     def get_bounds(self, msg: ConeMap):
         id = 1
@@ -48,26 +48,28 @@ class center_line_publisher(Node):
         self.rightbound = []
         for i in range(len(cones)):
             if i != 0:
-                x = cones[i].pose.pose.position.x
-                y = cones[i].pose.pose.position.y
-                # blue - left
-                if cones[i].colour == 0:
-                    self.leftbound.append([x, y])
-                elif cones[i].colour == 2:
-                    self.rightbound.append([x, y])
+                if self.cone_is_included(cones[i]):
+                    x = cones[i].pose.pose.position.x
+                    y = cones[i].pose.pose.position.y
+                    # blue - left
+                    if cones[i].colour == 0:
+                        self.leftbound.append([x, y])
+                    elif cones[i].colour == 2:
+                        self.rightbound.append([x, y])
 
     def get_center_line(self):
         # the midpoint is the average of the coordinates
         coods = []
         for i in range(min(len(self.leftbound), len(self.rightbound))):
-            x1 = self.leftbound[i][0]
-            y1 = self.leftbound[i][1]
-            x2 = self.rightbound[i][0]
-            y2 = self.rightbound[i][1]
-            if self.get_point_distance(x1, y1, x2, y2) < 30:
-                coods.append(self.get_avg_point(x1, y1, x2, y2))
+            left_cone = self.leftbound[i]
+            right_cone = self.get_opposite_cone_to_left_cone(left_cone)
+            coods.append(self.get_avg_point(left_cone[0], left_cone[1], right_cone[0], right_cone[1]))
 
         return coods
+
+    def get_opposite_cone_to_left_cone(self, left_cone_input):
+        sorted_right_bound = sorted(self.rightbound, key = lambda right_cone_input: self.get_point_distance(right_cone_input[0], right_cone_input[1], left_cone_input[0], left_cone_input[1]))
+        return sorted_right_bound[0]
 
     def pack_to_pose_array(self, coordinates):
         output = PoseArray()
@@ -116,7 +118,7 @@ class center_line_publisher(Node):
                 self.get_logger().info("Warning: no trajectory found!")
                 next_destination = Pose()
             else:
-                next_destination = sorted_visible_poses.poses[0];
+                next_destination = sorted_visible_poses.poses[0]
             return visible_poses, next_destination
 
     def globaL2local(self, pose_in_global : Pose):
@@ -147,7 +149,27 @@ class center_line_publisher(Node):
 
     def get_distance_from_origin(self, pose):
         return pose.position.x ** 2 + pose.position.y ** 2
-    
+
+### Cone message visibility and ranging criteria ###
+    def cone_is_included(self, cone: Cone):
+        # return True # If we don't want to filter out invisible cones for path planning
+        return self.cone_is_visible(cone) and self.cone_is_not_too_far(cone)
+
+
+    def cone_to_pose(self, cone: Cone):
+        output_pose = Pose()
+        output_pose.position.x = cone.pose.pose.position.x
+        output_pose.position.y = cone.pose.pose.position.y
+        return output_pose
+
+    def cone_is_visible(self, cone: Cone):
+        equivalent_pose_of_cone = self.cone_to_pose(cone)
+        return self.is_visible(equivalent_pose_of_cone)
+
+    def cone_is_not_too_far(self, cone: Cone):
+        equivalent_pose_of_cone = self.cone_to_pose(cone)
+        return self.is_not_too_far(equivalent_pose_of_cone)
+
     
 def main():
     rclpy.init()

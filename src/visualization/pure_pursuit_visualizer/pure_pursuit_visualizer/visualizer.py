@@ -22,7 +22,7 @@ class pure_pursuit_visualizer(Node):
         # selected path
         self.chosen_path = self.create_subscription(AckermannDrive, "/drive_vis", self.show_drive_path, 5)
         self.next_destination = self.create_subscription(Pose, "moa/track_point", self.save_pursue_destination, 5)
-        self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.get_transformations, 5)
+        self.cone_map_sub = self.create_subscription(Pose, "car_position", self.get_transformations, 5)
 
         self.id = 1
 
@@ -58,9 +58,9 @@ class pure_pursuit_visualizer(Node):
         transformed_point = np.matmul(rotation_matrix, point) + position_vector
         return transformed_point
 
-    def get_transformations(self, msg: ConeMap):
+    def get_transformations(self, msg: Pose):
         # Update car's current location and update transformation matrix
-        self.car_pose = msg.cones[0].pose.pose
+        self.car_pose = msg
         self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.convert_to_transformation_matrix(self.car_pose.position.x, self.car_pose.position.y, self.car_pose.orientation.w)
 
     # Coordinate tranformer
@@ -134,7 +134,7 @@ class pure_pursuit_visualizer(Node):
                 'scale_invariant': True,
                 'points': pts,
                 'color': tcols}
-        line_list.append(LinePrimitive(**args))
+        #line_list.append(LinePrimitive(**args))
 
         # arrow primitive code if needed
         # args = {'pose': Pose(position=Point(x=1.0,y=0.0,z=0.0), orientation=Quaternion(x=0.0,y=0.0,z=0.0,w=0.0)),
