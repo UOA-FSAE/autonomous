@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-with open('/home/tanish/Documents/autonomous/src/planning/path_planning/path_planning/bound_coods', 'r') as fh:
+with open('/home/tanish/autonomous/src/planning/path_planning/path_planning/bound_coods', 'r') as fh:
     xl = fh.readline()
     yl = fh.readline()
     xr = fh.readline()
@@ -15,3 +15,4 @@ plt.plot(xr,yr,'oy',label='right boundary')
 
 plt.legend()
 plt.show()
+plt.savefig("/home/tanish/autonomous/src/planning/path_planning/path_planning/boundaries_drawn.png")
