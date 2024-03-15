@@ -12,14 +12,14 @@ import xacro
 
 def generate_launch_description():
 
-    pkg_install_path = get_package_share_directory('moa_description')
+    # pkg_install_path = get_package_share_directory('moa_description')
 
-    if 'GAZEBO_MODEL_PATH' in os.environ:
-        model_path =  os.environ['GAZEBO_MODEL_PATH'] + ':' + pkg_install_path
-    else:
-        model_path =  pkg_install_path
+    # if 'GAZEBO_MODEL_PATH' in os.environ:
+    #     model_path =  os.environ['GAZEBO_MODEL_PATH'] + ':' + pkg_install_path
+    # else:
+    #     model_path =  pkg_install_path
     
-    gazebo_env = SetEnvironmentVariable("GAZEBO_MODEL_PATH", model_path)
+    # gazebo_env = SetEnvironmentVariable("GAZEBO_MODEL_PATH", model_path)
 
     # get urdf file path
     path = os.path.join(get_package_share_directory('moa_description'))
@@ -58,8 +58,8 @@ def generate_launch_description():
                    '-entity','my_bot',
                    '-x', '0',
                    '-y', '0',
-                   '-z', '0'],
+                   '-z', '1'],
         output='screen'
     )
 
-    return LaunchDescription([robot_state_pub_node, gazebo, spawn_entity, gazebo_env])
+    return LaunchDescription([robot_state_pub_node, gazebo, spawn_entity])

@@ -14,15 +14,17 @@
                 </material> 
             </visual>
 
+            <!-- inertial-->
             <inertial>
-                <!-- <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/> -->
                 <mass value="5.0"/>
-                <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+                <!-- assumed a box/cubeoid -->
+                <inertia ixx="3.33" ixy="0.0" ixz="0.0" iyy="3.33" iyz="0.0" izz="3.33"/>
             </inertial>
 
+            <!-- collision-->
             <collision>
-                <xacro:insert_block name='origin'/>
                 <geometry>
+                    <!-- <box size="1.0 1.0 1.0"/> -->
                     <mesh filename='package://moa_description/meshes/wheel.stl'/>
                 </geometry>
             </collision>
@@ -38,6 +40,20 @@
                     <cylinder radius='${kingpin_radius}' length='${kingpin_length}'/>
                 </geometry>
             </visual>
+            
+            <!-- inertial-->
+            <inertial>
+                <mass value="0.5"/>
+                <!-- assumed solid cylinder -->
+                <inertia ixx="0.00006210" ixy="0.0" ixz="0.0" iyy="0.00006210" iyz="0.0" izz="0.000002520"/>
+            </inertial>
+
+            <!--collision-->
+            <collision>
+                <geometry>
+                    <cylinder radius='${kingpin_radius}' length='${kingpin_length}'/>
+                </geometry>
+            </collision>
         </link>
     </xacro:macro>
 
