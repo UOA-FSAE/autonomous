@@ -26,12 +26,12 @@ class ConePublisher(Node):
         local_cone = msg.cones[0].pose.pose
         self.localization_callback(local_cone)
         self.publish_cones(list_of_cones)
-        self.get_logger().info('Cone map visualizing data published')
+        # self.get_logger().info('Cone map visualizing data published')
 
     def localization_callback(self, msg):
         self.publish_transform(msg)
         self.publish_car(msg)
-        self.get_logger().info('Car position visualizing data published')
+        # self.get_logger().info('Car position visualizing data published')
 
 
     def convert_rotation_to_quaternion(self, angle):

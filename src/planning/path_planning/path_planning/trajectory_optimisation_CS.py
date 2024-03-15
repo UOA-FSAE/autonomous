@@ -36,8 +36,8 @@ class trajectory_optimization(Node):
         self.create_subscription(AllStates, "moa/states", self.set_states, 10)
         self.create_subscription(AllTrajectories, "moa/trajectories", self.delete_optimise_trajectories, 10)
         self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed, 10)
-        self.create_subscription(BoundaryStamped, "track/bound_l", self.set_left_boundary, 10)
-        self.create_subscription(BoundaryStamped, "track/bound_r", self.set_right_boundary, 10)
+        # self.create_subscription(BoundaryStamped, "track/bound_l", self.set_left_boundary, 10)
+        # self.create_subscription(BoundaryStamped, "track/bound_r", self.set_right_boundary, 10)
         # only debugging
         self.create_subscription(ConeMap, "cone_map", self.set_boundaries, 10)
         self.best_steering_angle_pub = self.create_publisher(Float32, "moa/selected_steering_angle", 10)
@@ -62,21 +62,26 @@ class trajectory_optimization(Node):
         if self._debug:
             cones = msg.cones
             # loop through each cone
-            self._leftboundary = []
-            self._rightboundary = []
+            leftboundary = []
+            rightboundary = []
             for i in range(len(cones)):
                 if i != 0:
                     x = cones[i].pose.pose.position.x
                     y = cones[i].pose.pose.position.y
                     # blue - left
                     if cones[i].colour == 0:
-                        self._leftboundary.append([x,y])
+                        leftboundary.append([x,y])
                     elif cones[i].colour == 2:
-                        self._rightboundary.append([x,y])
+                        rightboundary.append([x,y])
+            
+            # adjust boundaries
+            # self._leftboundary, self._rightboundary = self.get_adjusted_boundaries(leftboundary, rightboundary)
+            self._leftboundary = leftboundary
+            self._rightboundary = rightboundary
                 
             # print coordinate lists
             if self._once:
-                with open('/home/tanish/Documents/autonomous/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
+                with open('/home/tanish/autonomous/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
                         xl=[i[0] for i in self._leftboundary]
                         yl=[i[1] for i in self._leftboundary]
                         xr=[i[0] for i in self._rightboundary]
@@ -95,7 +100,58 @@ class trajectory_optimization(Node):
                         fh.write("\n")
                         fh.close()
                 self._once = False
+
+    
+    def get_adjusted_boundaries(self, leftboundaryI, rightboundaryI):
+        # distance away from boundaries
+        distance = 2
+        # left and right boundary lists
+        leftboundary = []
+        rightboundary = []
+        # each point on the boundary 
+        num_points = min(len(leftboundaryI), len(rightboundaryI))
+        for i in range(num_points):
+            if i < num_points-1:
+                # get left and right unit vector - forward
+                left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i+1], True)
+                right_vector = self.get_vector(rightboundaryI[i], rightboundaryI[i+1], True)
+            else:
+                # backward
+                left_vector = self.get_vector(leftboundaryI[i-1], leftboundaryI[i], True)
+                right_vector = self.get_vector(rightboundaryI[i-1], rightboundaryI[i], True)
+
+            # once vectors are found - rotate them and get new point
+            angle = -90 * np.pi / 180
+            left_vector = self.get_rotated_vector(angle, left_vector)
+            angle = 90 * np.pi / 180
+            right_vector = self.get_rotated_vector(angle, right_vector)
+
+            # append new point 
+            new_left = leftboundaryI[i] + distance * left_vector
+            new_right = rightboundaryI[i] + distance * right_vector
+
+            leftboundary.append(new_left)
+            rightboundary.append(new_right)
+
+        return leftboundary, rightboundary
+
+
+    def get_vector(self, p1, p2, unit=True):
+        '''calculates point vector based on slope'''
+        vector = np.array(p2)-np.array(p1)
+        if unit:
+            return vector / self.get_magnitude(vector)
         
+        return vector
+    
+    def get_rotated_vector(self, angle, vector):
+        # rotation matrix
+        rotate = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+        return np.dot(rotate,np.array(vector))
+    
+    def get_magnitude(self, vector):
+        return np.sqrt(sum(vector**2))
+    
 
     def delete_optimise_trajectories(self, msg: AllTrajectories): 
         '''deletes trajectories then optimises to find the best path for car'''
@@ -332,16 +388,16 @@ class trajectory_optimization(Node):
 
             # # average trajectory distance from center line
             # average_distance = self.get_average_distance_to_center_trajectory(trajectories[i], center_linestring, to_center_line)
-            average_distance = abs(trajectory.distance(self._left_boundary_linestring) - trajectory.distance(self._right_boundary_linestring))
+            # average_distance = abs(trajectory.distance(self._left_boundary_linestring) - trajectory.distance(self._right_boundary_linestring))
             # average_distance = trajectory.distance(center_linestring)
 
             # if trajectory.length < width/2:
             #     average_distance = np.inf
 
-            trajectory_distances[i] = average_distance
+            # trajectory_distances[i] = average_distance
             trajectory_lengths[i] = trajectory.length
 
-        return self.get_best_trajectory_index(trajectory_distances, trajectory_lengths, states)
+        return self.get_best_trajectory_index(trajectory_lengths)
     
     def get_average_distance_to_center_trajectory(self, trajectory, center_linestring, toCenterLine=True):
         # if distance to centerline (from trajecotry) or other way round
@@ -432,15 +488,10 @@ class trajectory_optimization(Node):
         return geometry1.distance(geometry2)
         # return frechet_distance(geometry1, geometry2)
 
-    def get_best_trajectory_index(self, trajectory_distances: np.array, trajectory_lengths: np.array, steering_angles): 
+    def get_best_trajectory_index(self, trajectory_lengths): 
         try:
-            objective_function = trajectory_distances 
-            # ratios = trajectory_distances/trajectory_lengths
-            idx = int(np.argmin(abs(objective_function)))
-            # sorted_indices = np.argsort(ratios)
-            # idx = int(sorted_indices[1])
-            print(f"idx,trajectory_distance,steering_angle,score = {idx},{trajectory_distances[idx]},{steering_angles[idx]},{abs(objective_function)[idx]}")
-            # print(f"dist: {trajectory_distances[idx]}")
+            objective_function = trajectory_lengths 
+            idx = int(np.ceil(np.argmax(objective_function)))
             self.best_trajectory_index.publish(Int16(data=idx))
             return idx
         except ValueError:
