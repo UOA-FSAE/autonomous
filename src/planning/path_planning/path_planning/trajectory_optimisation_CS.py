@@ -75,13 +75,13 @@ class trajectory_optimization(Node):
                         rightboundary.append([x,y])
             
             # adjust boundaries
-            # self._leftboundary, self._rightboundary = self.get_adjusted_boundaries(leftboundary, rightboundary)
-            self._leftboundary = leftboundary
-            self._rightboundary = rightboundary
+            self._leftboundary, self._rightboundary = self.get_adjusted_boundaries(leftboundary, rightboundary)
+            # self._leftboundary = leftboundary
+            # self._rightboundary = rightboundary
                 
             # print coordinate lists
             if self._once:
-                with open('/home/tanish/autonomous/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
+                with open('/home/fsae/Autonomous_Repos/autonomous_nightly/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
                         xl=[i[0] for i in self._leftboundary]
                         yl=[i[1] for i in self._leftboundary]
                         xr=[i[0] for i in self._rightboundary]
@@ -99,38 +99,72 @@ class trajectory_optimization(Node):
                             fh.write("{} ".format(P))
                         fh.write("\n")
                         fh.close()
-                self._once = False
+
+                with open('/home/fsae/Autonomous_Repos/autonomous_nightly/src/planning/path_planning/path_planning/bound_coods2', 'w') as fh:
+                        xl=[i[0] for i in leftboundary]
+                        yl=[i[1] for i in leftboundary]
+                        xr=[i[0] for i in rightboundary]
+                        yr=[i[1] for i in rightboundary]
+                        for P in xl:
+                            fh.write("{} ".format(P))
+                        fh.write("\n")
+                        for P in yl:
+                            fh.write("{} ".format(P))
+                        fh.write("\n")
+                        for P in xr:
+                            fh.write("{} ".format(P))
+                        fh.write("\n")
+                        for P in yr:
+                            fh.write("{} ".format(P))
+                        fh.write("\n")
+                        fh.close()
+                # self._once = False
 
     
     def get_adjusted_boundaries(self, leftboundaryI, rightboundaryI):
         # distance away from boundaries
-        distance = 2
+        distance = 3
         # left and right boundary lists
         leftboundary = []
         rightboundary = []
         # each point on the boundary 
-        num_points = min(len(leftboundaryI), len(rightboundaryI))
-        for i in range(num_points):
-            if i < num_points-1:
-                # get left and right unit vector - forward
-                left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i+1], True)
-                right_vector = self.get_vector(rightboundaryI[i], rightboundaryI[i+1], True)
-            else:
-                # backward
-                left_vector = self.get_vector(leftboundaryI[i-1], leftboundaryI[i], True)
-                right_vector = self.get_vector(rightboundaryI[i-1], rightboundaryI[i], True)
+        num_points = len(leftboundaryI)
+        # left 
+        for i in range(num_points-10):
+            # if i != num_points-1:
+            #     # get left and right unit vector - forward
+            #     left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i+1], True)
+            # else:
+            #     # backward
+            #     left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i-1], True)
+            left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i+1], True)
 
             # once vectors are found - rotate them and get new point
-            angle = -90 * np.pi / 180
-            left_vector = self.get_rotated_vector(angle, left_vector)
             angle = 90 * np.pi / 180
-            right_vector = self.get_rotated_vector(angle, right_vector)
+            left_vector = self.get_rotated_vector(angle, left_vector)
 
             # append new point 
             new_left = leftboundaryI[i] + distance * left_vector
-            new_right = rightboundaryI[i] + distance * right_vector
 
             leftboundary.append(new_left)
+
+        num_points = len(rightboundaryI)
+        for i in range(num_points-10):
+            # if i < num_points-1:
+            #     # get left and right unit vector - forward
+            #     right_vector = self.get_vector(rightboundaryI[i], rightboundaryI[i+1], True)
+            # else:
+            #     # backward
+            #     right_vector = self.get_vector(rightboundaryI[i-1], rightboundaryI[i], True)
+            right_vector = self.get_vector(rightboundaryI[i], rightboundaryI[i+1], True)
+
+            # once vectors are found - rotate them and get new point
+            angle = -90 * np.pi / 180
+            right_vector = self.get_rotated_vector(angle, right_vector)
+
+            # append new point 
+            new_right = rightboundaryI[i] + distance * right_vector
+
             rightboundary.append(new_right)
 
         return leftboundary, rightboundary
