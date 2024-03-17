@@ -10,10 +10,10 @@ class PublishAckermannMsg(Node):
     def __init__(self):
         super().__init__("ackermann_publiser_node")
         self.ackerman_publisher = self.create_publisher(AckermannDriveStamped, "cmd_vel", 10)
-        self.create_timer(0.1, self.publish_msg)
+        self.create_timer(5, self.publish_msg)
     
     def publish_msg(self):
-        args = {"steering_angle": uniform(-0.785,0.785),
+        args = {"steering_angle": uniform(-45,45),
                 "steering_angle_velocity": random(),
                 "speed": float(randint(0,30)),
                 "acceleration": float(randint(0,255)),

@@ -3,7 +3,7 @@ version: '3.4'
 services:
   autonomous_ros2:
     image: autonomous
-
+    runtime: nvidia
     build:
       context: ..
       dockerfile: .devcontainer/ros2_ws.Dockerfile
@@ -17,6 +17,7 @@ services:
 
     volumes:
       - ..:/ws
+      - /dev:/dev
 
     network_mode: host
     ipc: host
@@ -30,11 +31,13 @@ services:
             - driver: nvidia
               device_ids: []
               capabilities: [gpu]
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
 
 
   autonomous_zed:
     image: zed_sdk
-
+    runtime: nvidia
     privileged: true
     
     build:
