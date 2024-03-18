@@ -13,10 +13,10 @@ def generate_launch_description():
         # path generation
         launch_ros.actions.Node(
             package='path_planning',
-            executable='trajectory_generator',
-            name='trajectory_generator',
+            executable='scratch',
+            name='my_generation',
             parameters=[{'debug': True, 
-                         'timer':2.0}],
+                         'timer':0.01}],
         ),
 
         # path optimization

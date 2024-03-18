@@ -4,6 +4,7 @@ from rclpy.node import Node
 from ackermann_msgs.msg import AckermannDrive
 from rclpy.executors import SingleThreadedExecutor
 from std_msgs.msg import Float32, Float64
+import numpy as np
 
 class trajectory_following(Node):
     def __init__(self):
@@ -46,8 +47,8 @@ class trajectory_following(Node):
     def get_control_error(self, csa, dsa): return dsa-csa
 
     def get_best_state(self, msg: Float32):
-        p_gain = 5
-        steering_angle_deg = (msg.data*180)/-3.14 * p_gain
+        p_gain = 1
+        steering_angle_deg = (msg.data*180) / np.pi * p_gain
         # if steering_angle_deg < -9.0:
         #     steering_angle_deg = -30.0
         # elif steering_angle_deg > 9.0:

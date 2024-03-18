@@ -3,6 +3,7 @@ import numpy as np
 from shapely import LineString, MultiPoint
 from shapely import Point as shapelyPoint
 from scipy import interpolate 
+import os
 
 import rclpy
 from rclpy.node import Node
@@ -75,13 +76,13 @@ class trajectory_optimization(Node):
                         rightboundary.append([x,y])
             
             # adjust boundaries
-            self._leftboundary, self._rightboundary = self.get_adjusted_boundaries(leftboundary, rightboundary)
-            # self._leftboundary = leftboundary
-            # self._rightboundary = rightboundary
+            # self._leftboundary, self._rightboundary = self.get_adjusted_boundaries(leftboundary, rightboundary)
+            self._leftboundary = leftboundary
+            self._rightboundary = rightboundary
                 
             # print coordinate lists
             if self._once:
-                with open('/home/fsae/Autonomous_Repos/autonomous_nightly/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
+                with open(f'{os.path.dirname(__file__)}/bound_coods', 'w') as fh:
                         xl=[i[0] for i in self._leftboundary]
                         yl=[i[1] for i in self._leftboundary]
                         xr=[i[0] for i in self._rightboundary]
@@ -100,7 +101,7 @@ class trajectory_optimization(Node):
                         fh.write("\n")
                         fh.close()
 
-                with open('/home/fsae/Autonomous_Repos/autonomous_nightly/src/planning/path_planning/path_planning/bound_coods2', 'w') as fh:
+                with open(f'{os.path.dirname(__file__)}/bound_coods2', 'w') as fh:
                         xl=[i[0] for i in leftboundary]
                         yl=[i[1] for i in leftboundary]
                         xr=[i[0] for i in rightboundary]
@@ -423,15 +424,15 @@ class trajectory_optimization(Node):
             # # average trajectory distance from center line
             # average_distance = self.get_average_distance_to_center_trajectory(trajectories[i], center_linestring, to_center_line)
             # average_distance = abs(trajectory.distance(self._left_boundary_linestring) - trajectory.distance(self._right_boundary_linestring))
-            # average_distance = trajectory.distance(center_linestring)
+            average_distance = trajectory.distance(center_linestring)
 
             # if trajectory.length < width/2:
             #     average_distance = np.inf
 
-            # trajectory_distances[i] = average_distance
+            trajectory_distances[i] = average_distance
             trajectory_lengths[i] = trajectory.length
 
-        return self.get_best_trajectory_index(trajectory_lengths)
+        return self.get_best_trajectory_index(trajectory_lengths, trajectory_distances)
     
     def get_average_distance_to_center_trajectory(self, trajectory, center_linestring, toCenterLine=True):
         # if distance to centerline (from trajecotry) or other way round
@@ -522,10 +523,10 @@ class trajectory_optimization(Node):
         return geometry1.distance(geometry2)
         # return frechet_distance(geometry1, geometry2)
 
-    def get_best_trajectory_index(self, trajectory_lengths): 
+    def get_best_trajectory_index(self, trajectory_lengths, trajectory_distances): 
         try:
-            objective_function = trajectory_lengths 
-            idx = int(np.ceil(np.argmax(objective_function)))
+            objective_function = trajectory_distances 
+            idx = int(np.ceil(np.argmin(objective_function)))
             self.best_trajectory_index.publish(Int16(data=idx))
             return idx
         except ValueError:

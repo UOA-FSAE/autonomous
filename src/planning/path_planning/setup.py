@@ -27,6 +27,7 @@ setup(
             'trajectory_generator = path_planning.trajectory_generator_HRHCS:main',
             'trajectory_optimisation = path_planning.trajectory_optimisation_CS:main',
             'center_line = path_planning.simple_centerline_planner:main',
+            'scratch = path_planning.scratch_file:main'
         ],
     },
 )
