@@ -75,6 +75,12 @@ class trajectory_optimization(Node):
                     elif cones[i].colour == 2:
                         rightboundary.append([x,y])
             
+            # get correspnoding right boundary based on left boundary 
+            x1, y1, x2, y2 = leftboundary[0][0], leftboundary[0][1], rightboundary[0][0], rightboundary[0][1]
+            track_width = self.get_distance(x1, y1, x2, y2)
+            # get right boundary 
+            # leftboundary = self.get_left_boundary(rightboundary, track_width)
+            print(f"left boundary = {len(leftboundary)}, right boundary = {len(rightboundary)}")
             # adjust boundaries
             # self._leftboundary, self._rightboundary = self.get_adjusted_boundaries(leftboundary, rightboundary)
             self._leftboundary = leftboundary
@@ -120,55 +126,80 @@ class trajectory_optimization(Node):
                         fh.write("\n")
                         fh.close()
                 # self._once = False
-
     
-    def get_adjusted_boundaries(self, leftboundaryI, rightboundaryI):
-        # distance away from boundaries
-        distance = 3
-        # left and right boundary lists
+    def get_left_boundary(self, rightboundary, track_width):
+        angle = -90 * np.pi / 180
         leftboundary = []
-        rightboundary = []
-        # each point on the boundary 
-        num_points = len(leftboundaryI)
-        # left 
-        for i in range(num_points-10):
-            # if i != num_points-1:
-            #     # get left and right unit vector - forward
-            #     left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i+1], True)
-            # else:
-            #     # backward
-            #     left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i-1], True)
-            left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i+1], True)
+        # loop through all left boundary points
+        for i in range(len(rightboundary)):
+            P = rightboundary[i]
+            # check what point is
+            if i == 0:
+                # forward point
+                vector = self.get_vector(rightboundary[i], rightboundary[i+1], True)
+            elif i == len(rightboundary)-1:
+                # backward point
+                vector = self.get_vector(rightboundary[i-1], rightboundary[i], True)
+            else:
+                # centeral points
+                vector = self.get_vector(rightboundary[i-1], rightboundary[i+1], True)
 
-            # once vectors are found - rotate them and get new point
-            angle = 90 * np.pi / 180
-            left_vector = self.get_rotated_vector(angle, left_vector)
+            # rotate vector 
+            vector = self.get_rotated_vector(angle,vector)
+            # compute new point
+            new_point = P + track_width * vector
+            # append new point
+            leftboundary.append(new_point)
 
-            # append new point 
-            new_left = leftboundaryI[i] + distance * left_vector
+        return leftboundary
+    
+    # def get_adjusted_boundaries(self, leftboundaryI, rightboundaryI):
+    #     # distance away from boundaries
+    #     distance = 3
+    #     # left and right boundary lists
+    #     leftboundary = []
+    #     rightboundary = []
+    #     # each point on the boundary 
+    #     num_points = len(leftboundaryI)
+    #     # left 
+    #     for i in range(num_points-10):
+    #         # if i != num_points-1:
+    #         #     # get left and right unit vector - forward
+    #         #     left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i+1], True)
+    #         # else:
+    #         #     # backward
+    #         #     left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i-1], True)
+    #         left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i+1], True)
 
-            leftboundary.append(new_left)
+    #         # once vectors are found - rotate them and get new point
+    #         angle = 90 * np.pi / 180
+    #         left_vector = self.get_rotated_vector(angle, left_vector)
 
-        num_points = len(rightboundaryI)
-        for i in range(num_points-10):
-            # if i < num_points-1:
-            #     # get left and right unit vector - forward
-            #     right_vector = self.get_vector(rightboundaryI[i], rightboundaryI[i+1], True)
-            # else:
-            #     # backward
-            #     right_vector = self.get_vector(rightboundaryI[i-1], rightboundaryI[i], True)
-            right_vector = self.get_vector(rightboundaryI[i], rightboundaryI[i+1], True)
+    #         # append new point 
+    #         new_left = leftboundaryI[i] + distance * left_vector
 
-            # once vectors are found - rotate them and get new point
-            angle = -90 * np.pi / 180
-            right_vector = self.get_rotated_vector(angle, right_vector)
+    #         leftboundary.append(new_left)
 
-            # append new point 
-            new_right = rightboundaryI[i] + distance * right_vector
+    #     num_points = len(rightboundaryI)
+    #     for i in range(num_points-10):
+    #         # if i < num_points-1:
+    #         #     # get left and right unit vector - forward
+    #         #     right_vector = self.get_vector(rightboundaryI[i], rightboundaryI[i+1], True)
+    #         # else:
+    #         #     # backward
+    #         #     right_vector = self.get_vector(rightboundaryI[i-1], rightboundaryI[i], True)
+    #         right_vector = self.get_vector(rightboundaryI[i], rightboundaryI[i+1], True)
 
-            rightboundary.append(new_right)
+    #         # once vectors are found - rotate them and get new point
+    #         angle = -90 * np.pi / 180
+    #         right_vector = self.get_rotated_vector(angle, right_vector)
 
-        return leftboundary, rightboundary
+    #         # append new point 
+    #         new_right = rightboundaryI[i] + distance * right_vector
+
+    #         rightboundary.append(new_right)
+
+    #     return leftboundary, rightboundary
 
 
     def get_vector(self, p1, p2, unit=True):
@@ -182,6 +213,7 @@ class trajectory_optimization(Node):
     def get_rotated_vector(self, angle, vector):
         # rotation matrix
         rotate = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+
         return np.dot(rotate,np.array(vector))
     
     def get_magnitude(self, vector):
@@ -399,35 +431,16 @@ class trajectory_optimization(Node):
         # get center line
         center_linestring, self._center_line_coordinates = self.get_center_line()
 
-        # decide average from centerline to trajectory or vice versa
-        to_center_line = True
 
         for i in range(len(trajectories)):
             trajectory = self.get_shapely_linestring(trajectories[i].poses)
-            # trajectory linestring 
-            # if len(trajectories[i].poses) > 1:
-            #     trajectory = self.get_shapely_linestring(trajectories[i].poses)
-            #     trajectory_length = trajectory.length
-            # else:
-            #     trajectory_length = np.inf    
 
-            # if len(trajectories[i].poses) < 2:
-            #     to_center_line = True
-
-            # if to_center_line:
-            #     arg = trajectories[i]
-            #     arg2 = center_linestring
-            # else:
-            #     arg = trajectory
-            #     arg2 = self._center_line_coordinates
-
-            # # average trajectory distance from center line
+            # distance to center line
             # average_distance = self.get_average_distance_to_center_trajectory(trajectories[i], center_linestring, to_center_line)
-            # average_distance = abs(trajectory.distance(self._left_boundary_linestring) - trajectory.distance(self._right_boundary_linestring))
-            average_distance = trajectory.distance(center_linestring)
-
-            # if trajectory.length < width/2:
-            #     average_distance = np.inf
+            # endpoint 
+            P = trajectories[i].poses[-1].position
+            end_point = shapelyPoint(P.x,P.y)
+            average_distance = end_point.distance(center_linestring)
 
             trajectory_distances[i] = average_distance
             trajectory_lengths[i] = trajectory.length
@@ -469,42 +482,43 @@ class trajectory_optimization(Node):
         '''approximates the track's center line'''
         # the midpoint is the average of the coordinates
         coods = []
-        for i in range(min(len(self._leftboundary),len(self._rightboundary))):
+        num_cones = min(len(self._leftboundary), len(self._rightboundary))
+        for i in range(num_cones):
             x1 = self._leftboundary[i][0]
             y1 = self._leftboundary[i][1]
             x2 = self._rightboundary[i][0]
             y2 = self._rightboundary[i][1]
             coods.append(self.get_avg_point(x1,y1,x2,y2))
 
-        # perform extrapolation to extend line
-        func = interpolate.interp1d([P[0] for P in coods], [P[1] for P in coods], kind='cubic', fill_value='extrapolate')
+        # # perform extrapolation to extend line
+        # func = interpolate.interp1d([P[0] for P in coods], [P[1] for P in coods], kind='cubic', fill_value='extrapolate')
 
-        into_future_points = 0
-        into_future_distance = 0
+        # into_future_points = 0
+        # into_future_distance = 0
 
-        # track direction 
-        if coods[-1][0] > coods[-2][0]:
-            # positive/right
-            direction = 1
-        elif coods[-1][0] < coods[-2][0]:
-            # negative/left
-            direction = -1
-        elif abs(coods[-1][0] - coods[-2][0]) <= 1e-3:
-            # straight 
-            into_future_distance = 0
-            into_future_points = 0
+        # # track direction 
+        # if coods[-1][0] > coods[-2][0]:
+        #     # positive/right
+        #     direction = 1
+        # elif coods[-1][0] < coods[-2][0]:
+        #     # negative/left
+        #     direction = -1
+        # elif abs(coods[-1][0] - coods[-2][0]) <= 1e-3:
+        #     # straight 
+        #     into_future_distance = 0
+        #     into_future_points = 0
         
-        if into_future_points != 0:
-            xnew = []
-            into_future_distance += direction
-            for i in range(into_future_points):
-                xnew.append(coods[-1][0] + into_future_distance)
-                into_future_distance += direction
-            # get new pts
-            ynew = func(xnew)
-            # add approximated coordinates to center line
-            for i in range(into_future_points):
-                coods.append((xnew[i],ynew[i]))
+        # if into_future_points != 0:
+        #     xnew = []
+        #     into_future_distance += direction
+        #     for i in range(into_future_points):
+        #         xnew.append(coods[-1][0] + into_future_distance)
+        #         into_future_distance += direction
+        #     # get new pts
+        #     ynew = func(xnew)
+        #     # add approximated coordinates to center line
+        #     for i in range(into_future_points):
+        #         coods.append((xnew[i],ynew[i]))
 
         return LineString(coods), coods
     
