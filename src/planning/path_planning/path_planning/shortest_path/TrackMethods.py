@@ -1,8 +1,10 @@
 # imports
-import TrackHelpers
-from TrackHelpers import plt, np
 import pandas as pd
 import os
+
+import TrackHelpers
+from TrackHelpers import plt, np
+from CoreModels import Bracket, Node
 
 def importTrack(trackname:str, hasboundaries:bool):
     """
@@ -98,7 +100,7 @@ def importTrack(trackname:str, hasboundaries:bool):
     # outer boundary
     TrackHelpers.Plot(False, trackdf.outer, "outer boundary")
 
-    p.savefig(f"{os.path.dirname(__file__)}/Track images/{trackname}.png") 
+    p.savefig(f"{os.path.dirname(__file__)}/Track images/{trackname}.png", dpi=600) 
     plt.legend()
     plt.show()
 
@@ -188,90 +190,85 @@ def importTrack(trackname:str, hasboundaries:bool):
 #     return interpolated_trackdf
 # end
 
-# function createBracket(inner_boundary, outer_boundary, p_vector, n_nodes)
-#     # get distance
-#     distance = TrackHelpers.getDistance(inner_boundary, outer_boundary)
-#     spacing = distance / n_nodes
+def createBracket(inner_boundary:np.array, outer_boundary:np.array, p_vector, n_nodes):
+    # get distance
+    distance = TrackHelpers.getDistance(inner_boundary, outer_boundary)
+    spacing = distance / n_nodes
 
-#     # list of node coordinates
-#     new_points = Vector{}(undef,n_nodes+2)
-#     # include boundaries
-#     new_points[1] = inner_boundary
-#     new_points[end] = outer_boundary
+    # list of node coordinates
+    new_points = [0]*(n_nodes+2)
+    # include boundaries
+    new_points[0] = inner_boundary
+    new_points[-1] = outer_boundary
 
-#     # loop through number of nodes to create
-#     for i in 1:n_nodes
-#         new_points[i+1] = inner_boundary + (i*spacing) * p_vector
-#     end
+    # loop through number of nodes to create
+    for i in range(n_nodes):
+        new_points[i+1] = inner_boundary + (i*spacing) * p_vector
 
-#     return new_points
-# end
+    return new_points
 
-# function getBrackets(df::DataFrame, n_nodes)
-#     # attributes
-#     constant_velocity = 0
-#     # number of nodes in bracket
+def getBrackets(df:pd.DataFrame, n_nodes):
+    # attributes
+    constant_velocity = 0
     
-#     # number of boundary points
-#     num_boundary_points = length(df.inner)
+    # number of boundary points
+    num_boundary_points = len(df.inner)
 
-#     # vectors
-#     node_list = Vector{}(undef, n_nodes+2)
-#     brackets = Vector{}(undef, num_boundary_points)
+    # vectors
+    node_list = [0]*(n_nodes+2)
+    brackets = [0]*num_boundary_points
 
-#     # loop through each boundary point
-#     for i in eachindex(df.inner)
-#         # boundary points
-#         inner_boundary = df.inner[i]
-#         outer_boundary = df.outer[i]
-#         perp_vector = df.p_vector[i]
+    # loop through each boundary point
+    for i in range(num_boundary_points):
+        # boundary points
+        inner_boundary = df.inner[i]
+        outer_boundary = df.outer[i]
+        perp_vector = df.p_vector[i]
 
-#         # get new points and assign a node 
-#         bracket_points = createBracket(inner_boundary, outer_boundary, perp_vector, n_nodes)
+        # get new points and assign a node 
+        bracket_points = createBracket(inner_boundary, outer_boundary, perp_vector, n_nodes)
         
-#         for (j,P) in enumerate(bracket_points)
-#             bracketId = i
-#             xy = P
-#             velocity = constant_velocity
-#             innerDistance = TrackHelpers.getDistance(P, bracket_points[1])
-#             outerDistance = TrackHelpers.getDistance(P, bracket_points[end])
-#             nextNode = nothing
-#             exit_angle = 0
-#             cost = Inf
-#             temp_node = Node(bracketId, xy, velocity, innerDistance, outerDistance, nextNode, exit_angle, cost)
-#             # append to node list
-#             node_list[j] = temp_node
-#         end
+        for j, P in enumerate(bracket_points):
+            bracketId = i
+            xy = P
+            velocity = constant_velocity
+            innerDistance = TrackHelpers.getDistance(P, bracket_points[0])
+            outerDistance = TrackHelpers.getDistance(P, bracket_points[-1])
+            nextNode = np.nan
+            cost = np.inf
+            temp_node = Node(bracketId, xy, velocity, innerDistance, outerDistance, nextNode, cost)
+            # append to node list
+            node_list[j] = temp_node
 
-#         # bracket module
-#         Id = i
-#         innerNode = node_list[1]
-#         outerNode = node_list[end]
-#         width = TrackHelpers.getDistance(node_list[1].xy, node_list[end].xy)
-#         NodeList = node_list
-#         temp_bracket = Bracket(Id, innerNode, outerNode, width, NodeList)
+        # bracket module
+        Id = i
+        innerNode = node_list[0]
+        outerNode = node_list[-1]
+        width = TrackHelpers.getDistance(node_list[0]._xy, node_list[-1]._xy)
+        NodeList = node_list
+        temp_bracket = Bracket(Id, innerNode, outerNode, width, NodeList)
+        # this code below doesn't work all brackets have the same node list!!
+        brackets[i] = temp_bracket
 
-#         brackets[i] = temp_bracket
-#     end
+    # plotting
+    p = plt.figure()
 
-#     # plotting
-#     p = plot()
+    # inner boundary
+    TrackHelpers.Plot(False, df.inner, "inner boundary")
+    # outer boundary
+    TrackHelpers.Plot(False, df.outer, "outer boundary")
+    # nodes
+    for B in brackets:
+        all_x = [P._xy[0] for P in B._nodeList]
+        all_y = [P._xy[1] for P in B._nodeList]
+        plt.plot(all_x,all_y,"ok")
+        # all_nodes = B._nodeList
+        # TrackHelpers.Plot(True, all_nodes, "nodes")
 
-#     # inner boundary
-#     TrackHelpers.Plot(p, false, df.inner, "inner boundary")
-#     # outer boundary
-#     TrackHelpers.Plot(p, false, df.outer, "outer boundary")
+    p.savefig(f"{os.path.dirname(__file__)}/Track images/nodes.png", dpi=600) 
+    plt.show()
 
-#     for B in brackets
-#         all_x = [P.xy[1] for P in B.NodeList]
-#         all_y = [P.xy[2] for P in B.NodeList]
-#         plot!(p, all_x, all_y, lc=:green, legend=false, dpi=1200, display_type=:gui)
-#     end
-
-#     savefig("Track images/nodes.png") 
-
-#     return brackets
-# end
+    return brackets
 
 # function shortestPath(track_name, df, start_point::Vector, end_point::Vector, brackets)
 #     # vector of points for optimal line

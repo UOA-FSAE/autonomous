@@ -12,12 +12,12 @@ def main():
     print("IMPORTING TRACK")
     df = TrackMethods.importTrack(track_name, True)
 
-    # println("INTERPOLATING")
+    # print("INTERPOLATING")
     # df = TrackMethods.interpolateTrack(df, interval = 5) 
 
-    # # create brackets
-    # println("CREATING BRACKETS")
-    # brackets = TrackMethods.getBrackets(df, 20)
+    # create brackets
+    print("CREATING BRACKETS")
+    brackets = TrackMethods.getBrackets(df, 10)
 
     # velocity_range = [0.01, 8, 16, 24, 32, 40 ]# velocities in meters per second
 

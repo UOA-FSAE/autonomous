@@ -111,13 +111,13 @@ def getOuterBoundary(center_point:np.array, distance, vector:np.array):
 
 def Plot(nodes:bool, vector_list:np.array, label:str):
     if nodes:
-        all_x = [P.xy[0] for P in vector_list]
-        all_y = [P.xy[1] for P in vector_list]
+        all_x = [P._xy[0] for P in vector_list]
+        all_y = [P._xy[1] for P in vector_list]
     else:
         all_x = [P[0] for P in vector_list]
         all_y = [P[1] for P in vector_list]
 
-    plt.plot(all_x, all_y, label=label)
+    plt.plot(all_x, all_y, label=label, lw=2)
     
     return all_x, all_y
 
