@@ -4,6 +4,7 @@ from rclpy.node import Node
 from ackermann_msgs.msg import AckermannDrive
 from rclpy.executors import SingleThreadedExecutor
 from std_msgs.msg import Float32, Float64
+import numpy as np
 
 class trajectory_following(Node):
     def __init__(self):
@@ -23,7 +24,7 @@ class trajectory_following(Node):
         # self.p_controlled_pub = self.create_publisher(AckermannDrive, "cmd_vel", 5)
         # subscribe to best trajectory
         # self.best_traj_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.get_best_state, 5)
-        self.create_subscription(Float32, "moa/selected_steering_angle", self.get_best_state, 5)
+        self.create_subscription(Float32, "moa/selected_steering_angle", self.get_best_state, 10)
         # self.current_states_sub = self.create_subscription(AckermannDrive, "moa/cur_vel", self.get_current_states, 5)
         
 
@@ -46,13 +47,13 @@ class trajectory_following(Node):
     def get_control_error(self, csa, dsa): return dsa-csa
 
     def get_best_state(self, msg: Float32):
-        p_gain = 3
-        steering_angle_deg = (msg.data*180)/-3.14 * p_gain
+        p_gain = 1
+        steering_angle_deg = (msg.data*180) / np.pi * p_gain
         # if steering_angle_deg < -9.0:
         #     steering_angle_deg = -30.0
         # elif steering_angle_deg > 9.0:
         #     steering_angle_deg = 30.0
-        self.get_logger().info(f"before and after gain: {steering_angle_deg/2}, {steering_angle_deg}")
+        self.get_logger().info(f"before and after gain: {steering_angle_deg/p_gain}, {steering_angle_deg}")
         self.steering_publisher.publish(Float32(data=steering_angle_deg))
         # self.get_logger().info(f"chosen recieved state is = {msg.steering_angle}")
 

@@ -3,6 +3,7 @@ import numpy as np
 from shapely import LineString, MultiPoint
 from shapely import Point as shapelyPoint
 from scipy import interpolate 
+import os
 
 import rclpy
 from rclpy.node import Node
@@ -36,8 +37,8 @@ class trajectory_optimization(Node):
         self.create_subscription(AllStates, "moa/states", self.set_states, 10)
         self.create_subscription(AllTrajectories, "moa/trajectories", self.delete_optimise_trajectories, 10)
         self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed, 10)
-        self.create_subscription(BoundaryStamped, "track/bound_l", self.set_left_boundary, 10)
-        self.create_subscription(BoundaryStamped, "track/bound_r", self.set_right_boundary, 10)
+        # self.create_subscription(BoundaryStamped, "track/bound_l", self.set_left_boundary, 10)
+        # self.create_subscription(BoundaryStamped, "track/bound_r", self.set_right_boundary, 10)
         # only debugging
         self.create_subscription(ConeMap, "cone_map", self.set_boundaries, 10)
         self.best_steering_angle_pub = self.create_publisher(Float32, "moa/selected_steering_angle", 10)
@@ -62,21 +63,32 @@ class trajectory_optimization(Node):
         if self._debug:
             cones = msg.cones
             # loop through each cone
-            self._leftboundary = []
-            self._rightboundary = []
+            leftboundary = []
+            rightboundary = []
             for i in range(len(cones)):
                 if i != 0:
                     x = cones[i].pose.pose.position.x
                     y = cones[i].pose.pose.position.y
                     # blue - left
                     if cones[i].colour == 0:
-                        self._leftboundary.append([x,y])
+                        leftboundary.append([x,y])
                     elif cones[i].colour == 2:
-                        self._rightboundary.append([x,y])
+                        rightboundary.append([x,y])
+            
+            # get correspnoding right boundary based on left boundary 
+            x1, y1, x2, y2 = leftboundary[0][0], leftboundary[0][1], rightboundary[0][0], rightboundary[0][1]
+            track_width = self.get_distance(x1, y1, x2, y2)
+            # get right boundary 
+            # leftboundary = self.get_left_boundary(rightboundary, track_width)
+            print(f"left boundary = {len(leftboundary)}, right boundary = {len(rightboundary)}")
+            # adjust boundaries
+            # self._leftboundary, self._rightboundary = self.get_adjusted_boundaries(leftboundary, rightboundary)
+            self._leftboundary = leftboundary
+            self._rightboundary = rightboundary
                 
             # print coordinate lists
             if self._once:
-                with open('/home/tanish/autonomous/src/planning/path_planning/path_planning/bound_coods', 'w') as fh:
+                with open(f'{os.path.dirname(__file__)}/bound_coods', 'w') as fh:
                         xl=[i[0] for i in self._leftboundary]
                         yl=[i[1] for i in self._leftboundary]
                         xr=[i[0] for i in self._rightboundary]
@@ -94,8 +106,119 @@ class trajectory_optimization(Node):
                             fh.write("{} ".format(P))
                         fh.write("\n")
                         fh.close()
-                self._once = False
+
+                with open(f'{os.path.dirname(__file__)}/bound_coods2', 'w') as fh:
+                        xl=[i[0] for i in leftboundary]
+                        yl=[i[1] for i in leftboundary]
+                        xr=[i[0] for i in rightboundary]
+                        yr=[i[1] for i in rightboundary]
+                        for P in xl:
+                            fh.write("{} ".format(P))
+                        fh.write("\n")
+                        for P in yl:
+                            fh.write("{} ".format(P))
+                        fh.write("\n")
+                        for P in xr:
+                            fh.write("{} ".format(P))
+                        fh.write("\n")
+                        for P in yr:
+                            fh.write("{} ".format(P))
+                        fh.write("\n")
+                        fh.close()
+                # self._once = False
+    
+    def get_left_boundary(self, rightboundary, track_width):
+        angle = -90 * np.pi / 180
+        leftboundary = []
+        # loop through all left boundary points
+        for i in range(len(rightboundary)):
+            P = rightboundary[i]
+            # check what point is
+            if i == 0:
+                # forward point
+                vector = self.get_vector(rightboundary[i], rightboundary[i+1], True)
+            elif i == len(rightboundary)-1:
+                # backward point
+                vector = self.get_vector(rightboundary[i-1], rightboundary[i], True)
+            else:
+                # centeral points
+                vector = self.get_vector(rightboundary[i-1], rightboundary[i+1], True)
+
+            # rotate vector 
+            vector = self.get_rotated_vector(angle,vector)
+            # compute new point
+            new_point = P + track_width * vector
+            # append new point
+            leftboundary.append(new_point)
+
+        return leftboundary
+    
+    # def get_adjusted_boundaries(self, leftboundaryI, rightboundaryI):
+    #     # distance away from boundaries
+    #     distance = 3
+    #     # left and right boundary lists
+    #     leftboundary = []
+    #     rightboundary = []
+    #     # each point on the boundary 
+    #     num_points = len(leftboundaryI)
+    #     # left 
+    #     for i in range(num_points-10):
+    #         # if i != num_points-1:
+    #         #     # get left and right unit vector - forward
+    #         #     left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i+1], True)
+    #         # else:
+    #         #     # backward
+    #         #     left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i-1], True)
+    #         left_vector = self.get_vector(leftboundaryI[i], leftboundaryI[i+1], True)
+
+    #         # once vectors are found - rotate them and get new point
+    #         angle = 90 * np.pi / 180
+    #         left_vector = self.get_rotated_vector(angle, left_vector)
+
+    #         # append new point 
+    #         new_left = leftboundaryI[i] + distance * left_vector
+
+    #         leftboundary.append(new_left)
+
+    #     num_points = len(rightboundaryI)
+    #     for i in range(num_points-10):
+    #         # if i < num_points-1:
+    #         #     # get left and right unit vector - forward
+    #         #     right_vector = self.get_vector(rightboundaryI[i], rightboundaryI[i+1], True)
+    #         # else:
+    #         #     # backward
+    #         #     right_vector = self.get_vector(rightboundaryI[i-1], rightboundaryI[i], True)
+    #         right_vector = self.get_vector(rightboundaryI[i], rightboundaryI[i+1], True)
+
+    #         # once vectors are found - rotate them and get new point
+    #         angle = -90 * np.pi / 180
+    #         right_vector = self.get_rotated_vector(angle, right_vector)
+
+    #         # append new point 
+    #         new_right = rightboundaryI[i] + distance * right_vector
+
+    #         rightboundary.append(new_right)
+
+    #     return leftboundary, rightboundary
+
+
+    def get_vector(self, p1, p2, unit=True):
+        '''calculates point vector based on slope'''
+        vector = np.array(p2)-np.array(p1)
+        if unit:
+            return vector / self.get_magnitude(vector)
         
+        return vector
+    
+    def get_rotated_vector(self, angle, vector):
+        # rotation matrix
+        rotate = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+
+        return np.dot(rotate,np.array(vector))
+    
+    def get_magnitude(self, vector):
+        return np.sqrt(sum(vector**2))
+    
 
     def delete_optimise_trajectories(self, msg: AllTrajectories): 
         '''deletes trajectories then optimises to find the best path for car'''
@@ -204,52 +327,58 @@ class trajectory_optimization(Node):
         for i in range(len(trajectories)):
             # trajectory line string
             trajectory = LineString([(P.position.x, P.position.y) for P in trajectories[i].poses])
-            trajectory_length = trajectory.length
 
             if i == len(trajectories)/2 - 1:
                 print('the long one')
 
+            tmp = None
             # check intersection
             if trajectory.intersects(self._left_boundary_linestring):
+                # get intersection point/s
                 tmp = trajectory.intersection(self._left_boundary_linestring)
-                idx = 0
-                if type(tmp) is MultiPoint:
-                    tmp_x = tmp.centroid.x
-                else:
-                    tmp_x = tmp.x
-                for j, P in enumerate(trajectories[i].poses):
-                    if tmp_x < P.position.x:
-                        idx += 1
-                    else:
-                        if idx < 1:
-                            # idx += 1
-                            remove_trajectories_indices.append(i)
-                        break
-                if idx != 0:
-                    trajectories[i].poses = trajectories[i].poses[:idx]
+                intersection = "left"
 
             elif trajectory.intersects(self._right_boundary_linestring):
                 tmp = trajectory.intersection(self._right_boundary_linestring)
-                idx = 0
+                intersection = "right"
+
+            if tmp is not None:
+                # new pose list
+                list_of_poses = []
                 if type(tmp) is MultiPoint:
                     tmp_x = tmp.centroid.x
+                    tmp_y = tmp.centroid.y
                 else:
-                        tmp_x = tmp.x
+                    tmp_x = tmp.x
+                    tmp_y = tmp.y
+                # go through each pose
                 for j, P in enumerate(trajectories[i].poses):
-                    if tmp_x > P.position.x:
-                        idx += 1
+                    # get distance between points
+                    # distance = self.get_distance(x1=tmp_x, y1=tmp_y, x2=P.position.x, y2=P.position.y)
+                    in_bounds = self.get_in_of_bounds(inter=intersection,x1=tmp_x,y1=tmp_y,x2=P.position.x,y2=P.position.y)
+                    if in_bounds:
+                        list_of_poses.append(P)
                     else:
-                        if idx < 1:
-                            # idx += 1
+                        if len(list_of_poses) < 2:
                             remove_trajectories_indices.append(i)
+                        else:
+                            trajectories[i].poses = list_of_poses
                         break
-                if idx != 0:
-                    trajectories[i].poses = trajectories[i].poses[:idx]
         
         # publish indicies
+        print(f"removed indices = {remove_trajectories_indices}")
         self.out_of_bounds_indicies.publish(Int32MultiArray(data=remove_trajectories_indices))
 
         [(trajectories.pop(index), states.pop(index)) for index in list(reversed(remove_trajectories_indices))]
+
+    def get_distance(self,x1,y1,x2,y2):
+        return np.sqrt(((x2-x1)**2 + (y2-y1)**2))
+    
+    def get_in_of_bounds(self,inter,x1,y1,x2,y2):
+        if inter == "right":
+            return x2<x1 and y2<y1
+        elif inter == "left":
+            return x2>x1 and y2<y1
     
     def compare_with_boundary(self, x, y, tol):
         '''
@@ -294,7 +423,7 @@ class trajectory_optimization(Node):
     def get_best_trajectory_state(self, trajectories, states):
         '''finds the best trajectory'''
 
-        trajectory_distances = np.zeros(len(trajectories))
+        trajectory_distances = np.ones(len(trajectories)) * np.inf
         trajectory_lengths = np.zeros(len(trajectories))
 
         # get track width
@@ -302,37 +431,21 @@ class trajectory_optimization(Node):
         # get center line
         center_linestring, self._center_line_coordinates = self.get_center_line()
 
-        # decide average from centerline to trajectory or vice versa
-        to_center_line = True
 
         for i in range(len(trajectories)):
-            # trajectory linestring 
-            if len(trajectories[i].poses) > 1:
-                trajectory = self.get_shapely_linestring(trajectories[i].poses)
-                trajectory_length = trajectory.length
-            else:
-                trajectory_length = np.inf    
+            trajectory = self.get_shapely_linestring(trajectories[i].poses)
 
-            if len(trajectories[i].poses) < 2:
-                to_center_line = True
-
-            if to_center_line:
-                arg = trajectories[i]
-                arg2 = center_linestring
-            else:
-                arg = trajectory
-                arg2 = self._center_line_coordinates
-
-            # average trajectory distance from center line
-            average_distance = self.get_average_distance_to_center_trajectory(arg, arg2, to_center_line)
-
-            # if trajectory.length < width/2:
-            #     average_distance = np.inf
+            # distance to center line
+            # average_distance = self.get_average_distance_to_center_trajectory(trajectories[i], center_linestring, to_center_line)
+            # endpoint 
+            P = trajectories[i].poses[-1].position
+            end_point = shapelyPoint(P.x,P.y)
+            average_distance = end_point.distance(center_linestring)
 
             trajectory_distances[i] = average_distance
-            trajectory_lengths[i] = trajectory_length
+            trajectory_lengths[i] = trajectory.length
 
-        return self.get_best_trajectory_index(trajectory_distances, trajectory_lengths)
+        return self.get_best_trajectory_index(trajectory_lengths, trajectory_distances)
     
     def get_average_distance_to_center_trajectory(self, trajectory, center_linestring, toCenterLine=True):
         # if distance to centerline (from trajecotry) or other way round
@@ -369,42 +482,43 @@ class trajectory_optimization(Node):
         '''approximates the track's center line'''
         # the midpoint is the average of the coordinates
         coods = []
-        for i in range(min(len(self._leftboundary),len(self._rightboundary))):
+        num_cones = min(len(self._leftboundary), len(self._rightboundary))
+        for i in range(num_cones):
             x1 = self._leftboundary[i][0]
             y1 = self._leftboundary[i][1]
             x2 = self._rightboundary[i][0]
             y2 = self._rightboundary[i][1]
             coods.append(self.get_avg_point(x1,y1,x2,y2))
 
-        # perform extrapolation to extend line
-        func = interpolate.interp1d([P[0] for P in coods], [P[1] for P in coods], kind='cubic', fill_value='extrapolate')
+        # # perform extrapolation to extend line
+        # func = interpolate.interp1d([P[0] for P in coods], [P[1] for P in coods], kind='cubic', fill_value='extrapolate')
 
-        into_future_points = 0
-        into_future_distance = 0
+        # into_future_points = 0
+        # into_future_distance = 0
 
-        # track direction 
-        if coods[-1][0] > coods[-2][0]:
-            # positive/right
-            direction = 1
-        elif coods[-1][0] < coods[-2][0]:
-            # negative/left
-            direction = -1
-        elif abs(coods[-1][0] - coods[-2][0]) <= 1e-3:
-            # straight 
-            into_future_distance = 0
-            into_future_points = 0
+        # # track direction 
+        # if coods[-1][0] > coods[-2][0]:
+        #     # positive/right
+        #     direction = 1
+        # elif coods[-1][0] < coods[-2][0]:
+        #     # negative/left
+        #     direction = -1
+        # elif abs(coods[-1][0] - coods[-2][0]) <= 1e-3:
+        #     # straight 
+        #     into_future_distance = 0
+        #     into_future_points = 0
         
-        if into_future_points != 0:
-            xnew = []
-            into_future_distance += direction
-            for i in range(into_future_points):
-                xnew.append(coods[-1][0] + into_future_distance)
-                into_future_distance += direction
-            # get new pts
-            ynew = func(xnew)
-            # add approximated coordinates to center line
-            for i in range(into_future_points):
-                coods.append((xnew[i],ynew[i]))
+        # if into_future_points != 0:
+        #     xnew = []
+        #     into_future_distance += direction
+        #     for i in range(into_future_points):
+        #         xnew.append(coods[-1][0] + into_future_distance)
+        #         into_future_distance += direction
+        #     # get new pts
+        #     ynew = func(xnew)
+        #     # add approximated coordinates to center line
+        #     for i in range(into_future_points):
+        #         coods.append((xnew[i],ynew[i]))
 
         return LineString(coods), coods
     
@@ -423,14 +537,10 @@ class trajectory_optimization(Node):
         return geometry1.distance(geometry2)
         # return frechet_distance(geometry1, geometry2)
 
-    def get_best_trajectory_index(self, trajectory_distances: np.array, trajectory_lengths: np.array): 
+    def get_best_trajectory_index(self, trajectory_lengths, trajectory_distances): 
         try:
-            ratios = trajectory_distances/trajectory_lengths
-            idx = int(np.argmin(trajectory_distances))
-            # sorted_indices = np.argsort(ratios)
-            # idx = int(sorted_indices[1])
-            print(f"chosen index is={idx}")
-            # print(f"dist: {trajectory_distances[idx]}")
+            objective_function = trajectory_distances 
+            idx = int(np.ceil(np.argmin(objective_function)))
             self.best_trajectory_index.publish(Int16(data=idx))
             return idx
         except ValueError:

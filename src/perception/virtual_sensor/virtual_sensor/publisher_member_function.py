@@ -40,7 +40,7 @@ class Virtual_Cone_Detection(Node):
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
-        with open('/ws/src/perception/virtual_sensor/TESTDATA.txt') as f:
+        with open('/home/tanish/autonomous/src/perception/virtual_sensor/TESTDATA.txt') as f:
         	self.stored_data_list = f.readlines()
         	self.total_length = len(self.stored_data_list)
         	#print(self.stored_data_list)

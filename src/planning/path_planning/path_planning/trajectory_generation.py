@@ -1,13 +1,15 @@
 #!/usr/bin/python3
-
 import rclpy
 import numpy as np
 from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
 
-from geometry_msgs.msg import Pose, PoseArray
+from geometry_msgs.msg import Point, Pose, PoseArray
 from moa_msgs.msg import ConeMap, AllStates, AllTrajectories
 from ackermann_msgs.msg import AckermannDrive
+
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 class trajectory_generator(Node):
@@ -18,7 +20,7 @@ class trajectory_generator(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('debug', False),
+                ('debug', True),
                 ('timer', 3.0),
             ]
         )
@@ -57,7 +59,8 @@ class trajectory_generator(Node):
 
         if hasattr(self,"_current_speed") and hasattr(self,"_cone_map"):
             # generate trajectories
-            paths, states = self.trajectory_generator(self._cone_map)
+            paths, states = self.my_trajectory_generator(cone_map=self._cone_map, radius=2, npoints=100)
+
             # publish states and trajectories
             state_list = []
             for i in range(len(states)):
@@ -83,44 +86,68 @@ class trajectory_generator(Node):
         return
 
     # ===========================================================
-    # TRAJECTORY GENERATION
-    def single_trajectory_generator(self, steering_angle, position_vector, rotation_matrix):
-        # https://dingyan89.medium.com/simple-understanding-of-kinematic-bicycle-model-81cac6420357 is used for
-        # bicycle steering
-        L = 1;
-        R = L / np.tan(steering_angle);
-        # list of time in space
-        t_range = np.arange(0, np.pi/6, 0.01);
-        trajectory_output = PoseArray();
-        for i, individual_t in enumerate(t_range):
-            # pose for current time in space
-            pose_input = Pose();
-            # pre transformation coordinates
-            x_pre_trans = np.cos(individual_t) * R - R
-            y_pre_trans = abs(np.sin(individual_t) * R)
-            # post transformation coordinates (relative to car)
-            post_trans_point = self.apply_transformation(position_vector, rotation_matrix, x_pre_trans, y_pre_trans);
-            pose_input.position.x = post_trans_point[0][0]
-            pose_input.position.y = post_trans_point[1][0]
-            trajectory_output.poses.append(pose_input)
-        return trajectory_output
-
-    def trajectory_generator(self, cone_map):
-        # steering angles
-        candidate_steering_angle = np.deg2rad(np.arange(-10, 10, 0.5))
+    # # TRAJECTORY GENERATION
+    def my_trajectory_generator(self, cone_map, radius, npoints):
+        """generate straight trajectory based on given radius from origin (0,0)"""
         trajectories = []
-        # get position of car (first cone in cone map data)
-        position_and_orientation = self.get_position_of_cart(cone_map)
-        # get transformation matrix 
-        position_vector, rotation_matrix = self.get_transformation_matrix(position_and_orientation)
-        for steering_angle in candidate_steering_angle:
-            if steering_angle == 0:
-                steering_angle = 1e-6;
-            # generate trajectory for this angle
-            added_trajectory = self.single_trajectory_generator(steering_angle, position_vector, rotation_matrix)
-            trajectories.append(added_trajectory)
+        # 1. initial point
+        first_cone = cone_map.cones[0].pose.pose.position
+        # cor = [first_cone.x, first_cone.y]
+        cor = [0,0]
+        # 2. radius
+        r = radius
+        # 3. x points 
+        n = npoints
+        x = np.linspace(-r/3, r/3, n, endpoint=False)[1:]
+        n -= 1
+        y = np.zeros(n)
+        angs = np.zeros(n)
 
-        return trajectories, candidate_steering_angle
+        for i, val in enumerate(x):
+            tmp_path = PoseArray()
+            # append starting point
+            tmp_pose = Pose()
+            tmp_pose.position.x = first_cone.x
+            tmp_pose.position.y = first_cone.y
+            tmp_path.poses.append(tmp_pose)
+
+            # 4. find y using equation of circle
+            y[i] = np.sqrt(np.round(r**2-(val-cor[0])**2, 3)) + cor[1]
+            # 5. calculate steering angle for each trajectory
+            dy = y[i] - cor[1]
+            dx = val - cor[0]
+            # inverse tan is in radians
+            angle = np.arctan(dx/dy)
+            angs[i] = (angle if dx < 0 else angle)
+            print(f"passed angle = {angs[i]} for dx = {dx}")
+            
+            # transform coordinates from fixed to car 
+            car_position = self.get_position_of_cart(cone_map)
+            car_position, rotation_matrix = self.get_transformation_matrix(car_position)
+            post_trans_pose = self.apply_transformation(car_position, rotation_matrix, val, y[i])
+            # append new points to pose array
+            x[i] = post_trans_pose[0][0]
+            y[i] = post_trans_pose[1][0]
+            tmp_pose2 = Pose()
+            tmp_pose2.position.x = x[i]
+            tmp_pose2.position.y = y[i]
+            tmp_path.poses.append(tmp_pose2)
+
+            if x[i] is np.nan or y[i] is np.nan or angs[i] is np.nan:
+                print("NAN!")
+
+            # plotting
+            # plt.plot([cor[0],x[i]],[cor[1],y[i]],label=f'trajectories')
+
+            # append trajecotry
+            trajectories.append(tmp_path)
+
+        # plt.show()
+
+        # list of points as tuples
+        points = [(x[i],y[i]) for i in range(n)]
+
+        return trajectories, angs
 
     def get_position_of_cart(self, cone_map):
         # first cone
@@ -159,6 +186,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-

@@ -58,14 +58,15 @@ class pub_viz(Node):
             for i in range(len(pths)):
                 # chosen
                 try:
-                    if i == self.chosen_trajectory + len([i for i in self.invalid_bounds_indicies if i < self.chosen_trajectory]):
-                        pths[i].poses = self.inbounds.trajectories[i-appeneded].poses
+                    if i == self.chosen_trajectory + len([i for i in self.invalid_bounds_indicies if i <= self.chosen_trajectory]):
+                        remove = len([i for i in self.invalid_bounds_indicies if i <= self.chosen_trajectory])
+                        pths[i].poses = self.inbounds.trajectories[i-remove].poses
                         # green
                         tcols = Color(r=0.0, g=255.0, b=0.0, a=1.0)
-                        thickness = 4.0
+                        thickness = 5.0
                     # center line
                     elif i == len(pths) - 1:
-                        # orange
+                        # blue
                         tcols = Color(r=0.0, g=0.0, b=255.0, a=1.0)
                         thickness = 3.0
                     # out of bounds
@@ -73,13 +74,13 @@ class pub_viz(Node):
                         appeneded += 1
                         # red 
                         tcols = Color(r=255.0, g=0.0, b=0.0, a=0.5)
-                        thickness = 2.0
+                        thickness = 1.0
                     # in bounds
                     else:
                         # change trajectory to shorten trajectory if applicable
                         pths[i].poses = self.inbounds.trajectories[i-appeneded].poses
                         tcols = Color(r=255.0, g=255.0, b=255.0, a=0.8)
-                        thickness = 2.0
+                        thickness = 1.0
                 except:
                     print("stop here")
 
@@ -101,7 +102,7 @@ class pub_viz(Node):
             sargs = {'timestamp': Time(sec=0,nanosec=0),
                         'frame_id': 'global_frame',
                         'id': f'{self.id}',
-                        'lifetime': Duration(sec=2,nanosec=0),
+                        'lifetime': Duration(sec=2,nanosec=100),
                         'frame_locked': False,
                         'lines': line_list,
                         'spheres': self.next_destination_vis}
