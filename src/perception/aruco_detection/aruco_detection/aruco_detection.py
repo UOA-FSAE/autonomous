@@ -68,7 +68,9 @@ class ArucoDetectionNode(Node):
                         single_cone.pose.pose.position.z = float(tvec[1][0])
                         single_cone.radius = 1.0
                         single_cone.height = 1.0
-                        self.aruco_msg.cones.append(single_cone)
+                        # Only sending blue cone and yellow cone
+                        if single_cone.colour == 0 or single_cone.colour == 2:
+                            self.aruco_msg.cones.append(single_cone)
                     self.get_logger().info("POTENTIAL MARKERS DETECTED!!")
                 
                 self.publisher.publish(self.aruco_msg)

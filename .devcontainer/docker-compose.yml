@@ -31,8 +31,6 @@ services:
             - driver: nvidia
               device_ids: []
               capabilities: [gpu]
-    devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0
 
 
   autonomous_zed:
