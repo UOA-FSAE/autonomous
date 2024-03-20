@@ -113,11 +113,13 @@ def Plot(nodes:bool, vector_list:np.array, label:str):
     if nodes:
         all_x = [P._xy[0] for P in vector_list]
         all_y = [P._xy[1] for P in vector_list]
+        lw = 1
+        plt.plot(all_x, all_y, "-k", label=label, lw=lw)
     else:
         all_x = [P[0] for P in vector_list]
         all_y = [P[1] for P in vector_list]
-
-    plt.plot(all_x, all_y, label=label, lw=2)
+        lw = 2
+        plt.plot(all_x, all_y, label=label, lw=lw)
     
     return all_x, all_y
 

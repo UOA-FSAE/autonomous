@@ -203,7 +203,7 @@ def createBracket(inner_boundary:np.array, outer_boundary:np.array, p_vector, n_
 
     # loop through number of nodes to create
     for i in range(n_nodes):
-        new_points[i+1] = inner_boundary + (i*spacing) * p_vector
+        new_points[i+1] = inner_boundary + ((i+1)*spacing) * p_vector
 
     return new_points
 
@@ -215,7 +215,6 @@ def getBrackets(df:pd.DataFrame, n_nodes):
     num_boundary_points = len(df.inner)
 
     # vectors
-    node_list = [0]*(n_nodes+2)
     brackets = [0]*num_boundary_points
 
     # loop through each boundary point
@@ -224,6 +223,7 @@ def getBrackets(df:pd.DataFrame, n_nodes):
         inner_boundary = df.inner[i]
         outer_boundary = df.outer[i]
         perp_vector = df.p_vector[i]
+        node_list = [0]*(n_nodes+2)
 
         # get new points and assign a node 
         bracket_points = createBracket(inner_boundary, outer_boundary, perp_vector, n_nodes)
@@ -236,19 +236,21 @@ def getBrackets(df:pd.DataFrame, n_nodes):
             outerDistance = TrackHelpers.getDistance(P, bracket_points[-1])
             nextNode = np.nan
             cost = np.inf
-            temp_node = Node(bracketId, xy, velocity, innerDistance, outerDistance, nextNode, cost)
+            # temp_node = Node(bracketId, xy, velocity, innerDistance, outerDistance, nextNode, cost)
             # append to node list
-            node_list[j] = temp_node
+            node_list[j] = Node(bracketId, xy, velocity, innerDistance, outerDistance, nextNode, cost)
 
         # bracket module
         Id = i
         innerNode = node_list[0]
         outerNode = node_list[-1]
         width = TrackHelpers.getDistance(node_list[0]._xy, node_list[-1]._xy)
-        NodeList = node_list
-        temp_bracket = Bracket(Id, innerNode, outerNode, width, NodeList)
+        # NodeList = node_list
+        # temp_bracket = Bracket(Id, innerNode, outerNode, width, NodeList)
         # this code below doesn't work all brackets have the same node list!!
-        brackets[i] = temp_bracket
+        brackets[i] = Bracket(Id, innerNode, outerNode, width, node_list)
+
+        del node_list
 
     # plotting
     p = plt.figure()
@@ -259,11 +261,11 @@ def getBrackets(df:pd.DataFrame, n_nodes):
     TrackHelpers.Plot(False, df.outer, "outer boundary")
     # nodes
     for B in brackets:
-        all_x = [P._xy[0] for P in B._nodeList]
-        all_y = [P._xy[1] for P in B._nodeList]
-        plt.plot(all_x,all_y,"ok")
-        # all_nodes = B._nodeList
-        # TrackHelpers.Plot(True, all_nodes, "nodes")
+        # all_x = [P._xy[0] for P in B._nodeList]
+        # all_y = [P._xy[1] for P in B._nodeList]
+        # plt.plot(all_x,all_y,"ok")
+        all_nodes = B._nodeList
+        TrackHelpers.Plot(True, all_nodes, "nodes")
 
     p.savefig(f"{os.path.dirname(__file__)}/Track images/nodes.png", dpi=600) 
     plt.show()
@@ -314,75 +316,70 @@ def getBrackets(df:pd.DataFrame, n_nodes):
 #     return shortest_path_line
 # end
 
-# function belman_ford_path(track_name::String, df, velocity_range::Vector, brackets, start_node::Node)
-#     # Initialise first set of paths from first bracket
-#     for node in brackets[end].NodeList
-#         node.cost = 0 
-#     end
-#     # loop through every bracket (backwards - think as if you are doing forward but reversed)
-#     for i in length(brackets):-1:2
-#         # print("Bracket: $i \n")
-#         # the second bracket best node must only come from the starting node
-#         if i == 2
-#             current_node_list = [start_node]
-#         else
-#             current_node_list = brackets[i-1].NodeList
-#         end
+def belman_ford_path(track_name, df, velocity_range, brackets, start_node):
+    # Initialise first set of paths from first bracket
+    for node in brackets[-1]._nodeList:
+        node._cost = 0 
+    
+    # loop through every bracket (backwards - think as if you are doing forward but reversed)
+    for i in range(len(brackets)-1,1,-1):
+        # print("Bracket: $i \n")
+        # the second bracket best node must only come from the starting node
+        if i == 1:
+            current_node_list = [start_node]
+        else:
+            current_node_list = brackets[i-1]._nodeList
 
-#         # loop through  every node in current bracket starting at second to last
-#         Threads.@threads for current_node in current_node_list
+        # loop through  every node in current bracket starting at second to last
+        for current_node in current_node_list:
 
-#             # the minimum cost is the current cost at the node
-#             min_cost = Inf
-#             best_velocity = current_node.velocity
-#             go_to_node = current_node.nextNode
+            # the minimum cost is the current cost at the node
+            min_cost = np.inf
+            best_velocity = current_node._velocity
+            go_to_node = current_node._nextNode
 
-#             # node ahead (e.g. last bracket if current is second to last bracket)
-#             for next_node in brackets[i].NodeList
-#                 distance_between_nodes = TrackHelpers.getDistance(next_node.xy, current_node.xy)
+            # node ahead (e.g. last bracket if current is second to last bracket)
+            for next_node in brackets[i]._nodeList:
+                distance_between_nodes = TrackHelpers.getDistance(next_node._xy, current_node._xy)
 
-#                 # try every velocity range 
-#                 for velocity in velocity_range
-#                     cost = (2*distance_between_nodes) / (velocity + next_node.velocity) + next_node.cost
-#                     # if lower cost to travel 
-#                     if cost < min_cost
-#                         min_cost = cost 
-#                         best_velocity = velocity
-#                         go_to_node = next_node
-#                     end
-#                 end
+                # try every velocity range 
+                for velocity in velocity_range:
+                    cost = (2*distance_between_nodes) / (velocity + next_node._velocity) + next_node._cost
+                    # if lower cost to travel 
+                    if cost < min_cost:
+                        min_cost = cost 
+                        best_velocity = velocity
+                        if go_to_node is not np.nan:
+                            del go_to_node
+                        go_to_node = next_node
 
-#                 # next node cost is cumulative unless its the first next bracket
-#                 current_node.cost = min_cost
-#                 current_node.velocity = best_velocity
-#                 current_node.nextNode = go_to_node
-#             end
-#         end
-#     end
+                # next node cost is cumulative unless its the first next bracket
+                current_node._cost = min_cost
+                current_node._velocity = best_velocity
+                current_node._nextNode = go_to_node
 
-#     # plotting        
-#     p = plot()
+    # plotting        
+    p = plt.figure()
 
-#     # inner boundary
-#     TrackHelpers.Plot(p, false, df.inner, "inner boundary")
-#     # outer boundary
-#     TrackHelpers.Plot(p, false, df.outer, "outer boundary")
+    # inner boundary
+    TrackHelpers.Plot(False, df.inner, "inner boundary")
+    # outer boundary
+    TrackHelpers.Plot(False, df.outer, "outer boundary")
 
-#     # optimal race line
-#     current_node = start_node
-#     optimal_nodes = []
-#     velocities = []
-#     while !isnothing(current_node)
-#         push!(velocities, current_node.velocity)
-#         push!(optimal_nodes, current_node)
-#         # update current node
-#         current_node = current_node.nextNode
-#     end
+    # optimal race line
+    current_node = start_node
+    optimal_nodes = []
+    velocities = []
+    while current_node is not np.nan:
+        velocities.append(current_node._velocity)
+        optimal_nodes.append(current_node)
+        # update current node
+        current_node = current_node._nextNode
 
-#     all_x, all_y = TrackHelpers.Plot(p, true, optimal_nodes, "optimal race line")
-#     plot!(p, all_x, all_y, line_z=velocities, label="optimal race line", title="Optimal Race Line Colored By Velocity", linewidth=0.5,dpi=600)
+    TrackHelpers.Plot(True, optimal_nodes, "optimal race line")
 
-#     savefig("Race lines/$track_name.png")
+    p.savefig(f"{os.path.dirname(__file__)}/Race lines/{track_name}.png", dpi=1200) 
+    plt.show()
 
-#     return start_node
-# end
+    return start_node
+
