@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def getDistance(p1:np.array,p2:np.array):
+def getDistance(p1:np.array, p2:np.array):
     return getMagnitude((p2-p1))
 
 def getMagnitude(vector:np.array): return np.sqrt(sum(vector**2))
@@ -23,6 +23,18 @@ def getRotatedVector(angle, vector:np.array):
     # rotation matrix
     rotate = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
     return np.dot(rotate,vector)
+
+def getMidPoint(p1:np.array, p2:np.array): return (p2 + p1)/2
+
+def getAngle(p1:np.array, p2:np.array):
+    diff = getVector(p1=p1, p2=p2, unit=True)
+
+    return np.arctan2(diff[1], diff[0])
+
+def getAngle2(p1:np.array, p2:np.array):
+    value = np.dot(p1, p2) / (getMagnitude(p1) * getMagnitude(p2))
+    
+    return np.arccos(value)
 
 
 # function getVectorLineIntersection(v1::Vector, p1::Vector,v2::Vector, p2::Vector)
@@ -58,7 +70,7 @@ def getBoundaries(center_point:np.array, distance:np.array, unit_center:np.array
 def getInnerBoundary(center_point:np.array, distance, vector:np.array):
     """computer right getOuterBoundary"""
     # transform by 90 degrees - counter clockwise negative
-    angle = (-90.0/180) * np.pi
+    angle = (90.0/180) * np.pi
     rotated_vector = getRotatedVector(angle, vector)
     # dx = vector[1]*cos(-90*pi/180) - vector[2]*sin(-90*pi/180)
     # dy = vector[1]*sin(-90*pi/180) + vector[2]*cos(-90*pi/180)
@@ -71,7 +83,7 @@ def getInnerBoundary(center_point:np.array, distance, vector:np.array):
 def getOuterBoundary(center_point:np.array, distance, vector:np.array):
     """computer left boundary"""
     # transform by 90 degrees - clockwise positive
-    angle = (90.0/180) * np.pi
+    angle = (-90.0/180) * np.pi
     rotated_vector = getRotatedVector(angle, vector)
     # dx = vector[1]*cos(90*pi/180) - vector[2]*sin(90*pi/180)
     # dy = vector[1]*sin(90*pi/180) + vector[2]*cos(90*pi/180)
@@ -109,12 +121,12 @@ def getOuterBoundary(center_point:np.array, distance, vector:np.array):
 # end
 
 
-def Plot(nodes:bool, vector_list:np.array, label:str):
+def Plot(nodes:bool, vector_list:np.array, label:str,col=None):
     if nodes:
         all_x = [P._xy[0] for P in vector_list]
         all_y = [P._xy[1] for P in vector_list]
         lw = 1
-        plt.plot(all_x, all_y, "-k", label=label, lw=lw)
+        plt.plot(all_x, all_y, "-", label=label, lw=lw, color=col)
     else:
         all_x = [P[0] for P in vector_list]
         all_y = [P[1] for P in vector_list]

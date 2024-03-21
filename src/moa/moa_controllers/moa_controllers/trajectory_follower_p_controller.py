@@ -47,8 +47,8 @@ class trajectory_following(Node):
     def get_control_error(self, csa, dsa): return dsa-csa
 
     def get_best_state(self, msg: Float32):
-        p_gain = 2
-        steering_angle_deg = (msg.data * 180 / np.pi) * p_gain
+        p_gain = 1
+        steering_angle_deg = (msg.data*180/np.pi) * p_gain
         # if steering_angle_deg < -9.0:
         #     steering_angle_deg = -30.0
         # elif steering_angle_deg > 9.0:

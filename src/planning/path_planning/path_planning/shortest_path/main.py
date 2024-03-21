@@ -3,14 +3,14 @@ def main():
     # imports 
     # import CoreModels
     # import PathHelpers
-    import TrackMethods
+    import planning.path_planning.path_planning.shortest_path.TrackMethods as TrackMethods
 
     # choose track
     track_name = "Silverstone"
 
     # read chosen track 
     print("IMPORTING TRACK")
-    df = TrackMethods.importTrack(track_name, True)
+    df = TrackMethods.importTrack(trackname=track_name)
 
     # print("INTERPOLATING")
     # df = TrackMethods.interpolateTrack(df, interval = 5) 
@@ -28,7 +28,7 @@ def main():
     print("starting outer distance: ", start_node._outerDistance)
     # mass = 50.0
     # μ = 0.7
-    start_node = TrackMethods.belman_ford_path(track_name, df, velocity_range, brackets, start_node)
+    start_node = TrackMethods.belman_ford_path(df, velocity_range, brackets, start_node, track_name)
     # start_node = TrackMethods.optimise_path(track_name, df, brackets, start_node, mass, μ)
     print("\nOPTIMAL PATH COMPUTED")
 

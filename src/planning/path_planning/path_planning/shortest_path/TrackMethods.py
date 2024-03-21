@@ -2,11 +2,11 @@
 import pandas as pd
 import os
 
-import TrackHelpers
-from TrackHelpers import plt, np
-from CoreModels import Bracket, Node
+import path_planning.shortest_path.TrackHelpers as TrackHelpers
+from path_planning.shortest_path.TrackHelpers import plt, np
+from path_planning.shortest_path.CoreModels import Bracket, Node
 
-def importTrack(trackname:str, hasboundaries:bool):
+def importTrack(track_info:pd.DataFrame=None, trackname:str=None, plot:bool=False):
     """
     import named track from racetrack-database (see comment below)
 
@@ -22,64 +22,64 @@ def importTrack(trackname:str, hasboundaries:bool):
     racetrack-database, Alexander Heilmeier, https://github.com/TUMFTM/racetrack-database
     '''
 
-    # import track data
-    df = pd.read_csv(f"{os.path.dirname(__file__)}/Tracks/racetrack-database/tracks/{trackname}.csv")
-    df.columns = ["x_m","y_m","w_tr_right_m","w_tr_left_m"]
+    if trackname is None: 
+        assert track_info is not None
+        assert all(track_info.columns == ["x_m","y_m","w_tr_left_m","w_tr_right_m"])
+        df = track_info
+    else:
+        # import track data
+        df = pd.read_csv(f"{os.path.dirname(__file__)}/Tracks/racetrack-database/tracks/{trackname}.csv")
+        df.columns = ["x_m","y_m","w_tr_right_m","w_tr_left_m"]
 
     # get number of rows
     num_rows = len(df.x_m)
 
-    # check for boundaries
-    if not hasboundaries:
-        outer = []
-        inner = []
-    else:
-        # COMPUTE BOUNDARIES
-        # center coordinates, track widths and lap distance
-        center_points = [0]*num_rows
-        track_widths = [0]*num_rows
-        lap_distance = [0]*num_rows
+    # COMPUTE BOUNDARIES
+    # center coordinates, track widths and lap distance
+    center_points = [0]*num_rows
+    track_widths = [0]*num_rows
+    lap_distance = [0]*num_rows
 
-        # inner - left, outer - right, perpendicual vector (inner to outer)
-        inner = [0]*num_rows
-        outer = [0]*num_rows
-        p_vector = [0]*num_rows
+    # inner - left, outer - right, perpendicual vector (inner to outer)
+    inner = [0]*num_rows
+    outer = [0]*num_rows
+    p_vector = [0]*num_rows
 
-        
-        # concatenate each center point coordinate as a list
-        for i in range(num_rows):
-            center_points[i] = [df.x_m[i], df.y_m[i]]
-            track_widths[i] = [df.w_tr_right_m[i], df.w_tr_left_m[i]]
-
-        # compute boundary for initial center point
-        # to np.array
-        center_points = np.array(center_points)
-        track_widths = np.array(track_widths)
-        lap_distance = np.array(lap_distance)
-
-        # set lap_distance of first element to 0
-        lap_distance[0] = 0
-
-        vector = TrackHelpers.getVector(center_points[-1], center_points[-2], True)
-        inner[0], outer[0], p_vector[0] = TrackHelpers.getBoundaries(center_points[0], track_widths[0], vector)
-
-        for i in range(1,num_rows-1):
-            # normalized vector in direction of center line
-            vector = TrackHelpers.getVector(center_points[i-1], center_points[i+1], True)
     
-            # calculate lap_distance
-            lap_distance[i] = TrackHelpers.getDistance(center_points[i], center_points[i-1])+lap_distance[i-1]
+    # concatenate each center point coordinate as a list
+    for i in range(num_rows):
+        center_points[i] = [df.x_m[i], df.y_m[i]]
+        track_widths[i] = [df.w_tr_right_m[i], df.w_tr_left_m[i]]
 
-            # compute boundaries
-            inner[i], outer[i], p_vector[i] = TrackHelpers.getBoundaries(center_points[i], track_widths[i], vector)   
+    # compute boundary for initial center point
+    # to np.array
+    center_points = np.array(center_points)
+    track_widths = np.array(track_widths)
+    lap_distance = np.array(lap_distance)
 
-        # compute boundary and final lap distance
-        vector = TrackHelpers.getVector(center_points[-2], center_points[1], True) 
-        lap_distance[-1] = TrackHelpers.getDistance(center_points[-1], center_points[-2])+lap_distance[-2]
-        inner[-1], outer[-1], p_vector[-1] = TrackHelpers.getBoundaries(center_points[-1], track_widths[-1], vector)
+    # set lap_distance of first element to 0
+    lap_distance[0] = 0
 
-        # Note there is a discontinuity between the last and first points as the distance of the first point is 0 and the last is the sum of subsequent points
-        # track_distance = TrackHelpers.getDistance(center_points[1], center_points[end])+lap_distance[end]
+    vector = TrackHelpers.getVector(center_points[-1], center_points[-2], True)
+    outer[0], inner[0], p_vector[0] = TrackHelpers.getBoundaries(center_points[0], track_widths[0], vector)
+
+    for i in range(1,num_rows-1):
+        # normalized vector in direction of center line
+        vector = TrackHelpers.getVector(center_points[i-1], center_points[i+1], True)
+
+        # calculate lap_distance
+        lap_distance[i] = TrackHelpers.getDistance(center_points[i], center_points[i-1])+lap_distance[i-1]
+
+        # compute boundaries
+        inner[i], outer[i], p_vector[i] = TrackHelpers.getBoundaries(center_points[i], track_widths[i], vector)   
+
+    # compute boundary and final lap distance
+    vector = TrackHelpers.getVector(center_points[-2], center_points[1], True) 
+    lap_distance[-1] = TrackHelpers.getDistance(center_points[-1], center_points[-2])+lap_distance[-2]
+    outer[-1], inner[-1], p_vector[-1] = TrackHelpers.getBoundaries(center_points[-1], track_widths[-1], vector)
+
+    # Note there is a discontinuity between the last and first points as the distance of the first point is 0 and the last is the sum of subsequent points
+    # track_distance = TrackHelpers.getDistance(center_points[1], center_points[end])+lap_distance[end]
 
 
     # final dataframe
@@ -90,19 +90,22 @@ def importTrack(trackname:str, hasboundaries:bool):
         "p_vector": p_vector
         })
 
-    # plotting
-    p = plt.figure()
+    if plot:
+        # plotting
+        p = plt.figure()
 
-    # center line
-    TrackHelpers.Plot(False, trackdf.cline, "center line")
-    # inner boundary
-    TrackHelpers.Plot(False, trackdf.inner, "inner boundary")
-    # outer boundary
-    TrackHelpers.Plot(False, trackdf.outer, "outer boundary")
+        # center line
+        TrackHelpers.Plot(False, trackdf.cline, "center line")
+        # inner boundary
+        TrackHelpers.Plot(False, trackdf.inner, "inner boundary")
+        # outer boundary
+        TrackHelpers.Plot(False, trackdf.outer, "outer boundary")
 
-    p.savefig(f"{os.path.dirname(__file__)}/Track images/{trackname}.png", dpi=600) 
-    plt.legend()
-    plt.show()
+        if trackname is None: trackname = "imported track"
+        p.savefig(f"{os.path.dirname(__file__)}/Track images/{trackname}.png", dpi=600) 
+        plt.legend()
+        plt.close()
+        # plt.show()
 
     return trackdf
 
@@ -190,10 +193,13 @@ def importTrack(trackname:str, hasboundaries:bool):
 #     return interpolated_trackdf
 # end
 
-def createBracket(inner_boundary:np.array, outer_boundary:np.array, p_vector, n_nodes):
+def createBracket(inner_boundary:np.array, outer_boundary:np.array, n_nodes, p_vector=None):
     # get distance
     distance = TrackHelpers.getDistance(inner_boundary, outer_boundary)
     spacing = distance / n_nodes
+    p_vector = TrackHelpers.getVector(inner_boundary, outer_boundary, True)
+    # angle = 90 * np.pi / 180
+    # p_vector = TrackHelpers.getRotatedVector(angle, p_vector)
 
     # list of node coordinates
     new_points = [0]*(n_nodes+2)
@@ -207,7 +213,7 @@ def createBracket(inner_boundary:np.array, outer_boundary:np.array, p_vector, n_
 
     return new_points
 
-def getBrackets(df:pd.DataFrame, n_nodes):
+def getBrackets(df:pd.DataFrame, n_nodes, plot:bool=False):
     # attributes
     constant_velocity = 0
     
@@ -222,11 +228,11 @@ def getBrackets(df:pd.DataFrame, n_nodes):
         # boundary points
         inner_boundary = df.inner[i]
         outer_boundary = df.outer[i]
-        perp_vector = df.p_vector[i]
+        # perp_vector = df.p_vector[i]
         node_list = [0]*(n_nodes+2)
 
         # get new points and assign a node 
-        bracket_points = createBracket(inner_boundary, outer_boundary, perp_vector, n_nodes)
+        bracket_points = createBracket(inner_boundary, outer_boundary, n_nodes)
         
         for j, P in enumerate(bracket_points):
             bracketId = i
@@ -252,23 +258,29 @@ def getBrackets(df:pd.DataFrame, n_nodes):
 
         del node_list
 
-    # plotting
-    p = plt.figure()
+    if plot:
+        # plotting
+        p = plt.figure()
 
-    # inner boundary
-    TrackHelpers.Plot(False, df.inner, "inner boundary")
-    # outer boundary
-    TrackHelpers.Plot(False, df.outer, "outer boundary")
-    # nodes
-    for B in brackets:
-        # all_x = [P._xy[0] for P in B._nodeList]
-        # all_y = [P._xy[1] for P in B._nodeList]
-        # plt.plot(all_x,all_y,"ok")
-        all_nodes = B._nodeList
-        TrackHelpers.Plot(True, all_nodes, "nodes")
+        # inner boundary
+        TrackHelpers.Plot(False, df.inner, "inner boundary")
+        # outer boundary
+        TrackHelpers.Plot(False, df.outer, "outer boundary")
+        # nodes
+        for i,B in enumerate(brackets):
+            # all_x = [P._xy[0] for P in B._nodeList]
+            # all_y = [P._xy[1] for P in B._nodeList]
+            # plt.plot(all_x,all_y,"ok")
+            all_nodes = B._nodeList
+            if i == len(brackets)-1:
+                col = "green"
+            else:
+                col = "black"
+            TrackHelpers.Plot(True, all_nodes, "nodes", col)
 
-    p.savefig(f"{os.path.dirname(__file__)}/Track images/nodes.png", dpi=600) 
-    plt.show()
+        p.savefig(f"{os.path.dirname(__file__)}/Track images/nodes.png", dpi=600) 
+        plt.close()
+        # plt.show()
 
     return brackets
 
@@ -316,13 +328,13 @@ def getBrackets(df:pd.DataFrame, n_nodes):
 #     return shortest_path_line
 # end
 
-def belman_ford_path(track_name, df, velocity_range, brackets, start_node):
+def belman_ford_path(df, velocity_range, brackets, start_node, track_name=None, plot:bool=False):
     # Initialise first set of paths from first bracket
     for node in brackets[-1]._nodeList:
         node._cost = 0 
     
     # loop through every bracket (backwards - think as if you are doing forward but reversed)
-    for i in range(len(brackets)-1,1,-1):
+    for i in range(len(brackets)-1,0,-1):
         # print("Bracket: $i \n")
         # the second bracket best node must only come from the starting node
         if i == 1:
@@ -358,28 +370,31 @@ def belman_ford_path(track_name, df, velocity_range, brackets, start_node):
                 current_node._velocity = best_velocity
                 current_node._nextNode = go_to_node
 
-    # plotting        
-    p = plt.figure()
+    if plot:
+        # plotting        
+        p = plt.figure()
 
-    # inner boundary
-    TrackHelpers.Plot(False, df.inner, "inner boundary")
-    # outer boundary
-    TrackHelpers.Plot(False, df.outer, "outer boundary")
+        # inner boundary
+        TrackHelpers.Plot(False, df.inner, "inner boundary")
+        # outer boundary
+        TrackHelpers.Plot(False, df.outer, "outer boundary")
 
-    # optimal race line
-    current_node = start_node
-    optimal_nodes = []
-    velocities = []
-    while current_node is not np.nan:
-        velocities.append(current_node._velocity)
-        optimal_nodes.append(current_node)
-        # update current node
-        current_node = current_node._nextNode
+        # optimal race line
+        current_node = start_node
+        optimal_nodes = []
+        velocities = []
+        while current_node is not np.nan:
+            velocities.append(current_node._velocity)
+            optimal_nodes.append(current_node)
+            # update current node
+            current_node = current_node._nextNode
 
-    TrackHelpers.Plot(True, optimal_nodes, "optimal race line")
+        TrackHelpers.Plot(True, optimal_nodes, "optimal race line")
 
-    p.savefig(f"{os.path.dirname(__file__)}/Race lines/{track_name}.png", dpi=1200) 
-    plt.show()
+        if track_name is None: track_name = "optimalPath"
+        p.savefig(f"{os.path.dirname(__file__)}/Race lines/{track_name}.png", dpi=600) 
+        plt.close()
+        # plt.show()
 
     return start_node
 
