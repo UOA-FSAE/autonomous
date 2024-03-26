@@ -7,6 +7,7 @@ from rclpy.executors import SingleThreadedExecutor
 from geometry_msgs.msg import Point, Pose, PoseArray
 from moa_msgs.msg import ConeMap, AllStates, AllTrajectories
 from ackermann_msgs.msg import AckermannDrive
+from std_msgs.msg import Float32
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,7 +22,7 @@ class trajectory_generator(Node):
             namespace='',
             parameters=[
                 ('debug', True),
-                ('timer', 3.0),
+                ('timer', 7.0),
             ]
         )
 
@@ -59,7 +60,7 @@ class trajectory_generator(Node):
 
         if hasattr(self,"_current_speed") and hasattr(self,"_cone_map"):
             # generate trajectories
-            paths, states = self.my_trajectory_generator(cone_map=self._cone_map, radius=2, npoints=100)
+            paths, states = self.my_trajectory_generator(cone_map=self._cone_map, radius=4, npoints=100)
 
             # publish states and trajectories
             state_list = []
@@ -92,13 +93,15 @@ class trajectory_generator(Node):
         trajectories = []
         # 1. initial point
         first_cone = cone_map.cones[0].pose.pose.position
+        car_position = self.get_position_of_cart(cone_map)
+        car_position, rotation_matrix = self.get_transformation_matrix(car_position)
         # cor = [first_cone.x, first_cone.y]
         cor = [0,0]
         # 2. radius
         r = radius
         # 3. x points 
         n = npoints
-        x = np.linspace(-r/3, r/3, n, endpoint=False)[1:]
+        x = np.linspace(-r/4, r/4, n, endpoint=False)[1:]
         n -= 1
         y = np.zeros(n)
         angs = np.zeros(n)
@@ -122,8 +125,6 @@ class trajectory_generator(Node):
             print(f"passed angle = {angs[i]} for dx = {dx}")
             
             # transform coordinates from fixed to car 
-            car_position = self.get_position_of_cart(cone_map)
-            car_position, rotation_matrix = self.get_transformation_matrix(car_position)
             post_trans_pose = self.apply_transformation(car_position, rotation_matrix, val, y[i])
             # append new points to pose array
             x[i] = post_trans_pose[0][0]

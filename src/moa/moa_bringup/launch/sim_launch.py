@@ -16,7 +16,7 @@ def generate_launch_description():
             executable='trajectory_generation',
             name='trajectory_generation',
             parameters=[{'debug': True, 
-                         'timer':0.1}],
+                         'timer': 1.5}],
         ),
 
         # path optimization
