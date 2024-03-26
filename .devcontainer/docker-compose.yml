@@ -3,68 +3,52 @@ version: '3.4'
 services:
   autonomous_ros2:
     image: autonomous
-    runtime: nvidia
     build:
       context: ..
       dockerfile: .devcontainer/ros2_ws.Dockerfile
-
     environment:
       - DISPLAY
-      - NVIDIA_VISIBLE_DEVICES=0
-      - NVIDIA_DRIVER_CAPABILITIES=all
-      
-      - ROS_DOMAIN_ID=47  # Its 47 for obvious reasons
-
+      - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ..:/ws
-      - /dev:/dev
-
     network_mode: host
     ipc: host
     stdin_open: true
     tty: true
-
+    runtime: nvidia
     deploy:
       resources:
         reservations:
           devices:
-            - driver: nvidia
-              device_ids: []
-              capabilities: [gpu]
-
+            - capabilities: [gpu]
 
   autonomous_zed:
     image: zed_sdk
-    runtime: nvidia
-    privileged: true
-    
     build:
       context: ..
       dockerfile: .devcontainer/zed.Dockerfile
-
     environment:
       - DISPLAY
-      - NVIDIA_VISIBLE_DEVICES=0
-      - NVIDIA_DRIVER_CAPABILITIES=all
-      - ROS_DOMAIN_ID=47
-
-    # command: bash ". ~/.bashrc && ros2 launch zed_wrapper zed_camera.launch.py camera_model:='zed2i'"
-
+      - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ../src/perception/:/ws/src/perception/
       - ../src/moa/moa_description:/ws/src/moa/moa_description
       - ../src/moa/moa_msgs:/ws/src/moa/moa_msgs
+      - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /dev:/dev
       
-
+    command: bash -c ". /ws/ros_entrypoint.sh && ros2 launch zed_wrapper zed_camera.launch.py camera_model:='zed2i'"
     network_mode: host
     ipc: host
     stdin_open: true
     tty: true
-
+    runtime: nvidia
     deploy:
       resources:
         reservations:
           devices:
-            - driver: nvidia
-              device_ids: []
-              capabilities: [gpu]
+            - capabilities: [gpu]
+    privileged: true
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
