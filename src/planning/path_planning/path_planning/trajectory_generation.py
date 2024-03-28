@@ -60,7 +60,7 @@ class trajectory_generator(Node):
 
         if hasattr(self,"_current_speed") and hasattr(self,"_cone_map"):
             # generate trajectories
-            paths, states = self.my_trajectory_generator(cone_map=self._cone_map, radius=4, npoints=100)
+            paths, states = self.my_trajectory_generator(cone_map=self._cone_map, radius=2, npoints=400)
 
             # publish states and trajectories
             state_list = []
@@ -101,7 +101,7 @@ class trajectory_generator(Node):
         r = radius
         # 3. x points 
         n = npoints
-        x = np.linspace(-r/4, r/4, n, endpoint=False)[1:]
+        x = np.linspace(-r, r, n, endpoint=False)[1:]
         n -= 1
         y = np.zeros(n)
         angs = np.zeros(n)

@@ -53,19 +53,25 @@ class trajectory_following(Node):
     # def get_car_position(self, msg:ConeMap): self._car_position = msg.cones[0].pose.pose.position
 
     def callback(self, msg:ConeMap):
-        if hasattr(self, "_steering_angle") and hasattr(self, "_desired_pose"):
+        if hasattr(self, "_steering_angle"):
             # get current and desired points
             car_position = msg.cones[0].pose.pose.position
-            current = np.array([car_position.x, car_position.y + self._distance_to_front])
-            desired = np.array([self._desired_pose.position.x, self._desired_pose.position.y])
+            current = np.array([car_position.x, car_position.y])
+
+            # boundaries
+            innerboundary, outerboundary = self.get_boundaries(msg.cones)
+            desired = self.get_center_points(innerboundary, outerboundary)
             
             # compute the distance between the desired and current point
             error = self.get_control_error(current, desired)
             # get p-gain 
-            p_gain = self.get_gain(error)
+            track_width = self.get_track_width(innerboundary, outerboundary)
+            p_gain = self.get_gain(min(error), track_width)
+            
 
             # compute new angle in degrees
             steering_angle_rad = p_gain * self._steering_angle 
+
 
             self.get_logger().info(f"before and after gain: {steering_angle_rad/p_gain}, {steering_angle_rad}")
             
@@ -88,12 +94,52 @@ class trajectory_following(Node):
         return
     
     
-    def get_control_error(self, current:np.array, desired:np.array): return np.linalg.norm(current-desired, ord=2)
+    def get_control_error(self, current:np.array, desired:np.array): return np.linalg.norm(current-desired, axis=1)
 
-    def get_gain(self, distance):
-        """return gain on steering angle based on error - distance currently"""
-        return (distance-0)/(4-0)
+    def get_gain(self, distance, track_width):
+        """return gain on steering angle based on error - distance to center line currently"""
+        self.get_logger().info(f"DISTANCE = {distance}")
+        center_to_boundary_distance = track_width
 
+        return (distance/center_to_boundary_distance)**2
+    
+    def get_center_points(self, innerboundary, outerboundary):
+        """get the center points"""
+        up_to = min(len(innerboundary), len(outerboundary))
+        center_points = []
+        for i in range(up_to):
+            x1, y1 = innerboundary[i]
+            x2, y2 = outerboundary[i]
+            x, y = self.get_average_point(x1,y1,x2,y2)
+            center_points.append([x,y])
+
+        return center_points
+    
+    def get_track_width(self, innerboundary, outerboundary):
+        firstInner = np.array(innerboundary[0])
+        firstOuter = np.array(outerboundary[0])
+        width = self.get_distance(firstInner, firstOuter)
+
+        return width
+    
+    def get_boundaries(self, cones):
+        innerboundary = []
+        outerboundary = []
+        for i in range(len(cones)):
+            if i != 0:
+                x = cones[i].pose.pose.position.x
+                y = cones[i].pose.pose.position.y
+                # blue - inner
+                if cones[i].colour == 0:
+                    innerboundary.append([x,y])
+                elif cones[i].colour == 2:
+                    outerboundary.append([x,y])
+        
+        return innerboundary, outerboundary
+
+    def get_average_point(self, x1,y1,x2,y2): return (x1+x2)/2, (y1+y2)/2
+
+    def get_distance(self, p1:np.array, p2:np.array): return np.sqrt(sum((p2-p1)**2))
 
 
 
