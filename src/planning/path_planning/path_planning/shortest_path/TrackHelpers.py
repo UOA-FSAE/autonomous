@@ -27,14 +27,24 @@ def getRotatedVector(angle, vector:np.array):
 def getMidPoint(p1:np.array, p2:np.array): return (p2 + p1)/2
 
 def getAngle(p1:np.array, p2:np.array):
-    diff = getVector(p1=p1, p2=p2, unit=True)
+    diff = p2-p1
+    ratio = diff[0]/diff[1]
 
-    return np.arctan2(diff[1], diff[0])
+    return np.arctan(ratio)
 
 def getAngle2(p1:np.array, p2:np.array):
     value = np.dot(p1, p2) / (getMagnitude(p1) * getMagnitude(p2))
     
     return np.arccos(value)
+
+def getAngleRotation(v1, v2):
+    x1, y1 = v1
+    x2, y2 = v2
+    dot = x1*x2 + y1*y2      # Dot product between [x1, y1] and [x2, y2]
+    det = x1*y2 - y1*x2      # Determinant
+    angle = np.arctan2(det, dot)  # atan2(y, x) or atan2(sin, cos)
+
+    return angle
 
 
 # function getVectorLineIntersection(v1::Vector, p1::Vector,v2::Vector, p2::Vector)
@@ -126,7 +136,7 @@ def Plot(nodes:bool, vector_list:np.array, label:str,col=None):
         all_x = [P._xy[0] for P in vector_list]
         all_y = [P._xy[1] for P in vector_list]
         lw = 1
-        plt.plot(all_x, all_y, "-", label=label, lw=lw, color=col)
+        plt.plot(all_x, all_y, "-o", label=label, lw=lw, color=col)
     else:
         all_x = [P[0] for P in vector_list]
         all_y = [P[1] for P in vector_list]

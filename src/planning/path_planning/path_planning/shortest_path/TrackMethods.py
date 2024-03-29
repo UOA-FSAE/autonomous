@@ -104,8 +104,8 @@ def importTrack(track_info:pd.DataFrame=None, trackname:str=None, plot:bool=Fals
         if trackname is None: trackname = "imported track"
         p.savefig(f"{os.path.dirname(__file__)}/Track images/{trackname}.png", dpi=600) 
         plt.legend()
-        plt.close()
-        # plt.show()
+        plt.show()
+        # plt.close()
 
     return trackdf
 
@@ -279,8 +279,8 @@ def getBrackets(df:pd.DataFrame, n_nodes, plot:bool=False):
             TrackHelpers.Plot(True, all_nodes, "nodes", col)
 
         p.savefig(f"{os.path.dirname(__file__)}/Track images/nodes.png", dpi=600) 
-        plt.close()
-        # plt.show()
+        plt.show()
+        # plt.close()
 
     return brackets
 
@@ -393,8 +393,9 @@ def belman_ford_path(df, velocity_range, brackets, start_node, track_name=None, 
 
         if track_name is None: track_name = "optimalPath"
         p.savefig(f"{os.path.dirname(__file__)}/Race lines/{track_name}.png", dpi=600) 
-        plt.close()
-        # plt.show()
+        plt.legend()
+        plt.show()
+        # plt.close()
 
     return start_node
 

@@ -38,30 +38,12 @@ class shortest_path(NODE):
         self.create_subscription(ConeMap, "cone_map", self.set_boundaries, 10)
 
         # publishers
-        self.steering_angle = self.create_publisher(Float32, "moa/selected_steering_angle", 10)
+        self.steering_angle = self.create_publisher(Float32, "/test/cmd_steering", 10)
         self.best_trajectory_publisher = self.create_publisher(PoseArray, "moa/selected_trajectory", 10)
 
 
     def set_boundaries(self, msg:ConeMap):
-        cones = msg.cones
-        # loop through each cone
-        innerboundary = []
-        outerboundary = []
-        ic = 0
-        oc = 0
-        for i in range(len(cones)):
-            x = cones[i].pose.pose.position.x
-            y = cones[i].pose.pose.position.y
-            if i == 0:
-                car_position = [x,y]
-            else:
-                # blue - left
-                if cones[i].colour == 0:
-                    innerboundary.append([x,y])
-                    ic += 1
-                elif cones[i].colour == 2:
-                    outerboundary.append([x,y])
-                    oc += 1
+        innerboundary, outerboundary, car_position, oc, ic = self.get_boundaries(msg.cones)
 
         # innerboundary = np.array(innerboundary)
         # outerboundary = np.array(outerboundary)
@@ -105,23 +87,46 @@ class shortest_path(NODE):
         # get steering angle based on current and next point
         p1 = start_node._xy
         p2 = start_node._nextNode._xy
-        # p1 = np.array(self.get_transformed_point(msg, start_node._xy))
-        p2 = np.array(self.get_transformed_point(msg, start_node._nextNode._xy))
-        steering_angle = TrackHelpers.getAngle(p1=p1, p2=p2)
+        p1t = np.array(self.get_transformed_point(msg, start_node._xy))  # transform
+        p2t = np.array(self.get_transformed_point(msg, start_node._nextNode._xy))
+        steering_angle = TrackHelpers.getAngleRotation(p1t, p2t)
+        steering_angle = -steering_angle * 180 / np.pi
 
         # publish msgs
-        self.steering_angle.publish(Float32(data=steering_angle))
+        # self.steering_angle.publish(Float32(data=steering_angle))
 
-        nodes = [start_node, start_node._nextNode]
+        points = [p1t, p2]
         msg = PoseArray()
-        for N in nodes:
-            args = {"position": Point(x=N._xy[0], y=N._xy[1], z=0.0)}
+        for P in points:
+            args = {"position": Point(x=P[0], y=P[1], z=0.0)}
             msg.poses.append(Pose(**args))
         self.best_trajectory_publisher.publish(msg)
 
         self.get_logger().info(f"steering angle published: {steering_angle}")
 
         return
+    
+    def get_boundaries(self, cones):
+        # loop through each cone
+        innerboundary = []
+        outerboundary = []
+        ic = 0
+        oc = 0
+        for i in range(len(cones)):
+            x = cones[i].pose.pose.position.x
+            y = cones[i].pose.pose.position.y
+            if i == 0:
+                car_position = [x,y]
+            else:
+                # blue - left
+                if cones[i].colour == 0:
+                    innerboundary.append([x,y])
+                    ic += 1
+                elif cones[i].colour == 2:
+                    outerboundary.append([x,y])
+                    oc += 1
+
+        return innerboundary, outerboundary, car_position, oc, ic
     
     def save_track(self, innerboundary, outerboundary):
         with open(f'/{os.path.dirname(__file__)}/bound_coods', 'w') as fh:
@@ -225,7 +230,6 @@ class shortest_path(NODE):
         transformed_point = np.matmul(rotation_matrix, point) + position_vector
 
         return transformed_point
-
 
 
 def main():
