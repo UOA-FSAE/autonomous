@@ -76,33 +76,37 @@ class StanleyControl(Node):
         self.k_stanley = 5.0 #stanley Controller gain
         self.k_speed = 1.0 #speed Controller gain
         self.cam_fron_axle_dist= 1 #[m] Wheel base of vehicle
-        self.max_steer = np.radians(27.0)  # [rad] max steering angle
-        self.target_speed = 150/3.6 #[m/s]
+        self.max_steer = 27.0  # [degrees] max steering angle
+        self.target_speed = 20/3.6 #[m/s]
 
         #Subscribe for car pose and track
         self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
-        self.create_subscription(ConeMap, "cone_map", self.main_hearback, 5)
+        self.create_subscription(Pose, "car_position", self.main_hearback, 5)
         #Publish result
         self.cmd_vel_pub = self.create_publisher(AckermannDrive, "/drive", 5)
         self.cmd_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
         self.create_publisher(Pose, "moa/track_point", 5)
     
     def main_hearback(self, msg):
-        car_pose = msg.cones[0].pose.pose
+        car_pose = msg
         camera_position = [car_pose.position.x,car_pose.position.y]
         car_yaw = car_pose.orientation.w
+        car_yaw_corrected = self.normalize_angle(car_yaw-4.71)
+        
 
         if hasattr(self, "trajectory_in_global_frame"):
             #Get Car front axle center position
-            axle_pos = self.get_front_axle_position(camera_position,car_yaw)
+            axle_pos = self.get_front_axle_position(camera_position,car_yaw_corrected)
             #Get closest point on track and distance error
-            cls_point,error_front_axle = self.get_closest_track_point(axle_pos,car_yaw)
+            cls_point,error_front_axle = self.get_closest_track_point(axle_pos,car_yaw_corrected)
             #Compute target yaw
             target_yaw = self.cal_target_yaw(cls_point)
             #Compute steering angle
-            theta_e = self.normalize_angle(target_yaw-car_yaw)
-            theta_d = np.arctan2(self.k_stanley * error_front_axle, self.target_speed)
-            delta = theta_e + theta_d
+            theta_e = -self.normalize_angle(target_yaw-car_yaw_corrected)
+            #print([target_yaw,car_yaw_corrected])
+            #theta_d = np.arctan2(self.k_stanley * error_front_axle, self.target_speed)
+            theta_d = 0
+            delta = math.degrees(theta_e + theta_d)
             delta = np.clip(delta, -self.max_steer, self.max_steer)
             self.steering_angle = delta
         else:
@@ -159,7 +163,10 @@ class StanleyControl(Node):
         dy_dx = np.gradient(self.ty, self.tx)
         # The gradient at the specified point_index
         rate= dy_dx[cls_point]
-        return np.arctan(rate)
+        target_yaw = np.arctan(rate)
+        if(rate)<0: 
+            target_yaw = 3.14+target_yaw
+        return target_yaw
     
     def normalize_angle(self,angle):
         return angle_mod(angle)
