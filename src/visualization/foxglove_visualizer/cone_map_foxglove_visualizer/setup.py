@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-                'visualizer = cone_map_foxglove_visualizer.visualizer:main',
+            'visualizer = cone_map_foxglove_visualizer.visualizer:main',
+        	'base_tf = cone_map_foxglove_visualizer.base_tf:main',
         ],
     },
 )

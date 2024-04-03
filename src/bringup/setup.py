@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'base_tf'
+package_name = 'bringup'
 
 setup(
     name=package_name,
@@ -13,14 +13,13 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='dyu056',
-    maintainer_email='yudaniel888@hotmail.com',
+    maintainer='nitrix22',
+    maintainer_email='nitrix22@todo.todo',
     description='TODO: Package description',
-    license='TODO: License declaration',
+    license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-        	'base_tf = base_tf.base_tf:main',
         ],
     },
 )
