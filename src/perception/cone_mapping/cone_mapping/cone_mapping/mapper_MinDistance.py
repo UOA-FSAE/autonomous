@@ -109,24 +109,6 @@ class Cone_Mapper(Node):
 
         self.get_logger().info("Cone Map Published")
 
-        # print("######################New Message##########################")
-        # is_first = True
-        # for cone_item in self.Cone_map.cones:
-        #     self.print_cone_information(cone_item, is_first)
-        #     is_first = False
-
-        # self.get_measurement(msg) #For testing rev 0 function
-        
-        # self.get_logger().info('Mapped result: "%s"' % self.cone_map)
-        # print(self.cone_map_array_measured);
-        # self.counter += 1;
-
-        # if self.counter % 50 == 0:
-        #     plt.scatter(self.cone_map_array[0], self.cone_map_array[1], marker="x") #x marker for cone mapping
-        #     plt.scatter(self.cone_map_array_measured_all[0], self.cone_map_array_measured_all[1], marker=".") #. marker for all measurements taken
-        #     plt.scatter(self.real_x,self.real_y, marker = ".") #. marker for true position
-        #     plt.show();
-        #     time.sleep(1)
 ####Temporal test functions##############################################################################################
 
     def Transformation_test(self, msg : ConeMap):
@@ -241,7 +223,7 @@ class Cone_Mapper(Node):
         matching_flag = False;
         for cone in predicted_cones:
             # For each existing cone, check whether there is any measurement that is within the specified radius match_radius, and append the measurement if there is any and remove the measurement from measured_cones to avoid this measurement to be checked again
-            match_radius = 3;
+            match_radius = 0.5;
             matching_flag = False;
             predict_x, predict_y, predict_theta, predict_covaraince, predicted_color = self.extract_data_from_cone(cone)
             for measured_cone in measured_cones:

@@ -20,7 +20,9 @@ setup(
     tests_require=['pytest'],
 	entry_points={
 		    'console_scripts': [
-		            'listener = cone_mapping.subscriber_member_function:main',
+		            'baseline = cone_mapping.mapper_baseline:main',
+		            'min_distance = cone_mapping.mapper_MinDistance:main',
+		            'dbscan = cone_mapping.mapper_DBSCAN:main',
 		    ],
 	},
 )
