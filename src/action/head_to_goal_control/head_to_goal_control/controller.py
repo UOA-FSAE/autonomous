@@ -8,8 +8,8 @@ import math
 from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import Pose
 from moa_msgs.msg import ConeMap
-from ackermann_msgs.msg import AckermannDrive
-
+from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
+from std_msgs.msg import Header
 
 
 class head_to_goal_control_algorithm(Node):
@@ -20,9 +20,9 @@ class head_to_goal_control_algorithm(Node):
         # Constant to tune (touch me please it makes me feel horny ahhhhhhh!)
         ## Tuning for look ahead distance
         self.look_up_distance = 1
-        self.cancel_distance = 0.5
+        self.cancel_distance = 0.6
         ## Tuning for PID controller
-        self.P = 10
+        self.P = 20
         self.max_steering_angle = 20.0
         #self.max_speed = 2.5
         self.max_speed = 2
@@ -39,8 +39,11 @@ class head_to_goal_control_algorithm(Node):
         self.best_trajectory_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
         #self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.main_hearback, 5)
         self.car_pos_sub = self.create_subscription(Pose, "car_position", self.main_hearback, 5)
-        self.cmd_vel_pub = self.create_publisher(AckermannDrive, "/drive", 5)
-        self.cmd_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
+
+        self.drive_pub = self.create_publisher(AckermannDrive, "/drive", 5)
+        self.drive_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
+        self.cmd_vel_pub = self.create_publisher(AckermannDriveStamped, "cmd_vel", 5)
+
         self.track_point_pub = self.create_publisher(Pose, "moa/track_point", 5)
 
     def main_hearback(self, msg: Pose):
@@ -222,8 +225,19 @@ class head_to_goal_control_algorithm(Node):
                 "acceleration": 0.0,
                 "jerk": 0.0}
         msg2 = AckermannDrive(**args2)
-        self.cmd_vel_pub.publish(msg1)
-        self.cmd_vis_pub.publish(msg2)
+
+        msg_cmd_vel = self.convert_to_stamped(msg1)
+        self.cmd_vel_pub.publish(msg_cmd_vel)
+        self.drive_pub.publish(msg1)
+        self.drive_vis_pub.publish(msg2)
+
+    def convert_to_stamped(self, ackermann_msgs):
+        stamped_msg = AckermannDriveStamped()
+        stamped_msg.header = Header()
+        stamped_msg.header.stamp = self.get_clock().now().to_msg()  # Set the current timestamp
+        stamped_msg.header.frame_id = '0'  # Set the appropriate frame ID
+        stamped_msg.drive = ackermann_msgs
+        return stamped_msg
 
 def main(args=None):
     rclpy.init(args=args)
