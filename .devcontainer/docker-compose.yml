@@ -38,7 +38,7 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - /dev:/dev
       
-    command: bash -c ". /ws/ros_entrypoint.sh && ros2 launch zed_wrapper zed_camera.launch.py camera_model:='zed2i'"
+    # command: bash -c ". /ws/ros_entrypoint.sh && ros2 launch zed_wrapper zed_camera.launch.py camera_model:='zed2i'"
     network_mode: host
     ipc: host
     stdin_open: true
@@ -51,4 +51,4 @@ services:
             - capabilities: [gpu]
     privileged: true
     devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0
+      - /dev:/dev
