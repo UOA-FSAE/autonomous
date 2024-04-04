@@ -101,14 +101,32 @@ class Cone_Mapper(Node):
         #self.Transformation_test(msg);
         #self.publisher.publish(msg) # for debug
 
-        #self.Add_All_Measurement_Test(msg);
-        self.kalman_filter_update(msg)
+        self.Add_All_Measurement_Test(msg);
+        #self.kalman_filter_update(msg)
 
         #self.always_trust_position()
         self.publisher.publish(self.Cone_map)
 
         self.get_logger().info("Cone Map Published")
 
+        # print("######################New Message##########################")
+        # is_first = True
+        # for cone_item in self.Cone_map.cones:
+        #     self.print_cone_information(cone_item, is_first)
+        #     is_first = False
+
+        # self.get_measurement(msg) #For testing rev 0 function
+        
+        # self.get_logger().info('Mapped result: "%s"' % self.cone_map)
+        # print(self.cone_map_array_measured);
+        # self.counter += 1;
+
+        # if self.counter % 50 == 0:
+        #     plt.scatter(self.cone_map_array[0], self.cone_map_array[1], marker="x") #x marker for cone mapping
+        #     plt.scatter(self.cone_map_array_measured_all[0], self.cone_map_array_measured_all[1], marker=".") #. marker for all measurements taken
+        #     plt.scatter(self.real_x,self.real_y, marker = ".") #. marker for true position
+        #     plt.show();
+        #     time.sleep(1)
 ####Temporal test functions##############################################################################################
 
     def Transformation_test(self, msg : ConeMap):
@@ -136,34 +154,6 @@ class Cone_Mapper(Node):
         cone_map_measurement_unsorted = self.produce_cone_map_message(x, y, theta,
                                                                       self.cone_map_array_measured)  # Produce map message
         self.publisher.publish(cone_map_measurement_unsorted);
-        """Extract measurement state from the Cone Map message subscription
-
-        Args:
-            msg: Input ConeMap message from Cone detection
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-        # Convert Cone Map message into position (x and y), orientation (theta) and list of cones
-        x, y, theta, list_of_cones = self.convert_message_to_data(msg)
-        # Use list of cones and states (x, y and theta) to get the position vector and rotation matrix
-        position_vector, rotation_matrix, list_of_cones = self.convert_to_input_matrix(x, y, theta, list_of_cones);
-        # Conversion from local reference frame to global reference frame
-        new_cone_columns = self.create_cone_map(position_vector, rotation_matrix, list_of_cones)
-        self.cone_map_array_measured = new_cone_columns;  # Produce latest measurement
-
-        # Get unsorted Cone Map that contains all measured cone map at moment
-        cone_map_measurement_unsorted = self.produce_cone_map_message(x, y, theta,
-                                                                      self.cone_map_array_measured)  # Produce map message
-
-        # Sort cones that is measured into the cones that are logged into the map. If the cone is new, add new logged cone.
-        self.Cone_map_measured = self.sort_and_add_cones(cone_map_measurement_unsorted);
-
-        # Reset orientation whenever prediction to measurement differences of orientation has 2 pi differencnes\
-        # self.periodic_orientation();
 
 
     def Add_All_Measurement_Test(self, msg: ConeMap):
@@ -196,61 +186,6 @@ class Cone_Mapper(Node):
         # Reset orientation whenever prediction to measurement differences of orientation has 2 pi differencnes\
         # self.periodic_orientation();
 ####SLAM fucntion below################################################################################################################################
-
-    def sort_and_add_cones(self, cone_map_measurement_input : ConeMap) -> ConeMap:
-        """Sort measured cone into each of the existing cones and add unsorted measured cone as new cone in the map
-
-        Args:
-            cone_map_measurement_input: ConeMap that records all of the measured cones which includes cart measurement at index = 0
-
-        Returns:
-            output: Measured ConeMap with every measurement at the right position
-
-        Raises:
-            None
-        """
-
-        output = ConeMap();
-        # Include cart localization info first
-        output.cones.append(cone_map_measurement_input.cones[0]);
-
-        # Collect existing cones
-        predicted_cones = self.Cone_map.cones[1:];
-        # Collect upcoming measurement of the cones
-        measured_cones = cone_map_measurement_input.cones[1:];
-
-        # Sort existing cones
-        matching_flag = False;
-        for cone in predicted_cones:
-            # For each existing cone, check whether there is any measurement that is within the specified radius match_radius, and append the measurement if there is any and remove the measurement from measured_cones to avoid this measurement to be checked again
-            match_radius = 0.5;
-            matching_flag = False;
-            predict_x, predict_y, predict_theta, predict_covaraince, predicted_color = self.extract_data_from_cone(cone)
-            for measured_cone in measured_cones:
-                measure_x, measure_y, measure_theta, measure_covariance, measured_color = self.extract_data_from_cone(
-                    measured_cone)
-                if self.is_same_cone(predict_x, predict_y, measure_x, measure_y,
-                                     match_radius) and predicted_color == measured_color:
-                    output.cones.append(measured_cone);
-                    measured_cones.remove(measured_cone);
-                    matching_flag = True;
-                    break;
-            # If there is no measurement matches with the existing cone that is checking, the existing cone's reading will be appended to the output.
-            if not (matching_flag):
-                output.cones.append(cone);
-
-        # print("predicted", self.convert_message_to_data(self.Cone_map)[3])
-        # print("measured", self.convert_message_to_data(cone_map_measurement_input)[3])
-        # print("output", self.convert_message_to_data(output)[3])
-
-        # If there are measurements that is not classified into the existing cones, the measurement will be added into the existing cones list as the new cones found.
-        for left_cone in measured_cones:
-            output.cones.append(left_cone);
-            self.Cone_map.cones.append(left_cone);
-
-        # Update Q and R matrix for change of number of cones.
-        self.update_matrix()
-        return output;
 
     def sort_and_add_cones(self, cone_map_measurement_input : ConeMap) -> ConeMap:
         """Sort measured cone into each of the existing cones and add unsorted measured cone as new cone in the map
@@ -544,16 +479,16 @@ class Cone_Mapper(Node):
         covaraince = cone_input.pose.covariance;
         color = cone_input.colour;
         return x, y, theta, covaraince, color
-        
+
     def convert_to_input_matrix(self, x: float, y: float, theta: float, list_of_cones: np.array) -> (np.array, np.array, np.array):
         '''Convert state and list_of_cones input into position vector, rotation matrix (DCM) and the matrix of list of cones
-        
+
         Args:
             x: x position specified in float
             y: y position specified in float
             theta: theta orientation specified in float
             list_of_cones: np.array (numpy array) for matrix of cone positions in 2 by n matrix (n is number of cones recorded in input))
-        
+
         Returns:
             position_vector: np.array of position vector of cart
             rotation_matrix: np.array DCM matrix to convert reading from local frame into global frame
@@ -565,7 +500,7 @@ class Cone_Mapper(Node):
         position_vector = np.array([[x],[y],[0]]);
         rotation_matrix = np.array([[math.cos(theta), -math.sin(theta), 0],[math.sin(theta), math.cos(theta), 0], [0, 0, 1]]) #Inverse DCM
 
-        return position_vector, rotation_matrix, list_of_cones;
+        return position_vector, rotation_matrix, list_of_cones
 
     def create_cone_map(self, position_vector : np.array, rotation_matrix : np.array, list_of_cones : np.array) -> np.array:
         list_of_cones_unrotated = np.matmul(rotation_matrix, list_of_cones)
@@ -614,7 +549,7 @@ class Cone_Mapper(Node):
         for index in range(length):
             cone_input = self.pack_cone_message(list_of_cones_x[index], list_of_cones_y[index], 0.0, index + 1, self.default_cone_covariance, int(list_of_cones_color[index]));
             output_map.cones.append(cone_input);
-        return output_map;
+        return output_map
 
     def is_repeating(self, cone_x : float, cone_y : float, target_cone_x_list, target_cone_y_list, tolerance : float) -> bool:
         number_of_cones = len(target_cone_x_list);

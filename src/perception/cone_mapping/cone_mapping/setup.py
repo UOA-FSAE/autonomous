@@ -20,8 +20,7 @@ setup(
     tests_require=['pytest'],
 	entry_points={
 		    'console_scripts': [
-		            'baseline = cone_mapping.mapper_baseline:main',
-		            'min_distance = cone_mapping.mapper_MinDistance:main',
+		            'kf = cone_mapping.mapper_kalman_filter:main',
 		            'dbscan = cone_mapping.mapper_DBSCAN:main',
 		    ],
 	},
