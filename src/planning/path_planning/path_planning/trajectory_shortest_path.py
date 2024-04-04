@@ -27,12 +27,14 @@ class shortest_path(NODE):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('plot', False)
+                ('plot', False),
+                ('save_track', False),
             ]
         )
 
         # attributes
         self._plot = self.get_parameter("plot").get_parameter_value().bool_value
+        self._save_track = self.get_parameter("save_track").get_parameter_value().bool_value
 
         # subscribers
         self.create_subscription(ConeMap, "cone_map", self.set_boundaries, 10)
@@ -44,19 +46,17 @@ class shortest_path(NODE):
 
     def set_boundaries(self, msg:ConeMap):
         innerboundary, outerboundary, car_position, oc, ic = self.get_boundaries(msg.cones)
-
-        # innerboundary = np.array(innerboundary)
-        # outerboundary = np.array(outerboundary)
-        innerboundary = np.array(sorted(innerboundary))
-        outerboundary = np.array(sorted(outerboundary))
-        # firstO = outerboundary[0]
-        # lastO = outerboundary[-1]
-        # outerboundary[0] = innerboundary[0]
-        # outerboundary[-1] = innerboundary[-1]
-        # innerboundary[0] = firstO
-        # innerboundary[-1] = lastO
+        # smaller (incl. negative) x, y come before 
+        innerboundary = np.array(innerboundary)
+        outerboundary = np.array(outerboundary)
+        
         if ic > oc: innerboundary = innerboundary[:(oc-ic)] 
         if oc > ic: outerboundary = outerboundary[:(ic-oc)]
+
+        # transform the points
+        innerboundary = list(map(lambda P: self.get_transformed_point(msg, P), innerboundary))
+        outerboundary = list(map(lambda P: self.get_transformed_point(msg, P), outerboundary))
+        car_position = self.get_transformed_point(msg, car_position)
     
         # get center line and track widths
         center_line, track_widths = self.get_center_line(innerboundary, outerboundary)
@@ -68,7 +68,6 @@ class shortest_path(NODE):
         # df = TrackMethods.importTrack(track_info=track_info, plot=self._plot)
 
         df = self.create_track_dataframe(list(innerboundary), list(outerboundary))
-        self.save_track(df.inner, df.outer)
 
         # create brackets
         print("CREATING BRACKETS")
@@ -78,7 +77,7 @@ class shortest_path(NODE):
 
         # compute optimal path
         print("COMPUTING OPTIMAL PATH")
-        start_node = self.get_start_node(starting_point=car_position)
+        start_node = self.get_start_node(starting_point=car_position)   # transformed car position
         print("starting inner distance: ", start_node._innerDistance)
         print("starting outer distance: ", start_node._outerDistance)
         start_node = TrackMethods.belman_ford_path(df, velocity_range, brackets, start_node, plot=self._plot)
@@ -87,15 +86,13 @@ class shortest_path(NODE):
         # get steering angle based on current and next point
         p1 = start_node._xy
         p2 = start_node._nextNode._xy
-        p1t = np.array(self.get_transformed_point(msg, start_node._xy))  # transform
-        p2t = np.array(self.get_transformed_point(msg, start_node._nextNode._xy))
-        steering_angle = TrackHelpers.getAngleRotation(p1t, p2t)
-        steering_angle = -steering_angle * 180 / np.pi
+        steering_angle = TrackHelpers.getAngle(p1, p2)
+        steering_angle = np.rad2deg(steering_angle)  # convert to degrees
 
         # publish msgs
-        # self.steering_angle.publish(Float32(data=steering_angle))
+        self.steering_angle.publish(Float32(data=steering_angle))
 
-        points = [p1t, p2]
+        points = [p1, p2]
         msg = PoseArray()
         for P in points:
             args = {"position": Point(x=P[0], y=P[1], z=0.0)}
@@ -103,6 +100,10 @@ class shortest_path(NODE):
         self.best_trajectory_publisher.publish(msg)
 
         self.get_logger().info(f"steering angle published: {steering_angle}")
+
+        # saving track 
+        if self._save_track:
+            self.save_track(df.inner, df.outer)
 
         return
     
@@ -222,7 +223,7 @@ class shortest_path(NODE):
         position_vector = np.array([[cart_x], [cart_y]]) 
 
         return position_vector, rotation_matrix
-    
+
 
     def apply_transformation(self, position_vector, rotation_matrix, point_x, point_y):
         point = np.array([[point_x], [point_y]])

@@ -26,11 +26,13 @@ def getRotatedVector(angle, vector:np.array):
 
 def getMidPoint(p1:np.array, p2:np.array): return (p2 + p1)/2
 
+
 def getAngle(p1:np.array, p2:np.array):
     diff = p2-p1
-    ratio = diff[0]/diff[1]
+    x = diff[0]
+    y = diff[1]
 
-    return np.arctan(ratio)
+    return np.arctan(x/y)
 
 def getAngle2(p1:np.array, p2:np.array):
     value = np.dot(p1, p2) / (getMagnitude(p1) * getMagnitude(p2))
