@@ -22,11 +22,9 @@ class Cone_Mapper(Node):
 # Initializer
     def __init__(self):
         super().__init__('cone_mapper')
-        print("started")
         qos_profile = QoSProfile(reliability=QoSReliabilityPolicy.BEST_EFFORT, history=QoSHistoryPolicy.KEEP_LAST, depth=10)
         self.subscription = self.create_subscription(ConeMap, 'cone_detection', self.listener_callback, qos_profile)
         self.publisher = self.create_publisher(ConeMap, 'cone_map', 10)
-        self.get_logger().info("Cone Map Initialization Completed")
 
         # Clustering related tuning parameter
         self.default_standard_deviation = 0.5 # Also minimal standard deviation
@@ -36,13 +34,23 @@ class Cone_Mapper(Node):
 
         # Clustering method initialization
         self.most_updated_cone_map = ConeMap()
-        self.mean_cone_position = []
         self.number_of_measurements_for_cones = []
         self.car_position = Pose()
         self.cone_id = 1
 
+        # Cone deletion tune
+        self.count_above_this_are_safe = 10
+        self.count_rate_above_this_are_safe = 2
+        self.period_for_cone_deletion = 1
+
+        # Cone deletion initialization
+        self.cone_deletion_timer = self.create_timer(self.period_for_cone_deletion, self.cone_deletion_callback)
+        self.number_of_measurements_increase_rate = []
+        self.previous_number_of_measurements = []
+
+        self.get_logger().info("Cone Map Initialization Completed")
+
     def listener_callback(self, msg):
-        #print(len(self.most_updated_cone_map.cones))
         msg_in_local_coordinate = msg
         msg_in_global_coordinate = self.transform_raw_input_to_global_coordinate(msg_in_local_coordinate)
         self.most_updated_cone_map = self.clustering_update(msg_in_global_coordinate)
@@ -134,6 +142,8 @@ class Cone_Mapper(Node):
             x, y, theta, _, color, _ = self.extract_data_from_cone(cone_measurement_that_is_new)
             new_cone = self.pack_cone_message(x, y, theta, self.cone_id, self.default_covariance, color)
             self.number_of_measurements_for_cones.append(1)
+            np.append(self.number_of_measurements_increase_rate, 1)
+            self.previous_number_of_measurements.append(0)
             output.cones.append(new_cone)
             self.cone_id += 1
 
@@ -161,7 +171,6 @@ class Cone_Mapper(Node):
         return (count - 2) * old_variance / (count - 1) + distance ** 2 / count
 
     def sort_recorded_cone_and_find_closest_measurement(self, recorded_cone: Cone, measured_cones_in_list_type):
-        print(len(measured_cones_in_list_type))
         measured_cones_in_list_type.sort(key=lambda x: self.distance_between_two_cones(x, recorded_cone))
         closest_measured_cone_to_given_existing_cone = measured_cones_in_list_type[0]
         cone_output = closest_measured_cone_to_given_existing_cone
@@ -221,10 +230,61 @@ class Cone_Mapper(Node):
         x = cone_input.pose.pose.position.x
         y = cone_input.pose.pose.position.y
         theta = cone_input.pose.pose.orientation.w
-        covaraince = cone_input.pose.covariance
+        covariance = cone_input.pose.covariance
         color = cone_input.colour
         cone_id = cone_input.id
-        return x, y, theta, covaraince, color, cone_id
+        return x, y, theta, covariance, color, cone_id
+
+# Delete non-existing cones
+    def cone_deletion_callback(self):
+        # Count > 100 are cones, count rate increasing > 5 are cones
+        self.update_increase_rate()
+        initial_indexes = [i for i in range(0, len(self.number_of_measurements_for_cones), 1)]
+        low_count_index = self.get_index_that_has_low_count(initial_indexes)
+        false_cone_index = self.get_index_that_has_low_increase(low_count_index)
+        self.delete_selected_cones(false_cone_index)
+        self.previous_number_of_measurements = self.number_of_measurements_for_cones.copy()
+
+    def delete_selected_cones(self, index_input):
+        reversed_index_input = sorted(index_input, reverse=True)
+        for index in reversed_index_input:
+            self.most_updated_cone_map.cones.pop(index + 1)
+            self.number_of_measurements_for_cones.pop(index)
+            self.previous_number_of_measurements.pop(index)
+            self.number_of_measurements_increase_rate.pop(index)
+
+    def update_increase_rate(self):
+        if len(self.number_of_measurements_for_cones) > len(self.previous_number_of_measurements):
+            differences = len(self.number_of_measurements_for_cones) - len(self.previous_number_of_measurements)
+            self.previous_number_of_measurements = self.previous_number_of_measurements + [0] * differences
+        elif len(self.number_of_measurements_for_cones) < len(self.previous_number_of_measurements):
+            differences = len(self.previous_number_of_measurements) - len(self.number_of_measurements_for_cones)
+            self.previous_number_of_measurements = self.previous_number_of_measurements + [0] * differences
+
+        self.number_of_measurements_increase_rate = []
+        for i in range(len(self.number_of_measurements_for_cones)):
+            differences = self.number_of_measurements_for_cones[i] - self.previous_number_of_measurements[i]
+            self.number_of_measurements_increase_rate.append(differences / self.period_for_cone_deletion)
+
+    def get_index_that_has_low_count(self, index_input):
+        output_list = []
+        list_to_study = [self.number_of_measurements_for_cones[i] for i in index_input]
+        index = 0
+        for individual_count in list_to_study:
+            if individual_count < self.count_above_this_are_safe:
+                output_list.append(index_input[index])
+            index += 1
+        return output_list
+
+    def get_index_that_has_low_increase(self, index_input):
+        output_list = []
+        list_to_study = [self.number_of_measurements_increase_rate[i] for i in index_input]
+        index = 0
+        for individual_count_rate in list_to_study:
+            if individual_count_rate < self.count_rate_above_this_are_safe:
+                output_list.append(index_input[index])
+            index += 1
+        return output_list
 
 # Debug only: Get all datas
 
