@@ -63,7 +63,7 @@ class head_to_goal_control_algorithm(Node):
 
         else:
             self.steering_angle = 0
-            self.get_logger().info("Warning: no trajectory found, will set steering angle to 0!!!!")
+            #self.get_logger().info("Warning: no trajectory found, will set steering angle to 0!!!!")
 
         # Experimental: speed adjuster
         # self.current_speed = self.steer_to_speed(self.steering_angle)
@@ -155,7 +155,7 @@ class head_to_goal_control_algorithm(Node):
     def update_track_point(self, msg: PoseArray): #Main logic
         # Pick new tracking point if no tracking point is selected or old tracking point is no longer visible
         if self.need_new_track_point():
-            self.get_logger().info("Updating track point, speed decay applied")
+            #self.get_logger().info("Updating track point, speed decay applied")
             self.Pose_to_track_in_global_frame = self.get_track_point_in_global_frame(msg)
             self.speed_decay_constant += 1
         else:
