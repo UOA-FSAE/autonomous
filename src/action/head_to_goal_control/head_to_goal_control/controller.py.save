@@ -25,8 +25,7 @@ class head_to_goal_control_algorithm(Node):
         self.P = 20
         self.max_steering_angle = 20.0
         #self.max_speed = 2.5
-        self.max_speed = 4.0
-        self.speed_adjuster_width = 15
+        self.max_speed = 10        self.speed_adjuster_width = 15
         ## Current speed setting
         self.current_speed = 0
 
