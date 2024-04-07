@@ -55,7 +55,7 @@ class Cone_Mapper(Node):
         msg_in_global_coordinate = self.transform_raw_input_to_global_coordinate(msg_in_local_coordinate)
         self.most_updated_cone_map = self.clustering_update(msg_in_global_coordinate)
         self.publisher.publish(self.most_updated_cone_map)
-        self.get_logger().info("Cone Map Published")
+        #self.get_logger().info("Cone Map Published")
 
 # Conversion to Global Coordinate
 ## Main

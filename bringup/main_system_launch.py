@@ -64,14 +64,14 @@ def generate_launch_description():
 
         launch_ros.actions.Node(
             package='cone_mapping',
-            executable='dbscam',
+            executable='dbscan',
             name='cone_mapping',
         ),
 
         launch_ros.actions.Node(
-            package='cone_mapping',
-            executable='dbscam',
-            name='cone_mapping',
+            package='path_planning',
+            executable='center_line',
+            name='path_planning',
         ),
 
         launch_ros.actions.Node(
