@@ -19,10 +19,10 @@ class head_to_goal_control_algorithm(Node):
 
         # Constant to tune (touch me please it makes me feel horny ahhhhhhh!)
         ## Tuning for look ahead distance
-        self.look_up_distance = 1
-        self.cancel_distance = 0.6
+        self.look_up_distance = 2
+        self.cancel_distance = 0.5
         ## Tuning for PID controller
-        self.P = 20
+        self.P = 40
         self.max_steering_angle = 20.0
         #self.max_speed = 2.5
         self.max_speed = 4.0
