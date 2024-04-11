@@ -39,12 +39,12 @@ class Cone_Mapper(Node):
         self.cone_id = 1
 
         # Cone deletion tune
-        self.count_above_this_are_safe = 10
-        self.count_rate_above_this_are_safe = 2
-        self.period_for_cone_deletion = 1
+        self.count_above_this_are_safe = 7
+        self.count_rate_above_this_are_safe = 3
+        self.period_for_cone_deletion = 2
 
         # Cone deletion initialization
-        self.cone_deletion_timer = self.create_timer(self.period_for_cone_deletion, self.cone_deletion_callback)
+        #self.cone_deletion_timer = self.create_timer(self.period_for_cone_deletion, self.cone_deletion_callback)
         self.number_of_measurements_increase_rate = []
         self.previous_number_of_measurements = []
 
@@ -126,7 +126,7 @@ class Cone_Mapper(Node):
         for individual_recorded_cone in recorded_cones:
             if len(measured_cones_in_list_type) > 0:
                 closest_measurement, distance = self.sort_recorded_cone_and_find_closest_measurement(individual_recorded_cone, measured_cones_in_list_type)
-                if self.measurement_is_not_new_cone(distance, individual_recorded_cone):
+                if self.measurement_is_not_new_cone(distance, individual_recorded_cone) and self.is_same_color(individual_recorded_cone, closest_measurement):
                     self.number_of_measurements_for_cones[index] += 1
                     updated_recorded_cone = self.update_mean_covariance_count(individual_recorded_cone, closest_measurement, index)
                     measured_cones_in_list_type.pop(0)
@@ -326,6 +326,11 @@ class Cone_Mapper(Node):
         delta_x = x1 - x2
         delta_y = y1 - y2
         return (delta_x ** 2) **  (1/2) + (delta_y ** 2)  ** (1/2)
+
+    def is_same_color(self, cone_1, cone_2):
+        _, _, _, _, color_1, _ = self.extract_data_from_cone(cone_1)
+        _, _, _, _, color_2, _ = self.extract_data_from_cone(cone_2)
+        return color_1 == color_2
 
 def main(args=None):
     rclpy.init(args=args)
