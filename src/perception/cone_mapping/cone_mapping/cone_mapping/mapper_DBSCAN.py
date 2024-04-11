@@ -30,7 +30,7 @@ class Cone_Mapper(Node):
         self.default_standard_deviation = 0.5 # Also minimal standard deviation
         self.default_variance = self.default_standard_deviation ** 2
         self.default_covariance = [self.default_variance, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.default_variance, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        self.new_cone_if_n_sigma_exceed_this = 3
+        self.new_cone_if_n_sigma_exceed_this = 4
 
         # Clustering method initialization
         self.most_updated_cone_map = ConeMap()

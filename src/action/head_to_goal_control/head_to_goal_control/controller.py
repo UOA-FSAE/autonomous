@@ -22,7 +22,7 @@ class head_to_goal_control_algorithm(Node):
         self.look_up_distance = 1
         self.cancel_distance = 0.7
         ## Tuning for PID controller
-        self.P = 100
+        self.P = 200
         self.max_steering_angle = 20.0
         #self.max_speed = 2.5
         self.max_speed = 3.0
