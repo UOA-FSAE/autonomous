@@ -22,7 +22,7 @@ class trajectory_following(Node):
         #         ('debug', False)
         #     ]
         # )
-        self._distance_to_front = 2.0
+        self._distance_to_front = 3.0
 
         qos_profile = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
@@ -55,12 +55,15 @@ class trajectory_following(Node):
     def callback(self, msg:ConeMap):
         if hasattr(self, "_steering_angle"):
             # get current and desired points
-            car_position = msg.cones[0].pose.pose.position
-            current = np.array([car_position.x, car_position.y])
+            car_position_orientation = self.get_position_of_cart(msg)
+            car_position, rotation_matrix = self.get_transformation_matrix(car_position_orientation) 
+            local_origin = msg.cones[0].pose.pose.position
+            post_trans_local = self.apply_transformation(car_position, rotation_matrix, local_origin.x, local_origin.y)    # local frame distance to front of car
+            current = np.array([post_trans_local[0][0], post_trans_local[1][0] + self._distance_to_front])
 
             # boundaries
             innerboundary, outerboundary = self.get_boundaries(msg.cones)
-            desired = self.get_center_points(innerboundary, outerboundary)
+            desired = self.get_center_points(car_position, rotation_matrix, innerboundary, outerboundary)  # local frame 
             
             # compute the distance between the desired and current point
             error = self.get_control_error(current, desired)
@@ -80,7 +83,7 @@ class trajectory_following(Node):
             # publish msgs
             args = {"steering_angle": float(steering_angle_deg),
                     "steering_angle_velocity": 0.0,
-                    "speed": 0.0,
+                    "speed": 2.0,
                     "acceleration": 0.0,
                     "jerk": 0.0}
 
@@ -96,14 +99,13 @@ class trajectory_following(Node):
     
     def get_control_error(self, current:np.array, desired:np.array): return np.linalg.norm(current-desired, axis=1)
 
-    def get_gain(self, distance, track_width):
+    def get_gain(self, distance, center_to_boundary_distance):
         """return gain on steering angle based on error - distance to center line currently"""
         self.get_logger().info(f"DISTANCE = {distance}")
-        center_to_boundary_distance = track_width
 
-        return (distance/center_to_boundary_distance)**2
+        return (distance/center_to_boundary_distance)
     
-    def get_center_points(self, innerboundary, outerboundary):
+    def get_center_points(self, car_position, rotation_matrix, innerboundary, outerboundary):
         """get the center points"""
         up_to = min(len(innerboundary), len(outerboundary))
         center_points = []
@@ -111,6 +113,10 @@ class trajectory_following(Node):
             x1, y1 = innerboundary[i]
             x2, y2 = outerboundary[i]
             x, y = self.get_average_point(x1,y1,x2,y2)
+            # get transformed point
+            post_trans_point = self.apply_transformation(car_position, rotation_matrix, x, y)
+            x = post_trans_point[0][0]
+            y = post_trans_point[1][0]
             center_points.append([x,y])
 
         return center_points
@@ -140,6 +146,31 @@ class trajectory_following(Node):
     def get_average_point(self, x1,y1,x2,y2): return (x1+x2)/2, (y1+y2)/2
 
     def get_distance(self, p1:np.array, p2:np.array): return np.sqrt(sum((p2-p1)**2))
+
+    def get_position_of_cart(self, cone_map):
+        # first cone
+        localization_data = cone_map.cones[0]
+        x = localization_data.pose.pose.position.x
+        y = localization_data.pose.pose.position.y
+        theta = localization_data.pose.pose.orientation.w
+        return x, y, theta
+
+    def get_transformation_matrix(self, position_and_orientation):
+        # theta = position_and_orientation[2] - np.pi/2
+        cart_x = position_and_orientation[0]
+        cart_y = position_and_orientation[1]
+        theta = position_and_orientation[2]
+        # 2d trasformation matrix 
+        rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]])
+        position_vector = np.array([[cart_x], [cart_y]])
+
+        return position_vector, rotation_matrix
+
+    def apply_transformation(self, position_vector, rotation_matrix, point_x, point_y):
+        point = np.array([[point_x], [point_y]])
+        # matrix multiplication for rotation then translate from car position
+        transformed_point = np.matmul(rotation_matrix, point) + position_vector
+        return transformed_point
 
 
 

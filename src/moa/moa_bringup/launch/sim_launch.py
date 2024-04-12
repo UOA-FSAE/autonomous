@@ -6,7 +6,7 @@ def generate_launch_description():
         # cone detect
         launch_ros.actions.Node(
             package='cone_mapping',
-            executable='listener',
+            executable='dbscan',
             name='listener',
         ),
 
