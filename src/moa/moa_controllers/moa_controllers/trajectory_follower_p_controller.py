@@ -3,11 +3,13 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
-from ackermann_msgs.msg import AckermannDrive
+from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
 from rclpy.executors import SingleThreadedExecutor
 from std_msgs.msg import Float32, Float64
 from geometry_msgs.msg import PoseArray
 from moa_msgs.msg import ConeMap
+from std_msgs.msg import Header
+from builtin_interfaces.msg import Time
 
 import numpy as np
 
@@ -42,7 +44,7 @@ class trajectory_following(Node):
         self.create_subscription(ConeMap, "cone_map", self.callback, qos_profile)
 
         # publishers (including simulation)
-        self.moa_steering_pub = self.create_publisher(AckermannDrive, "cmd_vel", 10)
+        self.moa_steering_pub = self.create_publisher(AckermannDriveStamped, "cmd_vel", 10)
         self.sim_steering_pub = self.create_publisher(Float32, steering_topic, 10)
         # self.feedback_subscribe = self.create_subscription(Float64,speed_topic,self.set_speed,10)
     
@@ -83,11 +85,17 @@ class trajectory_following(Node):
             # publish msgs
             args = {"steering_angle": float(steering_angle_deg),
                     "steering_angle_velocity": 0.0,
-                    "speed": 2.0,
+                    "speed": 7.0,
                     "acceleration": 0.0,
                     "jerk": 0.0}
+            
+            args2 = {'stamp':Time(sec=1,nanosec=2),
+                    'frame_id':'ack_to_can_test'}
+            
+            args3 = {'header': Header(**args2),
+                 'drive':AckermannDrive(**args)}
 
-            self.moa_steering_pub.publish(AckermannDrive(**args))
+            self.moa_steering_pub.publish(AckermannDriveStamped(**args3))
             self.sim_steering_pub.publish(Float32(data=steering_angle_deg))
 
             return
