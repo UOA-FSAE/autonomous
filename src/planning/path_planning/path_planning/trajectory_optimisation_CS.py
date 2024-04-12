@@ -317,8 +317,9 @@ class trajectory_optimization(Node):
         self._left_boundary_linestring = LineString([(P[0], P[1]) for P in self._leftboundary])
 
         pts_list = [(P[0], P[1]) for P in self._rightboundary]
-        if self._debug:
-            pts_list.pop(0)
+        # if self._debug:
+        #     pts_list.pop(0)
+        self.get_logger().info(f"left boundary = {self._rightboundary}")
         self._right_boundary_linestring = LineString(pts_list)
 
         # track width 

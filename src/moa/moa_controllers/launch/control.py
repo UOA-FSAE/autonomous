@@ -36,13 +36,13 @@ def generate_launch_description():
             remappings=[('can',launch.substitutions.LaunchConfiguration('candapter_topic'))],
         ),
 
-        # foxglove
-        launch_ros.actions.Node(
-            package='foxglove_bridge',
-            executable='foxglove_bridge',
-            name='foxglove_bridge',
-            parameters=[{'port':8765}],
-        ),
+        # # foxglove
+        # launch_ros.actions.Node(
+        #     package='foxglove_bridge',
+        #     executable='foxglove_bridge',
+        #     name='foxglove_bridge',
+        #     parameters=[{'port':8765}],
+        # ),
         
         # cone detection - aruco detection (ANY)
         launch_ros.actions.Node(
@@ -54,27 +54,51 @@ def generate_launch_description():
         # cone map
         launch_ros.actions.Node(
             package='cone_mapping',
-            executable='listener',
-            name='cone_map'
+            executable='dbscan',
+            name='listener',
         ),
 
-        # path planning algorithm - center line (ANY)
+        # path generation
         launch_ros.actions.Node(
             package='path_planning',
-            executable='center_line',
-            name='center_line',
+            executable='trajectory_generation',
+            name='trajectory_generation',
+            parameters=[{'debug': True, 
+                         'timer': 1.0}],
         ),
 
-        # path planning controller - head to goal (ANY)
+        # path optimization
         launch_ros.actions.Node(
-            package='head_to_goal_control',
-            executable='controller',
-            name='head_to_goal_controller'
+            package='path_planning',
+            executable='trajectory_optimisation',
+            name='trajectory_optimisation',
+            parameters=[{'debug': True}],
         ),
 
+        # controller
         launch_ros.actions.Node(
             package='moa_controllers',
-            executable='as_status_node',
-            name='as_status_node',
+            executable='trajectory_follower',
+            name='trajectory_follower',
         ),
+
+        # path viz
+        launch_ros.actions.Node(
+            package='path_planning_visualization',
+            executable='visualize2',
+            name='path_viz',
+        ),
+
+        # track viz
+        launch_ros.actions.Node(
+            package='cone_map_foxglove_visualizer',
+            executable='visualizer',
+            name='track_viz',
+        ),
+
+        # launch_ros.actions.Node(
+        #     package='moa_controllers',
+        #     executable='as_status_node',
+        #     name='as_status_node',
+        # ),
   ])
