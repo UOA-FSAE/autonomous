@@ -196,20 +196,20 @@ def importTrack(track_info:pd.DataFrame=None, trackname:str=None, plot:bool=Fals
 def createBracket(inner_boundary:np.array, outer_boundary:np.array, n_nodes, p_vector=None):
     # get distance
     distance = TrackHelpers.getDistance(inner_boundary, outer_boundary)
-    spacing = distance / n_nodes
-    p_vector = TrackHelpers.getVector(inner_boundary, outer_boundary, True)
+    spacing = distance / (n_nodes+1)
+    p_vector = TrackHelpers.getVector(outer_boundary, inner_boundary, True)
     # angle = 90 * np.pi / 180
     # p_vector = TrackHelpers.getRotatedVector(angle, p_vector)
 
     # list of node coordinates
     new_points = [0]*(n_nodes+2)
     # include boundaries
-    new_points[0] = inner_boundary
-    new_points[-1] = outer_boundary
+    new_points[0] = outer_boundary
+    new_points[-1] = inner_boundary
 
     # loop through number of nodes to create
     for i in range(n_nodes):
-        new_points[i+1] = inner_boundary + ((i+1)*spacing) * p_vector
+        new_points[i+1] = outer_boundary + ((i+1)*spacing) * p_vector
 
     return new_points
 
@@ -238,8 +238,8 @@ def getBrackets(df:pd.DataFrame, n_nodes, plot:bool=False):
             bracketId = i
             xy = P
             velocity = constant_velocity
-            innerDistance = TrackHelpers.getDistance(P, bracket_points[0])
-            outerDistance = TrackHelpers.getDistance(P, bracket_points[-1])
+            innerDistance = TrackHelpers.getDistance(P, bracket_points[-1])
+            outerDistance = TrackHelpers.getDistance(P, bracket_points[0])
             nextNode = np.nan
             cost = np.inf
             # temp_node = Node(bracketId, xy, velocity, innerDistance, outerDistance, nextNode, cost)
@@ -248,8 +248,8 @@ def getBrackets(df:pd.DataFrame, n_nodes, plot:bool=False):
 
         # bracket module
         Id = i
-        innerNode = node_list[0]
-        outerNode = node_list[-1]
+        innerNode = node_list[-1]
+        outerNode = node_list[0]
         width = TrackHelpers.getDistance(node_list[0]._xy, node_list[-1]._xy)
         # NodeList = node_list
         # temp_bracket = Bracket(Id, innerNode, outerNode, width, NodeList)

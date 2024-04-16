@@ -28,7 +28,7 @@ def getMidPoint(p1:np.array, p2:np.array): return (p2 + p1)/2
 
 
 def getAngle(p1:np.array, p2:np.array):
-    diff = p2-p1
+    diff = p1-p2
     x = diff[0]
     y = diff[1]
 
@@ -46,7 +46,7 @@ def getAngleRotation(v1, v2):
     det = x1*y2 - y1*x2      # Determinant
     angle = np.arctan2(det, dot)  # atan2(y, x) or atan2(sin, cos)
 
-    return angle
+    return min(angle, np.pi-angle)
 
 
 # function getVectorLineIntersection(v1::Vector, p1::Vector,v2::Vector, p2::Vector)

@@ -27,8 +27,8 @@ class shortest_path(NODE):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('plot', False),
-                ('save_track', False),
+                ('plot', True),
+                ('save_track', True),
             ]
         )
 
@@ -46,28 +46,35 @@ class shortest_path(NODE):
 
     def set_boundaries(self, msg:ConeMap):
         innerboundary, outerboundary, car_position, oc, ic = self.get_boundaries(msg.cones)
+        # saving track 
+        if self._save_track:
+            self.save_track(innerboundary, outerboundary)
+        innerboundary.reverse()
+        outerboundary.reverse()
         # smaller (incl. negative) x, y come before 
         innerboundary = np.array(innerboundary)
         outerboundary = np.array(outerboundary)
+
+        self.get_logger().info(f"bound: {innerboundary}")
         
-        if ic > oc: innerboundary = innerboundary[:(oc-ic)] 
-        if oc > ic: outerboundary = outerboundary[:(ic-oc)]
+        # if ic > oc: innerboundary = innerboundary[:(oc-ic)] 
+        # if oc > ic: outerboundary = outerboundary[:(ic-oc)]
 
         # transform the points
-        innerboundary = list(map(lambda P: self.get_transformed_point(msg, P), innerboundary))
-        outerboundary = list(map(lambda P: self.get_transformed_point(msg, P), outerboundary))
-        car_position = self.get_transformed_point(msg, car_position)
+        # innerboundary = np.array(list(map(lambda P: self.get_transformed_point(msg, P), innerboundary)))
+        # outerboundary = np.array(list(map(lambda P: self.get_transformed_point(msg, P), outerboundary)))
+        # car_position = self.get_transformed_point(msg, car_position)
     
-        # get center line and track widths
-        center_line, track_widths = self.get_center_line(innerboundary, outerboundary)
-        # format as pandas data frame
-        track_info = self.get_track_info(center_line, track_widths)
+        # # get center line and track widths
+        # center_line, track_widths = self.get_center_line(innerboundary, outerboundary)
+        # # format as pandas data frame
+        # track_info = self.get_track_info(center_line, track_widths)
 
         # get shortest path
         print("IMPORTING TRACK")
         # df = TrackMethods.importTrack(track_info=track_info, plot=self._plot)
 
-        df = self.create_track_dataframe(list(innerboundary), list(outerboundary))
+        df = self.create_track_dataframe(innerboundary, outerboundary)
 
         # create brackets
         print("CREATING BRACKETS")
@@ -84,9 +91,14 @@ class shortest_path(NODE):
         print("\nOPTIMAL PATH COMPUTED")
 
         # get steering angle based on current and next point
-        p1 = start_node._xy
-        p2 = start_node._nextNode._xy
-        steering_angle = TrackHelpers.getAngle(p1, p2)
+        p1 = start_node._xy # relative to global
+        self.get_logger().info(f"{p1}")
+        self.get_logger().info(f"{start_node._nextNode._xy}")
+        # p2 = self.get_transformed_point(msg, start_node._nextNode._xy)   # relative to local
+        p2 = start_node._nextNode._xy 
+        self.get_logger().info(f"{p2}")
+        # p2 = start_node._nextNode._xy + start_node._xy
+        steering_angle = TrackHelpers.getAngleRotation(np.array(p1), np.array(p2))
         steering_angle = np.rad2deg(steering_angle)  # convert to degrees
 
         # publish msgs
@@ -100,10 +112,6 @@ class shortest_path(NODE):
         self.best_trajectory_publisher.publish(msg)
 
         self.get_logger().info(f"steering angle published: {steering_angle}")
-
-        # saving track 
-        if self._save_track:
-            self.save_track(df.inner, df.outer)
 
         return
     
@@ -150,10 +158,11 @@ class shortest_path(NODE):
                 fh.close()
     
 
-    def create_track_dataframe(self, innerboundary:list, outerboundary:list):
+    def create_track_dataframe(self, innerboundary:np.array, outerboundary:np.array):
+        up_to = min(len(innerboundary), len(outerboundary)) 
         return pd.DataFrame({
-            "inner": innerboundary,
-            "outer": outerboundary,
+            "inner": list(innerboundary[:up_to]),
+            "outer": list(outerboundary[:up_to]),
         })
 
 
@@ -165,7 +174,7 @@ class shortest_path(NODE):
                 track widths: list of list of widths as [to_left, to_right]
         """
         constant_width = TrackHelpers.getDistance(p1=innerboundary[0], p2=outerboundary[0]) 
-        constant_width = constant_width / 3
+        constant_width = constant_width 
 
         # get center points
         n_points = min(len(innerboundary), len(outerboundary)) #unfortunately not always same number of points
