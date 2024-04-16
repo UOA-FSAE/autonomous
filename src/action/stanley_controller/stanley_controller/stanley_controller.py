@@ -100,7 +100,7 @@ class StanleyControl(Node):
             #Compute target yaw
             target_yaw = self.cal_target_yaw(cls_point)
             #Compute steering angle
-            theta_e = self.normalize_angle(target_yaw - car_yaw)
+            theta_e = self.normalize_angle(target_yaw-car_yaw)
             theta_d = np.arctan2(self.k_stanley * error_front_axle, self.target_speed)
             delta = theta_e + theta_d
             delta = np.clip(delta, -self.max_steer, self.max_steer)
@@ -161,7 +161,7 @@ class StanleyControl(Node):
         rate= dy_dx[cls_point]
         return np.arctan(rate)
     
-    def normalize_angle(angle):
+    def normalize_angle(self,angle):
         return angle_mod(angle)
     
 

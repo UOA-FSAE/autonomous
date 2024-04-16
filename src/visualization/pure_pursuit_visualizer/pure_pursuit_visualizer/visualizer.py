@@ -158,7 +158,7 @@ class pure_pursuit_visualizer(Node):
         scene_update_msg = SceneUpdate(entities=[SceneEntity(**sargs)])
 
         self.pubviz.publish(scene_update_msg)
-        self.get_logger().info("Published msg")
+        #self.get_logger().info("Published msg")
 
         self.id += 1
 

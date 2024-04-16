@@ -17,22 +17,15 @@ class ConePublisher(Node):
         self.frame_publisher_ = self.create_publisher(TransformStamped, 'base_tf', 10)
         self.subscription_cone_map = self.create_subscription(ConeMap, 'cone_map',  self.cone_map_callback, 10)
         self.subscription_localization = self.create_subscription(Pose, 'car_position', self.localization_callback, 10)
-        #self.marker_timer = self.create_timer(1, self.publish_cones)
-        #self.frame_timer = self.create_timer(1, self.publish_transform)
+        self.get_logger().info("Cone Map Visualization Initialization Completed")
 
     def cone_map_callback(self, msg):
-        # self.get_logger().info('Mapped result: "%s"' % msg.cones)
-        list_of_cones = msg.cones
-        local_cone = msg.cones[0].pose.pose
-        self.localization_callback(local_cone)
+        list_of_cones = msg.cones[1:]
         self.publish_cones(list_of_cones)
-        self.get_logger().info('Cone map visualizing data published')
 
     def localization_callback(self, msg):
         self.publish_transform(msg)
         self.publish_car(msg)
-        self.get_logger().info('Car position visualizing data published')
-
 
     def convert_rotation_to_quaternion(self, angle):
         qw = np.cos(angle / 2)
@@ -58,7 +51,6 @@ class ConePublisher(Node):
         t.transform.rotation.z = self.convert_rotation_to_quaternion(localization_pose.orientation.w)[2]
         t.transform.rotation.w = self.convert_rotation_to_quaternion(localization_pose.orientation.w)[3]
 
-        #self.broadcaster.sendTransform(t)
         self.frame_publisher_.publish(t)
 
     def publish_car(self, pose_of_car):
@@ -77,7 +69,7 @@ class ConePublisher(Node):
         is_localization = False
         id_assign = 1
         Markers.markers.append(self.delete_all_cone())
-        for cone in rest_of_cones[1:]:
+        for cone in rest_of_cones:
             Markers.markers.append(self.convert_to_visualization(cone, is_localization, id_assign))
             id_assign += 1
         self.markers_publisher_.publish(Markers)
@@ -103,7 +95,7 @@ class ConePublisher(Node):
             marker.pose.orientation.z = self.convert_rotation_to_quaternion(cone.pose.pose.orientation.w)[2]
             marker.pose.orientation.w = self.convert_rotation_to_quaternion(cone.pose.pose.orientation.w)[3]
 
-            marker.scale = Vector3(x=2.0, y=1.0, z=1.0)  # Scale of the cone (x, y, z)
+            marker.scale = Vector3(x=1.0, y=2.0, z=1.0)  # Scale of the cone (x, y, z)
 
             marker.color.r = 1.0
             marker.color.g = 0.0

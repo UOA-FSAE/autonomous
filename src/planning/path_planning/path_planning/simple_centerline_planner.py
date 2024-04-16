@@ -38,7 +38,7 @@ class center_line_publisher(Node):
 
         self.best_traj_pub.publish(center_line_path)
 
-        self.get_logger().info("Center line published")
+        #self.get_logger().info("Center line published")
 
     def get_bounds(self, msg: ConeMap):
         id = 1
