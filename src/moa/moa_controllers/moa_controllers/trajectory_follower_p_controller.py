@@ -6,11 +6,11 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
 from rclpy.executors import SingleThreadedExecutor
 from std_msgs.msg import Float32, Float64
+
 from geometry_msgs.msg import PoseArray
 from moa_msgs.msg import ConeMap
 from std_msgs.msg import Header
 from builtin_interfaces.msg import Time
-
 import numpy as np
 
 class trajectory_following(Node):
@@ -72,7 +72,6 @@ class trajectory_following(Node):
             # get p-gain 
             track_width = self.get_track_width(innerboundary, outerboundary)
             p_gain = self.get_gain(min(error), track_width)
-            
 
             # compute new angle in degrees
             steering_angle_rad = p_gain * self._steering_angle 
