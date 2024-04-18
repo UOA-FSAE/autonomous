@@ -3,12 +3,12 @@ import launch_ros.actions
 
 def generate_launch_description():
     return launch.LaunchDescription([
-        # cone detect
-        launch_ros.actions.Node(
-            package='cone_mapping',
-            executable='dbscan',
-            name='dbscan',
-        ),
+        # cone map
+        # launch_ros.actions.Node(
+        #     package='cone_mapping',
+        #     executable='dbscan',
+        #     name='dbscan',
+        # ),
 
         # path optimization
         launch_ros.actions.Node(

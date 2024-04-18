@@ -1,7 +1,8 @@
 #!/usr/bin/python3
-from path_planning.shortest_path.CoreModels import Node 
+from path_planning.shortest_path.CoreModels import Node, State
 import path_planning.shortest_path.TrackMethods as TrackMethods
 import path_planning.shortest_path.TrackHelpers as TrackHelpers
+import path_planning.shortest_path.PathHelpers as PathHelpers
 
 import numpy as np
 import pandas as pd
@@ -35,6 +36,17 @@ class shortest_path(NODE):
         # attributes
         self._plot = self.get_parameter("plot").get_parameter_value().bool_value
         self._save_track = self.get_parameter("save_track").get_parameter_value().bool_value
+        # car properties
+        self._CAR = {
+            "mass": 200.0,  # kg
+            "μ": 0.9, # static friction coefficient - dimensionless
+            "α": PathHelpers.noughtTo60(2.1), 
+            "α_d": 39.0,
+            "max steer angle": 16.0,    # degrees
+            "max velocity": 80.0,  # m/s
+            "tire width": 18/39.37, # in m (18 inches here)
+            "wheelbase": 3.6,    # wheelbase length (m? - LIAM TO CONFIRM)
+        }
 
         # subscribers
         self.create_subscription(ConeMap, "cone_map", self.set_boundaries, 10)
@@ -49,13 +61,13 @@ class shortest_path(NODE):
         # saving track 
         if self._save_track:
             self.save_track(innerboundary, outerboundary)
-        innerboundary.reverse()
-        outerboundary.reverse()
+        # innerboundary.reverse()
+        # outerboundary.reverse()
         # smaller (incl. negative) x, y come before 
         innerboundary = np.array(innerboundary)
         outerboundary = np.array(outerboundary)
 
-        self.get_logger().info(f"bound: {innerboundary}")
+        # self.get_logger().info(f"bound: {innerboundary}")
         
         # if ic > oc: innerboundary = innerboundary[:(oc-ic)] 
         # if oc > ic: outerboundary = outerboundary[:(ic-oc)]
@@ -78,40 +90,60 @@ class shortest_path(NODE):
 
         # create brackets
         print("CREATING BRACKETS")
-        brackets = TrackMethods.getBrackets(df, 10, plot=self._plot)
+        brackets = TrackMethods.getBrackets(df, 8, plot=self._plot)
 
-        velocity_range = [0.01, 8, 16, 24, 32, 40]# velocities in meters per second
+        # velocity_range = [0.01, 8, 16, 24, 32, 40]# velocities in meters per second
 
         # compute optimal path
         print("COMPUTING OPTIMAL PATH")
         start_node = self.get_start_node(starting_point=car_position)   # transformed car position
+        start_node._stateList.append(State(start_node, [np.cos(0), np.sin(0)], 0.0))
         print("starting inner distance: ", start_node._innerDistance)
         print("starting outer distance: ", start_node._outerDistance)
-        start_node = TrackMethods.belman_ford_path(df, velocity_range, brackets, start_node, plot=self._plot)
+        # start_node = TrackMethods.belman_ford_path(df, velocity_range, brackets, start_node, plot=self._plot)
+        n_vel = 5
+        start_node, brackets, optimal_cost = TrackMethods.optimal_path(
+            "$track_name optimal", 
+            df, 
+            start_node, 
+            brackets, 
+            n_vel,
+            self._CAR["μ"], 
+            self._CAR["mass"], 
+            self._CAR["α"], 
+            self._CAR["α_d"], 
+            self._CAR["max steer angle"],
+            self._CAR["tire width"],
+            self._CAR["wheelbase"], 
+            self._CAR["max velocity"],
+            self._plot
+        )
         print("\nOPTIMAL PATH COMPUTED")
 
+
         # get steering angle based on current and next point
-        p1 = start_node._xy # relative to global
-        self.get_logger().info(f"{p1}")
-        self.get_logger().info(f"{start_node._nextNode._xy}")
-        # p2 = self.get_transformed_point(msg, start_node._nextNode._xy)   # relative to local
-        p2 = start_node._nextNode._xy 
-        self.get_logger().info(f"{p2}")
-        # p2 = start_node._nextNode._xy + start_node._xy
-        steering_angle = TrackHelpers.getAngleRotation(np.array(p1), np.array(p2))
-        steering_angle = np.rad2deg(steering_angle)  # convert to degrees
+        # p1 = start_node._xy # relative to global
+        # self.get_logger().info(f"{p1}")
+        # self.get_logger().info(f"{start_node._nextNode._xy}")
+        # # p2 = self.get_transformed_point(msg, start_node._nextNode._xy)   # relative to local
+        # p2 = start_node._nextNode._xy 
+        # self.get_logger().info(f"{p2}")
+        # # p2 = start_node._nextNode._xy + start_node._xy
+        # steering_angle = TrackHelpers.getAngleRotation(np.array(p1), np.array(p2))
+        # steering_angle = np.rad2deg(steering_angle)  # convert to degrees
+
 
         # publish msgs
-        self.steering_angle.publish(Float32(data=steering_angle))
+        # self.steering_angle.publish(Float32(data=steering_angle))
 
-        points = [p1, p2]
-        msg = PoseArray()
-        for P in points:
-            args = {"position": Point(x=P[0], y=P[1], z=0.0)}
-            msg.poses.append(Pose(**args))
-        self.best_trajectory_publisher.publish(msg)
+        # points = [p1, p2]
+        # msg = PoseArray()
+        # for P in points:
+        #     args = {"position": Point(x=P[0], y=P[1], z=0.0)}
+        #     msg.poses.append(Pose(**args))
+        # self.best_trajectory_publisher.publish(msg)
 
-        self.get_logger().info(f"steering angle published: {steering_angle}")
+        # self.get_logger().info(f"steering angle published: {steering_angle}")
 
         return
     
@@ -202,7 +234,7 @@ class shortest_path(NODE):
     
 
     def get_start_node(self, starting_point): 
-        return Node(-1, np.array(starting_point), 0, None, None, np.nan, 0)
+        return Node(1, np.array(starting_point), None, None)
     
 
     def get_transformed_point(self, cone_map:ConeMap, point:np.array):

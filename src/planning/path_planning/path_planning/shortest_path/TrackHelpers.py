@@ -2,6 +2,7 @@
 # imports
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 def getDistance(p1:np.array, p2:np.array):
     return getMagnitude((p2-p1))
@@ -147,3 +148,13 @@ def Plot(nodes:bool, vector_list:np.array, label:str,col=None):
     
     return all_x, all_y
 
+def plotOptimal(vector_list:np.array, velocities:np.array,  label:str):
+    all_x = [P[0] for P in vector_list]
+    all_y = [P[1] for P in vector_list]
+    col = cm.jet((velocities-np.min(velocities))/(np.max(velocities)-np.min(velocities)))
+    ax = plt.gca()
+    for i in range(len(all_x)-1):
+        ax.plot([all_x[i], all_x[i+1]], [all_y[i], all_y[i+1]], c=col[i], label=label)
+    im = ax.scatter(all_x, all_y, c=velocities, s=0, cmap=cm.jet)
+
+    return im
