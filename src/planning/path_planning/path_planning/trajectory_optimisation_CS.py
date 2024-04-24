@@ -75,20 +75,20 @@ class trajectory_optimization(Node):
                     elif cones[i].colour == 2:
                         rightboundary.append([x,y])
             
-            # interpolate
-            funcL = interpolate.interp1d([P[0] for P in leftboundary], [P[1] for P in leftboundary], kind='cubic')
-            funcR = interpolate.interp1d([P[0] for P in rightboundary], [P[1] for P in rightboundary], kind='cubic')
+            # # interpolate
+            # funcL = interpolate.interp1d([P[0] for P in leftboundary], [P[1] for P in leftboundary], kind='slinear')
+            # funcR = interpolate.interp1d([P[0] for P in rightboundary], [P[1] for P in rightboundary], kind='slinear')
 
-            xlrange = np.linspace(min([P[0] for P in leftboundary]), max([P[0] for P in leftboundary]))
-            xrrange = np.linspace(min([P[0] for P in rightboundary]), max([P[0] for P in rightboundary]))
-            self.get_logger().info(f"length of xlrange = {len(xlrange)}")
-            leftboundary = []
-            rightboundary = []
-            for P in xlrange:
-                leftboundary.append([P,funcL(P)])
+            # xlrange = np.linspace([P[0] for P in leftboundary][0], [P[0] for P in leftboundary][-1], 50)
+            # xrrange = np.linspace([P[0] for P in rightboundary][0], [P[0] for P in rightboundary][-1], 50)
+            # self.get_logger().info(f"length of xlrange = {len(xlrange)}")
+            # leftboundary = []
+            # rightboundary = []
+            # for P in xlrange:
+            #     leftboundary.append([P,funcL(P)])
 
-            for P in xrrange:
-                rightboundary.append([P,funcR(P)])
+            # for P in xrrange:
+            #     rightboundary.append([P,funcR(P)])
             
             # get correspnoding right boundary based on left boundary 
             x1, y1, x2, y2 = leftboundary[0][0], leftboundary[0][1], rightboundary[0][0], rightboundary[0][1]
@@ -507,10 +507,10 @@ class trajectory_optimization(Node):
             coods.append(self.get_avg_point(x1,y1,x2,y2))
 
         # # perform extrapolation to extend line
-        # func = interpolate.interp1d([P[0] for P in coods], [P[1] for P in coods], kind='cubic', fill_value='extrapolate')
+        # func = interpolate.interp1d([P[0] for P in coods], [P[1] for P in coods], kind='quadratic')
 
         # into_future_points = 0
-        # into_future_distance = 0
+        # into_future_distance = 0.1
 
         # # track direction 
         # if coods[-1][0] > coods[-2][0]:

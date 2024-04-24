@@ -5,6 +5,13 @@ def generate_launch_description():
     return launch.LaunchDescription([
         # cone detect
         launch_ros.actions.Node(
+            package='aruco_detection',
+            executable='aruco_detection',
+            name='aruco_detection'
+        ), 
+
+        # cone mapping
+        launch_ros.actions.Node(
             package='cone_mapping',
             executable='dbscan',
             name='listener',
@@ -47,4 +54,11 @@ def generate_launch_description():
             executable='visualizer',
             name='track_viz',
         ),
+
+        # launch_ros.actions.Node(
+        #     package='foxglove_bridge',
+        #     executable='foxglove_bridge',
+        #     name='foxglove_bridge',
+        #     parameters=[{'port':8765}]
+        # ),
     ])
