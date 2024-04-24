@@ -76,8 +76,8 @@ class trajectory_optimization(Node):
                         rightboundary.append([x,y])
             
             # interpolate
-            funcL = interpolate.interp1d([P[0] for P in leftboundary], [P[1] for P in leftboundary], kind='slinear')
-            funcR = interpolate.interp1d([P[0] for P in rightboundary], [P[1] for P in rightboundary], kind='slinear')
+            funcL = interpolate.interp1d([P[0] for P in leftboundary], [P[1] for P in leftboundary], kind='cubic')
+            funcR = interpolate.interp1d([P[0] for P in rightboundary], [P[1] for P in rightboundary], kind='cubic')
 
             xlrange = np.linspace(min([P[0] for P in leftboundary]), max([P[0] for P in leftboundary]))
             xrrange = np.linspace(min([P[0] for P in rightboundary]), max([P[0] for P in rightboundary]))

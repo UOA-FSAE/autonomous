@@ -28,7 +28,8 @@ setup(
             'trajectory_optimisation = path_planning.trajectory_optimisation_CS:main',
             'center_line = path_planning.simple_centerline_planner:main',
             'shortest_path = path_planning.trajectory_shortest_path:main',
-            'shortest_path_viz = path_planning.shortest_path_viz:main'
+            'shortest_path_viz = path_planning.shortest_path_viz:main',
+            'trajectory_generation = path_planning.trajectory_generation:main'
         ],
     },
 )
