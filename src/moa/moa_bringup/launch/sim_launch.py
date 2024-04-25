@@ -4,11 +4,11 @@ import launch_ros.actions
 def generate_launch_description():
     return launch.LaunchDescription([
         # cone detect
-        launch_ros.actions.Node(
-            package='cone_mapping',
-            executable='dbscan',
-            name='listener',
-        ),
+        # launch_ros.actions.Node(
+        #     package='cone_mapping',
+        #     executable='dbscan',
+        #     name='listener',
+        # ),
 
         # path generation
         launch_ros.actions.Node(
@@ -37,7 +37,7 @@ def generate_launch_description():
         # path viz
         launch_ros.actions.Node(
             package='path_planning_visualization',
-            executable='visualize2',
+            executable='visualize',
             name='path_viz',
         ),
 
