@@ -8,6 +8,7 @@ import os
 
 def generate_launch_description():  
     return launch.LaunchDescription([
+        # Base launch files
         DeclareLaunchArgument(
         'can_id',
         default_value='0x300',
@@ -20,15 +21,31 @@ def generate_launch_description():
             description='The subscriber and publisher topic for the Can Adapter node'
         ),
         
-        # acker to can
         launch_ros.actions.Node(
             package='moa_controllers',
             executable='ack_to_can_node',
             name='ack_to_can_node',
             parameters=[{'can_id': launch.substitutions.LaunchConfiguration('can_id')}],
         ),
+        
+        # # uncomment when CAN interface is completed
+        # launch_ros.actions.Node(
+        #     package='moa_driver',
+        #     executable='can_interface_jnano',
+        #     name='can_interface_jnano'),
 
-        # candapter
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([os.path.join(
+                get_package_share_directory('moa_description'), 'launch'),
+                            '/urdf_model.py'])),
+
+        launch_ros.actions.Node(
+            package='moa_controllers',
+            executable='as_status_node',
+            name='as_status_node',
+        ),
+
+        
         launch_ros.actions.Node(
             package='CanTalk',
             executable='candapter_node',
@@ -36,69 +53,31 @@ def generate_launch_description():
             remappings=[('can',launch.substitutions.LaunchConfiguration('candapter_topic'))],
         ),
 
-        # # foxglove
-        # launch_ros.actions.Node(
-        #     package='foxglove_bridge',
-        #     executable='foxglove_bridge',
-        #     name='foxglove_bridge',
-        #     parameters=[{'port':8765}],
-        # ),
-        
-        # cone detection - aruco detection (ANY)
+        # Major systems
+        # TODO: Tuning parameter should be tuned in launch file
+
         launch_ros.actions.Node(
             package='aruco_detection',
             executable='aruco_detection',
-            name='aurco_detection'
+            name='cone_detection_aruco',
         ),
 
-        # cone map
         launch_ros.actions.Node(
             package='cone_mapping',
             executable='dbscan',
-            name='listener',
+            name='cone_mapping',
         ),
 
-        # path generation
         launch_ros.actions.Node(
             package='path_planning',
-            executable='trajectory_generation',
-            name='trajectory_generation',
-            parameters=[{'debug': True, 
-                         'timer': 1.0}],
+            executable='center_line',
+            name='path_planning',
         ),
 
-        # path optimization
         launch_ros.actions.Node(
-            package='path_planning',
-            executable='trajectory_optimisation',
-            name='trajectory_optimisation',
-            parameters=[{'debug': True}],
+            package='head_to_goal_control',
+            executable='controller',
+            name='controller',
         ),
 
-        # controller
-        launch_ros.actions.Node(
-            package='moa_controllers',
-            executable='trajectory_follower',
-            name='trajectory_follower',
-        ),
-
-        # path viz
-        launch_ros.actions.Node(
-            package='path_planning_visualization',
-            executable='visualize2',
-            name='path_viz',
-        ),
-
-        # track viz
-        launch_ros.actions.Node(
-            package='cone_map_foxglove_visualizer',
-            executable='visualizer',
-            name='track_viz',
-        ),
-
-        # launch_ros.actions.Node(
-        #     package='moa_controllers',
-        #     executable='as_status_node',
-        #     name='as_status_node',
-        # ),
   ])

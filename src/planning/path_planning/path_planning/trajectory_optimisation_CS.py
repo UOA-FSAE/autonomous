@@ -75,6 +75,21 @@ class trajectory_optimization(Node):
                     elif cones[i].colour == 2:
                         rightboundary.append([x,y])
             
+            # interpolate
+            funcL = interpolate.interp1d([P[0] for P in leftboundary], [P[1] for P in leftboundary], kind='slinear')
+            funcR = interpolate.interp1d([P[0] for P in rightboundary], [P[1] for P in rightboundary], kind='slinear')
+
+            xlrange = np.linspace(min([P[0] for P in leftboundary]), max([P[0] for P in leftboundary]))
+            xrrange = np.linspace(min([P[0] for P in rightboundary]), max([P[0] for P in rightboundary]))
+            self.get_logger().info(f"length of xlrange = {len(xlrange)}")
+            leftboundary = []
+            rightboundary = []
+            for P in xlrange:
+                leftboundary.append([P,funcL(P)])
+
+            for P in xrrange:
+                rightboundary.append([P,funcR(P)])
+            
             # get correspnoding right boundary based on left boundary 
             x1, y1, x2, y2 = leftboundary[0][0], leftboundary[0][1], rightboundary[0][0], rightboundary[0][1]
             track_width = self.get_distance(x1, y1, x2, y2)
@@ -317,8 +332,9 @@ class trajectory_optimization(Node):
         self._left_boundary_linestring = LineString([(P[0], P[1]) for P in self._leftboundary])
 
         pts_list = [(P[0], P[1]) for P in self._rightboundary]
-        if self._debug:
-            pts_list.pop(0)
+        # if self._debug:
+        #     pts_list.pop(0)
+        self.get_logger().info(f"left boundary = {self._rightboundary}")
         self._right_boundary_linestring = LineString(pts_list)
 
         # track width 

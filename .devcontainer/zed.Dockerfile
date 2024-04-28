@@ -78,4 +78,6 @@ RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
 
 RUN . ~/.bashrc
 
+COPY ./.devcontainer/SN31421864.conf /usr/local/zed/settings/SN31421864.conf
+
 CMD ["bash"]

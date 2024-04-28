@@ -37,7 +37,7 @@ class ArucoDetectionNode(Node):
         self.get_logger().info("class initialized")
 
     def image_callback(self, msg):
-        self.get_logger().info("publishing cone map soon")
+        #self.get_logger().info("publishing cone map soon")
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         corners, ids, _ = self.detector.detectMarkers(cv_image)
 
@@ -71,7 +71,7 @@ class ArucoDetectionNode(Node):
                         # Only sending blue cone and yellow cone
                         if single_cone.colour == 0 or single_cone.colour == 2:
                             self.aruco_msg.cones.append(single_cone)
-                    self.get_logger().info("POTENTIAL MARKERS DETECTED!!")
+                    #self.get_logger().info("POTENTIAL MARKERS DETECTED!!")
                 
                 self.publisher.publish(self.aruco_msg)
                 self.edit_msg = False

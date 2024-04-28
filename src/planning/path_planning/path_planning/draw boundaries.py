@@ -30,3 +30,4 @@ plt.plot(xr,yr,'oy',label='right boundary')
 
 plt.legend()
 plt.show()
+plt.savefig("/home/tanish/autonomous/src/planning/path_planning/path_planning/boundaries_drawn.png")

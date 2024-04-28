@@ -3,35 +3,18 @@ import launch_ros.actions
 
 def generate_launch_description():
     return launch.LaunchDescription([
-        # cone detect
-        launch_ros.actions.Node(
-            package='cone_mapping',
-            executable='listener',
-            name='listener',
-        ),
-
-        # path generation
-        launch_ros.actions.Node(
-            package='path_planning',
-            executable='trajectory_generation',
-            name='trajectory_generation',
-            parameters=[{'debug': True, 
-                         'timer':0.1}],
-        ),
+        # cone map
+        # launch_ros.actions.Node(
+        #     package='cone_mapping',
+        #     executable='dbscan',
+        #     name='dbscan',
+        # ),
 
         # path optimization
         launch_ros.actions.Node(
             package='path_planning',
-            executable='trajectory_optimisation',
-            name='trajectory_optimisation',
-            parameters=[{'debug': True}],
-        ),
-
-        # controller
-        launch_ros.actions.Node(
-            package='moa_controllers',
-            executable='trajectory_follower',
-            name='trajectory_follower',
+            executable='shortest_path',
+            name='shortest_path',
         ),
 
         # path viz

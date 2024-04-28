@@ -19,14 +19,13 @@ class head_to_goal_control_algorithm(Node):
 
         # Constant to tune (touch me please it makes me feel horny ahhhhhhh!)
         ## Tuning for look ahead distance
-        self.look_up_distance = 2
-        self.cancel_distance = 0.5
+        self.look_up_distance = 1
+        self.cancel_distance = 0.6
         ## Tuning for PID controller
-        self.P = 40
+        self.P = 20
         self.max_steering_angle = 20.0
         #self.max_speed = 2.5
-        self.max_speed = 4.0
-        self.speed_adjuster_width = 15
+        self.max_speed = 10        self.speed_adjuster_width = 15
         ## Current speed setting
         self.current_speed = 0
 
@@ -63,7 +62,7 @@ class head_to_goal_control_algorithm(Node):
 
         else:
             self.steering_angle = 0
-            #self.get_logger().info("Warning: no trajectory found, will set steering angle to 0!!!!")
+            self.get_logger().info("Warning: no trajectory found, will set steering angle to 0!!!!")
 
         # Experimental: speed adjuster
         # self.current_speed = self.steer_to_speed(self.steering_angle)
@@ -92,7 +91,7 @@ class head_to_goal_control_algorithm(Node):
 
     def apply_speed_decay(self):
         self.current_speed = (0.61 ** self.speed_decay_constant) * self.max_speed
-        #self.get_logger().info(f"Speed decay applied: {self.speed_decay_constant}, set current speed to {self.current_speed}")
+        self.get_logger().info(f"Speed decay applied: {self.speed_decay_constant}, set current speed to {self.current_speed}")
 
     # Coordinate tranformer
     def convert_to_transformation_matrix(self, x: float, y: float, theta: float) -> (
@@ -155,7 +154,7 @@ class head_to_goal_control_algorithm(Node):
     def update_track_point(self, msg: PoseArray): #Main logic
         # Pick new tracking point if no tracking point is selected or old tracking point is no longer visible
         if self.need_new_track_point():
-            #self.get_logger().info("Updating track point, speed decay applied")
+            self.get_logger().info("Update track point")
             self.Pose_to_track_in_global_frame = self.get_track_point_in_global_frame(msg)
             self.speed_decay_constant += 1
         else:
