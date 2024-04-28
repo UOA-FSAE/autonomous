@@ -91,19 +91,19 @@ class StanleyControl(Node):
         car_pose = msg
         camera_position = [car_pose.position.x,car_pose.position.y]
         car_yaw = car_pose.orientation.w
-        car_yaw_corrected = self.normalize_angle(car_yaw-4.71)
+        self.car_yaw_corrected = self.normalize_angle(car_yaw-4.71)
         
 
         if hasattr(self, "trajectory_in_global_frame"):
             #Get Car front axle center position
-            axle_pos = self.get_front_axle_position(camera_position,car_yaw_corrected)
+            axle_pos = self.get_front_axle_position(camera_position,self.car_yaw_corrected)
             #Get closest point on track and distance error
-            cls_point,error_front_axle = self.get_closest_track_point(axle_pos,car_yaw_corrected)
-            #Compute target yaw
+            cls_point,error_front_axle = self.get_closest_track_point(axle_pos,self.car_yaw_corrected)
+            #Compute target yaw - Angle from positive x in radians
             target_yaw = self.cal_target_yaw(cls_point)
             #Compute steering angle
-            theta_e = -self.normalize_angle(target_yaw-car_yaw_corrected)
-            #print([target_yaw,car_yaw_corrected])
+            theta_e = -(target_yaw-self.car_yaw_corrected)
+            print([np.degrees(target_yaw),np.degrees(self.car_yaw_corrected)])
             #theta_d = np.arctan2(self.k_stanley * error_front_axle, self.target_speed)
             theta_d = 0
             delta = math.degrees(theta_e + theta_d)
@@ -160,16 +160,32 @@ class StanleyControl(Node):
         return target_idx, error_front_axle
     
     def cal_target_yaw(self,cls_point):
+        if(cls_point==(len(self.ty)-1)):
+            dy = self.ty[cls_point]-self.ty[cls_point-1]
+            dx = self.tx[cls_point]-self.tx[cls_point-1]
+        else:
+            dy = self.ty[cls_point+1]-self.ty[cls_point]
+            dx = self.tx[cls_point+1]-self.tx[cls_point]
+
+        target_yaw_op1 = self.normalize_angle(np.arctan2(dy,dx))
+        target_yaw_op2 = self.normalize_angle(target_yaw_op1 + np.pi)
+
+        yaw_diff_1 = abs(target_yaw_op1-self.car_yaw_corrected)
+        yaw_diff_2 = abs(target_yaw_op2-self.car_yaw_corrected)
+        target_yaw2 = target_yaw_op1 if yaw_diff_1<yaw_diff_2 else target_yaw_op2
+
         dy_dx = np.gradient(self.ty, self.tx)
         # The gradient at the specified point_index
-        rate= dy_dx[cls_point]
+        rate = dy_dx[cls_point]
         target_yaw = np.arctan(rate)
         if(rate)<0: 
             target_yaw = 3.14+target_yaw
-        return target_yaw
+
+
+        return target_yaw2
     
     def normalize_angle(self,angle):
-        return angle_mod(angle)
+        return angle_mod(angle,zero_2_2pi=True)
     
 
 
