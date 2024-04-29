@@ -28,8 +28,8 @@ class shortest_path(NODE):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('plot', True),
-                ('save_track', True),
+                ('plot', False),
+                ('save_track', False),
             ]
         )
 
@@ -90,7 +90,7 @@ class shortest_path(NODE):
 
         # create brackets
         print("CREATING BRACKETS")
-        brackets = TrackMethods.getBrackets(df, 8, plot=self._plot)
+        brackets = TrackMethods.getBrackets(df, 10, plot=self._plot)
 
         # velocity_range = [0.01, 8, 16, 24, 32, 40]# velocities in meters per second
 
@@ -102,7 +102,8 @@ class shortest_path(NODE):
         print("starting outer distance: ", start_node._outerDistance)
         # start_node = TrackMethods.belman_ford_path(df, velocity_range, brackets, start_node, plot=self._plot)
         n_vel = 5
-        start_node, brackets, optimal_cost = TrackMethods.optimal_path(
+        start_node, brackets, optimal_cost = 
+    velocity_range = [0.01, 8, 16, 24, 32, 40 ]# velocities in meters per secondTrackMethods.optimal_path(
             "$track_name optimal", 
             df, 
             start_node, 

@@ -370,8 +370,9 @@ def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.a
                     node._stateList.append(state)
 
         for i in range(len(brackets)-1,0,-1):
-            tmp = rclpyNode("tmp")
-            tmp.get_logger().info(f"Bracket: {i}\n")
+            # tmp = rclpyNode("tmp")
+            # tmp.get_logger().info(f"Bracket: {i}\n")
+            print(f"Bracket: {i}\n")
             
             if i == 2: 
                 previous_node_list = [start_node];
@@ -427,11 +428,12 @@ def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.a
                                         current_state._nextState = next_node_state
 
                                 # non ideal state
-                                if min_va <= current_state._velocity <= min(traction_velocity, max_va, max_velocity):
-                                    traverse_time = ((2*distance_between_nodes)/(current_state._velocity+next_node_state._velocity)) + next_node_state._cost
-                                    if traverse_time < current_state._cost:
-                                        current_state._cost = traverse_time
-                                        current_state._nextState = next_node_state
+                                else: 
+                                    if min_va <= current_state._velocity <= min(traction_velocity, max_va, max_velocity):
+                                        traverse_time = ((2*distance_between_nodes)/(current_state._velocity+next_node_state._velocity)) + next_node_state._cost
+                                        if traverse_time < current_state._cost:
+                                            current_state._cost = traverse_time
+                                            current_state._nextState = next_node_state
 
                 # for state in current_node._stateList
                 #     if state._cost == Inf; deleteState!(state); end
