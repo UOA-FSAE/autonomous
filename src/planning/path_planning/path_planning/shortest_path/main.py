@@ -33,13 +33,18 @@ def main():
 
     # create brackets
     print("CREATING BRACKETS")
-    brackets = TrackMethods.getBrackets(df, 4, False)
+    brackets = TrackMethods.getBrackets(df, 10, True)
+    d_start = 1900
+    d_end = 2000
+    section_of_track = False
+    if section_of_track:
+        df, brackets = TrackMethods.getSectionofTrack(df, np.array(brackets), d_start, d_end)
 
     print("COMPUTING OPTIMAL PATH")
     # mass = 50.0
     # μ = 0.7
-    start_node = brackets[0]._nodeList[0]
-    start_node._stateList.append(State(start_node, [np.cos(0), np.sin(0)], 0.0))
+    start_node = brackets[0]._nodeList[4]
+    start_node._stateList.append(State(start_node, -1/df.p_vector.tolist()[0], 0.0, np.Inf))
     print("starting inner distance: ",start_node._innerDistance)
     print("starting outer distance: ", start_node._outerDistance)
     # start_node = TrackMethods.belman_ford_path(df, velocity_range, brackets, start_node, plot=self._plot)
@@ -50,15 +55,8 @@ def main():
         start_node, 
         brackets, 
         n_vel,
-        CAR["μ"], 
-        CAR["mass"], 
-        CAR["α"], 
-        CAR["α_d"], 
-        CAR["max steer angle"],
-        CAR["tire width"],
-        CAR["wheelbase"], 
-        CAR["max velocity"],
-        True
+        True,
+        CAR
     )
     # start_node = TrackMethods.optimise_path(track_name, df, brackets, start_node, mass, μ)
     print("\nOPTIMAL PATH COMPUTED")
