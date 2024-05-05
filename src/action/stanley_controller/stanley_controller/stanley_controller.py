@@ -103,9 +103,7 @@ class StanleyControl(Node):
             target_yaw = self.cal_target_yaw(cls_point)
             #Compute steering angle
             theta_e = -(target_yaw-self.car_yaw_corrected)
-            print([np.degrees(target_yaw),np.degrees(self.car_yaw_corrected)])
-            #theta_d = np.arctan2(self.k_stanley * error_front_axle, self.target_speed)
-            theta_d = 0
+            theta_d = -np.arctan2(self.k_stanley * error_front_axle, self.target_speed)
             delta = math.degrees(theta_e + theta_d)
             delta = np.clip(delta, -self.max_steer, self.max_steer)
             self.steering_angle = delta
