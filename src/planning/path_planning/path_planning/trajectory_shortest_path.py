@@ -28,7 +28,7 @@ class shortest_path(NODE):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('plot', False),
+                ('plot', True),
                 ('save_track', False),
             ]
         )
@@ -38,9 +38,9 @@ class shortest_path(NODE):
         self._save_track = self.get_parameter("save_track").get_parameter_value().bool_value
         # car properties
         self._CAR = {
-            "mass": 200.0,  # kg
-            "μ": 0.9, # static friction coefficient - dimensionless
-            "α": PathHelpers.noughtTo60(2.1), 
+            "mass": 795.0,  # kg
+            "μ": 1.6*0.8, # static friction coefficient - dimensionless
+            "α": PathHelpers.noughtTo60(1.7), 
             "α_d": 39.0,
             "max steer angle": 16.0,    # degrees
             "max velocity": 80.0,  # m/s
@@ -90,43 +90,37 @@ class shortest_path(NODE):
 
         # create brackets
         print("CREATING BRACKETS")
-        brackets = TrackMethods.getBrackets(df, 10, plot=self._plot)
+        brackets = TrackMethods.getBrackets(df, 5, plot=self._plot)
 
         # velocity_range = [0.01, 8, 16, 24, 32, 40]# velocities in meters per second
 
         # compute optimal path
         print("COMPUTING OPTIMAL PATH")
         start_node = self.get_start_node(starting_point=car_position)   # transformed car position
-        start_node._stateList.append(State(start_node, [np.cos(0), np.sin(0)], 0.0))
+        # start_node = brackets[0]._nodeList[4]
+        start_node._stateList.append(State(start_node, np.array([np.cos(np.pi/2),np.sin(0)]), 0.0, np.Inf))
         print("starting inner distance: ", start_node._innerDistance)
         print("starting outer distance: ", start_node._outerDistance)
         # start_node = TrackMethods.belman_ford_path(df, velocity_range, brackets, start_node, plot=self._plot)
-        n_vel = 5
+        n_vel = 10
         start_node, brackets, optimal_cost = TrackMethods.optimal_path(
             "$track_name optimal", 
             df, 
             start_node, 
             brackets, 
             n_vel,
-            self._CAR["μ"], 
-            self._CAR["mass"], 
-            self._CAR["α"], 
-            self._CAR["α_d"], 
-            self._CAR["max steer angle"],
-            self._CAR["tire width"],
-            self._CAR["wheelbase"], 
-            self._CAR["max velocity"],
+            self._CAR,
             self._plot
         )
         print("\nOPTIMAL PATH COMPUTED")
 
 
         # get steering angle based on current and next point
-        # p1 = start_node._xy # relative to global
+        p1 = start_node._xy # relative to global
         # self.get_logger().info(f"{p1}")
         # self.get_logger().info(f"{start_node._nextNode._xy}")
         # # p2 = self.get_transformed_point(msg, start_node._nextNode._xy)   # relative to local
-        # p2 = start_node._nextNode._xy 
+        p2 = start_node._stateList[0]._nextState._xy 
         # self.get_logger().info(f"{p2}")
         # # p2 = start_node._nextNode._xy + start_node._xy
         # steering_angle = TrackHelpers.getAngleRotation(np.array(p1), np.array(p2))
@@ -136,12 +130,12 @@ class shortest_path(NODE):
         # publish msgs
         # self.steering_angle.publish(Float32(data=steering_angle))
 
-        # points = [p1, p2]
-        # msg = PoseArray()
-        # for P in points:
-        #     args = {"position": Point(x=P[0], y=P[1], z=0.0)}
-        #     msg.poses.append(Pose(**args))
-        # self.best_trajectory_publisher.publish(msg)
+        points = [p1, p2]
+        msg = PoseArray()
+        for P in points:
+            args = {"position": Point(x=P[0], y=P[1], z=0.0)}
+            msg.poses.append(Pose(**args))
+        self.best_trajectory_publisher.publish(msg)
 
         # self.get_logger().info(f"steering angle published: {steering_angle}")
 

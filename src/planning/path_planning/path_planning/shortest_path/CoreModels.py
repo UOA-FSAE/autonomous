@@ -10,7 +10,7 @@ class State():
         self._cost = cost
         self._previousNode = previousNode
         self._nextState = nextState
-        # self._max = Imax
+        self._max = Imax
         # self._min = Imin
 
 class Node():

@@ -151,10 +151,13 @@ def Plot(nodes:bool, vector_list:np.array, label:str,col=None):
 def plotOptimal(vector_list:np.array, velocities:np.array,  label:str):
     all_x = [P[0] for P in vector_list]
     all_y = [P[1] for P in vector_list]
-    col = cm.jet((velocities-np.min(velocities))/(np.max(velocities)-np.min(velocities)))
-    ax = plt.gca()
+    # col = cm.jet((velocities-np.min(velocities))/(np.max(velocities)-np.min(velocities)))
+    cmap = plt.cm.get_cmap("autumn_r")
+    ax = plt.subplot()
     for i in range(len(all_x)-1):
-        ax.plot([all_x[i], all_x[i+1]], [all_y[i], all_y[i+1]], c=col[i], label=label)
-    im = ax.scatter(all_x, all_y, c=velocities, s=0, cmap=cm.jet)
+        ax.plot([all_x[i], all_x[i+1]], [all_y[i], all_y[i+1]], c=cmap(velocities[i]/np.max(velocities)), label=label)
+    im = ax.scatter(all_x, all_y, c=velocities, s=0, cmap=cmap)
+    # im = cm.ScalarMappable(cmap=cmap)
+    # im = im.set_array(velocities)
 
     return im
