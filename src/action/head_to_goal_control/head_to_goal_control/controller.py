@@ -10,6 +10,8 @@ from geometry_msgs.msg import Pose
 from moa_msgs.msg import ConeMap
 from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
 from std_msgs.msg import Header
+from std_msgs.msg import Float64
+from std_msgs.msg import Bool
 
 
 class head_to_goal_control_algorithm(Node):
@@ -19,16 +21,20 @@ class head_to_goal_control_algorithm(Node):
 
         # Constant to tune (touch me please it makes me feel horny ahhhhhhh!)
         ## Tuning for look ahead distance
-        self.look_up_distance = 2
-        self.cancel_distance = 0.5
+        self.look_up_distance = 5
+        self.cancel_distance = 2
         ## Tuning for PID controller
-        self.P = 40
+        self.P = 20
         self.max_steering_angle = 20.0
         #self.max_speed = 2.5
-        self.max_speed = 4.0
+        self.max_speed = 2
         self.speed_adjuster_width = 15
         ## Current speed setting
-        self.current_speed = 0
+        self.current_speed = 0.00
+        self.desired_speed = 0.00
+
+        ## if using RL, set to True
+        self.usingRL = True
 
         # Initializer (normally don't touch)
         self.steering_angle = 0
@@ -39,12 +45,14 @@ class head_to_goal_control_algorithm(Node):
         self.best_trajectory_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
         #self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.main_hearback, 5)
         self.car_pos_sub = self.create_subscription(Pose, "car_position", self.main_hearback, 5)
+        self.desired_speed_sub = self.create_subscription(Float64, 'desired_speed', self.desired_speed_callback, 5)
 
         self.drive_pub = self.create_publisher(AckermannDrive, "/drive", 5)
         self.drive_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
         self.cmd_vel_pub = self.create_publisher(AckermannDriveStamped, "cmd_vel", 5)
 
         self.track_point_pub = self.create_publisher(Pose, "moa/track_point", 5)
+        self.track_point_reached_pub = self.create_publisher(Bool, "moa/track_point_reached", 5)
 
     def main_hearback(self, msg: Pose):
         # Update car's current location and update transformation matrix
@@ -52,10 +60,12 @@ class head_to_goal_control_algorithm(Node):
         self.car_pose = msg
         self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.convert_to_transformation_matrix(self.car_pose.position.x, self.car_pose.position.y, self.car_pose.orientation.w)
 
+
         # Before proceed, check whether we have a trajectory input
         if hasattr(self, "trajectory_in_global_frame"):
             # Update destination point to track
             self.update_track_point(self.trajectory_in_global_frame)
+            # self.get_logger().info(f"Pose to track in global frame: {self.Pose_to_track_in_global_frame}")
             # Get expected steering angle to publish
             self.steering_angle = self.get_steering_angle(self.Pose_to_track_in_global_frame)
             self.steering_angle = self.saturating_steering(self.steering_angle)
@@ -63,7 +73,7 @@ class head_to_goal_control_algorithm(Node):
 
         else:
             self.steering_angle = 0
-            #self.get_logger().info("Warning: no trajectory found, will set steering angle to 0!!!!")
+            self.get_logger().info("Warning: no trajectory found, will set steering angle to 0!!!!")
 
         # Experimental: speed adjuster
         # self.current_speed = self.steer_to_speed(self.steering_angle)
@@ -90,7 +100,19 @@ class head_to_goal_control_algorithm(Node):
         speed = self.max_speed * np.exp(- (steering_angle ** 2) / (2 * (self.speed_adjuster_width ** 2)))
         return speed
 
+    def desired_speed_callback(self, msg):
+        self.desired_speed = msg.data
+
+        if self.desired_speed == -1.0:
+            self.current_speed = 0.0
+            self.Pose_to_track_in_global_frame = None
+        # self.get_logger().info(f"Recieved desired speed: {self.desired_speed}")
+
     def apply_speed_decay(self):
+        if self.usingRL:
+            self.current_speed = self.desired_speed
+            return
+
         self.current_speed = (0.61 ** self.speed_decay_constant) * self.max_speed
         #self.get_logger().info(f"Speed decay applied: {self.speed_decay_constant}, set current speed to {self.current_speed}")
 
@@ -155,15 +177,26 @@ class head_to_goal_control_algorithm(Node):
     def update_track_point(self, msg: PoseArray): #Main logic
         # Pick new tracking point if no tracking point is selected or old tracking point is no longer visible
         if self.need_new_track_point():
-            #self.get_logger().info("Updating track point, speed decay applied")
+            self.get_logger().info("Update track point")
             self.Pose_to_track_in_global_frame = self.get_track_point_in_global_frame(msg)
             self.speed_decay_constant += 1
+            msg = Bool()
+            msg.data = True
+            self.track_point_reached_pub.publish(msg)
         else:
             self.speed_decay_constant = 0
+
+        # print(self.Pose_to_track_in_global_frame)
         self.track_point_pub.publish(self.Pose_to_track_in_global_frame)
 
+
+
     def need_new_track_point(self):
+        
         if not(hasattr(self, "Pose_to_track_in_global_frame")):
+            return True
+        elif self.Pose_to_track_in_global_frame is None:
+            print("Reset Goal point")
             return True
         else:
             Pose_to_track_in_local_frame = self.get_track_point_in_local_frame(self.Pose_to_track_in_global_frame)
