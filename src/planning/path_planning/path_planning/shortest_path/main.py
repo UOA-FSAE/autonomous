@@ -11,14 +11,14 @@ def main():
     import numpy as np
 
     CAR = {
-        "mass": 795.0,  # kg
-        "μ": 1.6*0.8, # static friction coefficient - dimensionless
-        "α": PathHelpers.noughtTo60(1.7), 
-        "α_d": 39.0,
-        "max steer angle": 16.0,    # degrees
-        "max velocity": 80.0,  # m/s
-        "tire width": 18/39.37, # in m (18 inches here)
-        "wheelbase": 3.6,    # wheelbase length (m? - LIAM TO CONFIRM)
+        "mass": 84.5,  # kg
+        "μ": 0.6, # static friction coefficient - dimensionless
+        "α": PathHelpers.noughtTo60(3.0), 
+        "α_d": 15.0,    # max decel in m/s^2
+        "max steer angle": 25.0, # degrees
+        "max velocity": 10.0,  # m/s
+        "tire width": 0.11, # in m 
+        "wheelbase": 1.5,    # wheelbase length (in m)
     }
 
     # choose track
@@ -33,9 +33,9 @@ def main():
 
     # create brackets
     print("CREATING BRACKETS")
-    brackets = TrackMethods.getBrackets(df, 10, True)
-    d_start = 1950
-    d_end = 2000
+    brackets = TrackMethods.getBrackets(df, 8, False)
+    d_start = 300
+    d_end = 400
     section_of_track = True
     if section_of_track:
         df, brackets = TrackMethods.getSectionofTrack(df, np.array(brackets), d_start, d_end)

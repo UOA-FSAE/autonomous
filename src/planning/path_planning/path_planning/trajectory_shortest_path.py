@@ -38,14 +38,14 @@ class shortest_path(NODE):
         self._save_track = self.get_parameter("save_track").get_parameter_value().bool_value
         # car properties
         self._CAR = {
-            "mass": 795.0,  # kg
-            "μ": 1.6*0.8, # static friction coefficient - dimensionless
-            "α": PathHelpers.noughtTo60(1.7), 
-            "α_d": 39.0,
-            "max steer angle": 16.0,    # degrees
-            "max velocity": 80.0,  # m/s
-            "tire width": 18/39.37, # in m (18 inches here)
-            "wheelbase": 3.6,    # wheelbase length (m? - LIAM TO CONFIRM)
+            "mass": 84.5,  # kg
+            "μ": 0.6, # static friction coefficient - dimensionless
+            "α": PathHelpers.noughtTo60(3.0), 
+            "α_d": 15.0,    # max decel in m/s^2
+            "max steer angle": 25.0, # degrees
+            "max velocity": 10.0,  # m/s
+            "tire width": 0.11, # in m 
+            "wheelbase": 1.5,    # wheelbase length (in m)
         }
 
         # subscribers
@@ -90,13 +90,13 @@ class shortest_path(NODE):
 
         # create brackets
         print("CREATING BRACKETS")
-        brackets = TrackMethods.getBrackets(df, 5, plot=self._plot)
-
-        # velocity_range = [0.01, 8, 16, 24, 32, 40]# velocities in meters per second
+        brackets = TrackMethods.getBrackets(df, 6, plot=self._plot)
 
         # compute optimal path
         print("COMPUTING OPTIMAL PATH")
-        start_node = self.get_start_node(starting_point=car_position)   # transformed car position
+        # car_position = np.array(car_position) + [0,10]
+        current_position, brackets = self.getStartingPosition(car_position, brackets)
+        start_node = self.get_start_node(starting_point=current_position)   # transformed car position
         # start_node = brackets[0]._nodeList[4]
         start_node._stateList.append(State(start_node, np.array([np.cos(np.pi/2),np.sin(0)]), 0.0, np.Inf))
         print("starting inner distance: ", start_node._innerDistance)
@@ -140,6 +140,21 @@ class shortest_path(NODE):
         # self.get_logger().info(f"steering angle published: {steering_angle}")
 
         return
+    
+    def getStartingPosition(self, car_position, brackets):
+        best_dist = np.Inf
+        best_bracket_idx = 0
+        for i, B in enumerate(brackets):
+            dists = [TrackHelpers.getDistance(car_position, node._xy) for node in B._nodeList]
+            if min(dists) < best_dist:
+                best_dist = min(dists)
+                best_bracket_idx = i
+                starting_point = brackets[i]._nodeList[np.argmin(dists)]._xy
+        # delete brackets before the starting position
+        brackets = brackets[best_bracket_idx:]
+
+        return starting_point, brackets
+
     
     def get_boundaries(self, cones):
         # loop through each cone

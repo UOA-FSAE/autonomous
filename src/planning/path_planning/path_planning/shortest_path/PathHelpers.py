@@ -35,3 +35,13 @@ def noughtTo60(nought_to_60):
     Converts nought to 60 to linear acceleration
     """
     return 60/nought_to_60 * 0.44704
+
+def getTraverseTime(distance_between_nodes, current_state, next_node_state):
+    dist = distance_between_nodes
+    c_vel = current_state._velocity # current state velocity
+    n_vel = next_node_state._velocity   # next state velocity
+    n_cost = next_node_state._cost  # next state cost
+    dist_bound = max(next_node_state._node._innerDistance, next_node_state._node._outerDistance)
+
+    objective = ((2*dist)/(c_vel+n_vel)) + n_cost + np.sqrt(dist_bound)
+    return objective

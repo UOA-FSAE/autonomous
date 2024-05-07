@@ -404,7 +404,8 @@ def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.a
                 current_node_list = brackets[i-1]._nodeList
                 previous_node_list = brackets[i-2]._nodeList; 
 
-            for current_node in current_node_list:
+            def process_current_node(current_node):
+            # for current_node in current_node_list:
                 # current_node._stateList=[]
                 # Initialising statelist for the current node
                 for previous_node in previous_node_list:
@@ -441,15 +442,19 @@ def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.a
                                 if current_state._max:
                                     # braking, optimum maximum speed state
                                     ideal_velocity = min(traction_velocity, max_va, max_velocity)
-                                    traverse_time = ((2*distance_between_nodes)/(ideal_velocity+next_node_state._velocity)) + next_node_state._cost
+                                    tmp = current_state._velocity 
+                                    current_state._velocity = ideal_velocity
+                                    traverse_time = PathHelpers.getTraverseTime(distance_between_nodes, current_state, next_node_state)
                                     if traverse_time < current_state._cost:
                                         current_state._velocity = ideal_velocity
                                         current_state._cost = traverse_time
                                         current_state._nextState = next_node_state
+                                    else:
+                                        current_state._velocity = tmp
 
                                 # non ideal state
-                                if min_va <= current_state._velocity < min(traction_velocity, max_va, max_velocity):
-                                    traverse_time = ((2*distance_between_nodes)/(current_state._velocity+next_node_state._velocity)) + next_node_state._cost
+                                elif min_va <= current_state._velocity < min(traction_velocity, max_va, max_velocity):
+                                    traverse_time = PathHelpers.getTraverseTime(distance_between_nodes, current_state, next_node_state)
                                     if traverse_time < current_state._cost:
                                         # print('called')
                                         current_state._cost = traverse_time
@@ -460,6 +465,9 @@ def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.a
             # executor = concurrent.futures.ProcessPoolExecutor(8)
             # futures = [executor.submit(process_current_node, current_node) for current_node in current_node_list]
             # concurrent.futures.wait(futures)
+            _ = list(map(process_current_node, current_node_list))
+            # _ = [process_current_node(n) for n in current_node_list]
+
         # get optimal/best path by iterating through EVERY SINGLE state LOL
         print("getting best path")
         best_xy, best_velocities, cost = getBestStates(start_node)
@@ -473,10 +481,19 @@ def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.a
             TrackHelpers.Plot(False, df.inner, "inner boundary")
             # outer boundary
             TrackHelpers.Plot(False, df.outer, "outer boundary")
+            # nodes
+            for i,B in enumerate(brackets):
+                all_nodes = B._nodeList
+                if i == len(brackets)-1:
+                    col = "green"
+                else:
+                    col = "black"
+                TrackHelpers.Plot(True, all_nodes, "nodes", col)
+
             # optimal path
             im = TrackHelpers.plotOptimal(best_xy, best_velocities, "optimal race line")
-            plt.colorbar(im, label='velocity')
-            plt.title("optimal line colored by velocity")
+            plt.colorbar(im, label='velocity (m/s)')
+            plt.title("Optimal Trajectory Colored by Velocity")
 
             p.savefig(f"{os.path.dirname(__file__)}/Race lines/{track_name}.png", dpi=600)
             plt.show()
