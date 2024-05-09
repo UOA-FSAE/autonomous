@@ -5,14 +5,23 @@ import rclpy
 from rclpy.node import Node
 import numpy as np
 import math
-from geometry_msgs.msg import PoseArray
-from geometry_msgs.msg import Pose
-from moa_msgs.msg import ConeMap
+from geometry_msgs.msg import PoseArray, Pose
 from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
-from std_msgs.msg import Header
-from std_msgs.msg import Float64
-from std_msgs.msg import Bool
+from std_msgs.msg import Header, Float64, Bool
 
+# Constants
+LOOK_UP_DISTANCE = 5
+CANCEL_DISTANCE = 2
+P = 20
+MAX_STEERING_ANGLE = 20.0
+MAX_SPEED = 3.0
+SPEED_ADJUSTER_WIDTH = 15
+CURRENT_SPEED = 0.0
+DESIRED_SPEED = 0.0
+USING_RL = False
+STEERING_ANGLE = 0
+POS = (0,0)
+SPEED_DECAY_CONSTANT = 0
 
 class head_to_goal_control_algorithm(Node):
     def __init__(self):
@@ -21,30 +30,28 @@ class head_to_goal_control_algorithm(Node):
 
         # Constant to tune (touch me please it makes me feel horny ahhhhhhh!)
         ## Tuning for look ahead distance
-        self.look_up_distance = 5
-        self.cancel_distance = 2
+        self.look_up_distance = LOOK_UP_DISTANCE
+        self.cancel_distance = CANCEL_DISTANCE
         ## Tuning for PID controller
-        self.P = 20
-        self.max_steering_angle = 20.0
-        #self.max_speed = 2.5
-        self.max_speed = 2
-        self.speed_adjuster_width = 15
+        self.P = P
+        self.max_steering_angle = MAX_STEERING_ANGLE
+        self.max_speed = MAX_SPEED
+        self.speed_adjuster_width = SPEED_ADJUSTER_WIDTH
         ## Current speed setting
-        self.current_speed = 0.00
-        self.desired_speed = 0.00
+        self.current_speed = CURRENT_SPEED
+        self.desired_speed = DESIRED_SPEED
 
         ## if using RL, set to True
-        self.usingRL = True
+        self.usingRL = USING_RL
 
         # Initializer (normally don't touch)
-        self.steering_angle = 0
-        self.pos = (0,0)
-        self.speed_decay_constant = 0
+        self.steering_angle = STEERING_ANGLE
+        self.pos = POS
+        self.speed_decay_constant = SPEED_DECAY_CONSTANT
 
         # subscribe to best trajectory
-        self.best_trajectory_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
-        #self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.main_hearback, 5)
-        self.car_pos_sub = self.create_subscription(Pose, "car_position", self.main_hearback, 5)
+        self.best_trajectory_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_callback, 5)
+        self.car_pos_sub = self.create_subscription(Pose, "car_position", self.main_callback, 5)
         self.desired_speed_sub = self.create_subscription(Float64, 'desired_speed', self.desired_speed_callback, 5)
 
         self.drive_pub = self.create_publisher(AckermannDrive, "/drive", 5)
@@ -54,40 +61,49 @@ class head_to_goal_control_algorithm(Node):
         self.track_point_pub = self.create_publisher(Pose, "moa/track_point", 5)
         self.track_point_reached_pub = self.create_publisher(Bool, "moa/track_point_reached", 5)
 
-    def main_hearback(self, msg: Pose):
+    def main_callback(self, msg: Pose):
         # Update car's current location and update transformation matrix
-        #self.car_pose = msg.cones[0].pose.pose
         self.car_pose = msg
         self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.convert_to_transformation_matrix(self.car_pose.position.x, self.car_pose.position.y, self.car_pose.orientation.w)
-
 
         # Before proceed, check whether we have a trajectory input
         if hasattr(self, "trajectory_in_global_frame"):
             # Update destination point to track
             self.update_track_point(self.trajectory_in_global_frame)
-            # self.get_logger().info(f"Pose to track in global frame: {self.Pose_to_track_in_global_frame}")
+
             # Get expected steering angle to publish
             self.steering_angle = self.get_steering_angle(self.Pose_to_track_in_global_frame)
             self.steering_angle = self.saturating_steering(self.steering_angle)
-            # self.get_logger().info(f"Set steering angle to {self.steering_angle * self.P}")
 
         else:
             self.steering_angle = 0
             self.get_logger().info("Warning: no trajectory found, will set steering angle to 0!!!!")
 
-        # Experimental: speed adjuster
-        # self.current_speed = self.steer_to_speed(self.steering_angle)
-        # Adjust the speed base on the performance of the path planning (if takes long time to locate next destination then stop until refresh)
+        # Adjust the speed base on the performance of the path planning
         self.apply_speed_decay()
 
         # Publish command for velocity
         self.publish_ackermann()
 
-    def selected_trajectory_handler(self, msg: PoseArray):
+# Update desired speed
+    def desired_speed_callback(self, msg):
+        if not self.usingRL:
+            return
+
+        self.desired_speed = msg.data
+
+        if self.desired_speed == -1.0:
+            self.current_speed = 0.0
+            self.Pose_to_track_in_global_frame = None
+
+# Update trajectory
+    def selected_trajectory_callback(self, msg: PoseArray):
         self.trajectory_in_global_frame = msg
 
+# Saturation for steering angle
     def saturating_steering(self, steering_angle):
         saturation = self.max_steering_angle
+
         if steering_angle > saturation:
             steering_angle = saturation
         elif steering_angle < -1 * saturation:
@@ -95,30 +111,16 @@ class head_to_goal_control_algorithm(Node):
 
         return steering_angle
 
-    def steer_to_speed(self, steering_angle):
-        # RF with NN can be used here
-        speed = self.max_speed * np.exp(- (steering_angle ** 2) / (2 * (self.speed_adjuster_width ** 2)))
-        return speed
-
-    def desired_speed_callback(self, msg):
-        self.desired_speed = msg.data
-
-        if self.desired_speed == -1.0:
-            self.current_speed = 0.0
-            self.Pose_to_track_in_global_frame = None
-        # self.get_logger().info(f"Recieved desired speed: {self.desired_speed}")
-
+# Set the speed of the car
     def apply_speed_decay(self):
         if self.usingRL:
             self.current_speed = self.desired_speed
             return
 
         self.current_speed = (0.61 ** self.speed_decay_constant) * self.max_speed
-        #self.get_logger().info(f"Speed decay applied: {self.speed_decay_constant}, set current speed to {self.current_speed}")
 
-    # Coordinate tranformer
-    def convert_to_transformation_matrix(self, x: float, y: float, theta: float) -> (
-            np.array, np.array, np.array):
+# Coordinate tranformer
+    def convert_to_transformation_matrix(self, x: float, y: float, theta: float) -> (np.array, np.array, np.array):
         '''Convert state and list_of_cones input into position vector, rotation matrix (DCM) and the matrix of list of cones
 
         Args:
@@ -185,14 +187,11 @@ class head_to_goal_control_algorithm(Node):
             self.track_point_reached_pub.publish(msg)
         else:
             self.speed_decay_constant = 0
-
-        # print(self.Pose_to_track_in_global_frame)
+        
         self.track_point_pub.publish(self.Pose_to_track_in_global_frame)
 
-
-
+# Check if there is a track point to track
     def need_new_track_point(self):
-        
         if not(hasattr(self, "Pose_to_track_in_global_frame")):
             return True
         elif self.Pose_to_track_in_global_frame is None:
@@ -249,8 +248,6 @@ class head_to_goal_control_algorithm(Node):
                 "acceleration": 0.0,
                 "jerk": 0.0}
         msg1 = AckermannDrive(**args1)
-
-        #print(msg1)
 
         args2 = {"steering_angle": float(self.steering_angle),
                 "steering_angle_velocity": 0.0,

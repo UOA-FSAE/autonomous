@@ -1,18 +1,19 @@
 import rclpy
 from rclpy.node import Node
-
-from std_msgs.msg import Bool
-from std_msgs.msg import String
-from std_msgs.msg import Float64
-from geometry_msgs.msg import Pose
-from geometry_msgs.msg import PoseArray
-
+from std_msgs.msg import Bool, String, Float64
+from geometry_msgs.msg import Pose, PoseArray
 import threading
 import time
 import numpy as np
-
 from gymnasium import Env
 from gymnasium.spaces import Discrete, Dict, Box
+
+# Constants
+CAR_POSITION = Pose()
+SELECTED_TRAJECTORY = None
+DESIRED_SPEED = 3.0
+TRACK_POINT_REACHED = 0
+TURNING_ANGLES = []
 
 class RLEnvironmentNode(Node):
     def __init__(self):
@@ -20,12 +21,12 @@ class RLEnvironmentNode(Node):
         self.get_logger().info("RL Controller Node started")
         
         # Initialize car environment variables
-        self.car_position = None
-        self.selected_trajectory = None
-        self.desired_speed = 3.0
+        self.car_position = CAR_POSITION
+        self.selected_trajectory = SELECTED_TRAJECTORY
+        self.desired_speed = DESIRED_SPEED
 
-        self.track_point_reached = 0
-        self.turning_angles = []
+        self.track_point_reached = TRACK_POINT_REACHED
+        self.turning_angles = TURNING_ANGLES
         
         # Subscribe to track point reached
         self.track_point_reached_sub = self.create_subscription(
@@ -54,42 +55,34 @@ class RLEnvironmentNode(Node):
 
         self.create_car_pub = self.create_publisher(String, "/race_controller/create", 5)
 
+# Update car position
     def car_pos_callback(self, msg):
         self.car_position = msg
 
+# Update track point reached
     def track_point_reached_callback(self, msg):
         self.track_point_reached += 1
-        # print(self.track_point_reached)
 
+# Update selected trajectory
     def selected_trajectory_callback(self, msg: PoseArray):
         self.selected_trajectory = msg.poses
 
         angle_list = []
         angle_offset = 0
 
+        # Calculating turning angles from car position to track points
         for i in range(5,len(msg.poses)):
-            angle = np.arctan2(msg.poses[i].position.y - self.car_position.position.y, msg.poses[i].position.x - self.car_position.position.x)
-            # absolute angle
+            angle = np.arctan2(msg.poses[i].position.y - self.car_position.position.y, msg.poses[i].position.x
+                                - self.car_position.position.x)
+
             angle = abs(np.degrees(angle))
             if angle_list == []:
                 angle_offset = angle
             angle_list.append(abs(angle - angle_offset))
 
-        """ print("Angle list count: ", len(angle_list))
-
-        print(", ".join([f"{angle:.3f}" for angle in angle_list[0:4]]))
-        print(", ".join([f"{angle:.3f}" for angle in angle_list[4:8]]))
-        print(", ".join([f"{angle:.3f}" for angle in angle_list[8:12]]))
-        print(", ".join([f"{angle:.3f}" for angle in angle_list[12:16]]))
-        print(", ".join([f"{angle:.3f}" for angle in angle_list[16:20]]))
-        print(", ".join([f"{angle:.3f}" for angle in angle_list[20:24]]))
-        print(", ".join([f"{angle:.3f}" for angle in angle_list[24:28]]))
-        print(", ".join([f"{angle:.3f}" for angle in angle_list[28:32]]))
-        print(", ".join([f"{angle:.3f}" for angle in angle_list[32:36]]))
-        print(", ".join([f"{angle:.3f}" for angle in angle_list[36:40]])) """
-
         self.turning_angles = angle_list
 
+# Publish desired speed
     def publish_desired_speed(self, action):
         if action == -1.0:
             self.desired_speed = -1.0
@@ -103,7 +96,8 @@ class RLEnvironmentNode(Node):
         self.desired_speed += 0.1 * (action - 1)
         msg.data = self.desired_speed
         self.desired_speed_pub.publish(msg)
-    
+
+# Get observation
     def get_observation(self):
         # Return the current observation
         return {
@@ -111,11 +105,13 @@ class RLEnvironmentNode(Node):
             'speed': self.desired_speed
         }
 
+# Get reward
     def get_reward(self):
         reward = self.track_point_reached
         self.track_point_reached = 0
         return reward
 
+# Reset environment
     def reset_environment(self):
         # Reset the environment to the initial state
         print("TIMESTEPS REACHED")
@@ -125,6 +121,7 @@ class RLEnvironmentNode(Node):
         time.sleep(1)
         self.create_car_pub.publish(String(data="test"))
 
+        # Publishing -1.0 resets the goal point
         time.sleep(1)
         self.track_point_reached = 0
         self.publish_desired_speed(-1.0)
@@ -144,14 +141,7 @@ def main(args=None):
         action = env.action_space.sample()
         obs, reward, done, info = env.step(action)
 
-        print("  ")
-        print("Step: ")
-        print("obs: ", obs)
-        print("reward: ", reward)
-        print("done: ", done)
-        print("info: ", info)
-        print("action: ", action)
-        print("desired speed: ", rl_environment_node.desired_speed)
+        print("obs : ", obs)
 
         if done:
             obs = env.reset()
@@ -184,14 +174,13 @@ class CarEnv(Env):
         if self.timesteps >= self.max_timesteps:
             return [], 0, True, {}
         
-        print("timesstep : ", self.timesteps)
-        
         reward = self.rl_environment_node.get_reward()
 
         observation = self.rl_environment_node.get_observation()
 
         self.rl_environment_node.publish_desired_speed(action)
         
+        # return observation, reward, done, info
         return np.array(self.rl_environment_node.get_observation()), reward, False, {}
         
     def reset(self):
@@ -200,6 +189,17 @@ class CarEnv(Env):
         self.timesteps = 0
         return np.array(self.rl_environment_node.get_observation())
 
+
+""" 
+In While Loop
+        print("  ")
+        print("Step: ")
+        print("obs: ", obs)
+        print("reward: ", reward)
+        print("done: ", done)
+        print("info: ", info)
+        print("action: ", action)
+        print("desired speed: ", rl_environment_node.desired_speed) """
 
 """ if self.rl_environment_node.turning_angles != []:
             self.turning_angles = self.rl_environment_node.turning_angles
