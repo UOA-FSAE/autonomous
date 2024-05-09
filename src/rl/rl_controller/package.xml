@@ -4,7 +4,7 @@
   <name>rl_controller</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="adrianrosioru03@gmail.com">aros181</maintainer>
+  <maintainer email="adrianrosioru03@gmail.com">Adrian Rosioru</maintainer>
   <license>TODO: License declaration</license>
 
   <test_depend>ament_copyright</test_depend>

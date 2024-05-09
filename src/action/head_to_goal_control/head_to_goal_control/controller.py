@@ -50,8 +50,8 @@ class head_to_goal_control_algorithm(Node):
         self.speed_decay_constant = SPEED_DECAY_CONSTANT
 
         # subscribe to best trajectory
-        self.best_trajectory_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_callback, 5)
-        self.car_pos_sub = self.create_subscription(Pose, "car_position", self.main_callback, 5)
+        self.best_trajectory_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
+        self.car_pos_sub = self.create_subscription(Pose, "car_position", self.main_hearback, 5)
         self.desired_speed_sub = self.create_subscription(Float64, 'desired_speed', self.desired_speed_callback, 5)
 
         self.drive_pub = self.create_publisher(AckermannDrive, "/drive", 5)
@@ -61,7 +61,7 @@ class head_to_goal_control_algorithm(Node):
         self.track_point_pub = self.create_publisher(Pose, "moa/track_point", 5)
         self.track_point_reached_pub = self.create_publisher(Bool, "moa/track_point_reached", 5)
 
-    def main_callback(self, msg: Pose):
+    def main_hearback(self, msg: Pose):
         # Update car's current location and update transformation matrix
         self.car_pose = msg
         self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.convert_to_transformation_matrix(self.car_pose.position.x, self.car_pose.position.y, self.car_pose.orientation.w)
@@ -97,7 +97,7 @@ class head_to_goal_control_algorithm(Node):
             self.Pose_to_track_in_global_frame = None
 
 # Update trajectory
-    def selected_trajectory_callback(self, msg: PoseArray):
+    def selected_trajectory_handler(self, msg: PoseArray):
         self.trajectory_in_global_frame = msg
 
 # Saturation for steering angle
@@ -120,7 +120,7 @@ class head_to_goal_control_algorithm(Node):
         self.current_speed = (0.61 ** self.speed_decay_constant) * self.max_speed
 
 # Coordinate tranformer
-    def convert_to_transformation_matrix(self, x: float, y: float, theta: float) -> (np.array, np.array, np.array):
+    def convert_to_transformation_matrix(self, x: float, y: float, theta: float) -> (np.array, np.array, np.array): # type: ignore
         '''Convert state and list_of_cones input into position vector, rotation matrix (DCM) and the matrix of list of cones
 
         Args:
@@ -195,7 +195,7 @@ class head_to_goal_control_algorithm(Node):
         if not(hasattr(self, "Pose_to_track_in_global_frame")):
             return True
         elif self.Pose_to_track_in_global_frame is None:
-            print("Reset Goal point")
+            self.get_logger().info("Reset Goal point")
             return True
         else:
             Pose_to_track_in_local_frame = self.get_track_point_in_local_frame(self.Pose_to_track_in_global_frame)

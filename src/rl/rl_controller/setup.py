@@ -13,7 +13,7 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='dyu056',
+    maintainer='Adrian Rosioru',
     maintainer_email='adrianrosioru03@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',

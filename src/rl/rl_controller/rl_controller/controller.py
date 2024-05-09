@@ -15,6 +15,12 @@ DESIRED_SPEED = 3.0
 TRACK_POINT_REACHED = 0
 TURNING_ANGLES = []
 
+## RL Environment Node
+# This node is responsible for passing the parameters to the RL algorithm
+# and receiving the action from the RL algorithm to control the car
+# The parameters passed are the car position, selected trajectory, and desired speed
+# The action received is the desired speed
+
 class RLEnvironmentNode(Node):
     def __init__(self):
         super().__init__('rl_controller')
@@ -141,7 +147,7 @@ def main(args=None):
         action = env.action_space.sample()
         obs, reward, done, info = env.step(action)
 
-        print("obs : ", obs)
+        rl_environment_node.get_logger().info("Observation: " + str(obs))
 
         if done:
             obs = env.reset()
@@ -152,7 +158,11 @@ def main(args=None):
 if __name__ == '__main__':
     main()
 
-# Car Environment class
+## Car Environment class
+# This class defines the environment for the car
+# The action space is defined as Discrete with 3 actions
+# The observation space is defined as angles and speed
+
 class CarEnv(Env):
     def __init__(self, rl_environment_node):
         # Define action and observation space
@@ -188,35 +198,3 @@ class CarEnv(Env):
         self.rl_environment_node.reset_environment()
         self.timesteps = 0
         return np.array(self.rl_environment_node.get_observation())
-
-
-""" 
-In While Loop
-        print("  ")
-        print("Step: ")
-        print("obs: ", obs)
-        print("reward: ", reward)
-        print("done: ", done)
-        print("info: ", info)
-        print("action: ", action)
-        print("desired speed: ", rl_environment_node.desired_speed) """
-
-""" if self.rl_environment_node.turning_angles != []:
-            self.turning_angles = self.rl_environment_node.turning_angles
-            self.rl_environment_node.turning_angles = []
-            
-            print("timestep: ", self.timesteps)
-            print("Car Position x y: ", self.rl_environment_node.car_position.position.x, self.rl_environment_node.car_position.position.y)
-            print("Track Point x y: ", self.rl_environment_node.selected_trajectory[5].position.x, self.rl_environment_node.selected_trajectory[5].position.y)
-
-            print("Angle list count: ", len(self.turning_angles))
-            print(", ".join([f"{angle:.3f}" for angle in self.turning_angles[0:4]]))
-            print(", ".join([f"{angle:.3f}" for angle in self.turning_angles[4:8]]))
-            print(", ".join([f"{angle:.3f}" for angle in self.turning_angles[8:12]]))
-            print(", ".join([f"{angle:.3f}" for angle in self.turning_angles[12:16]]))
-            print(", ".join([f"{angle:.3f}" for angle in self.turning_angles[16:20]]))
-            print(", ".join([f"{angle:.3f}" for angle in self.turning_angles[20:24]]))
-            print(", ".join([f"{angle:.3f}" for angle in self.turning_angles[24:28]]))
-            print(", ".join([f"{angle:.3f}" for angle in self.turning_angles[28:32]]))
-            print(", ".join([f"{angle:.3f}" for angle in self.turning_angles[32:36]]))
-            print(", ".join([f"{angle:.3f}" for angle in self.turning_angles[36:40]])) """
