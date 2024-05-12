@@ -371,7 +371,7 @@ def getSectionofTrack(df, brackets, d_start, d_end):
 
 #     return start_node
 
-def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.array, n_vel, CAR:dict, plot:bool):
+def optimal_path(track_name:str, car_position, df:pd.DataFrame, start_node:Node, brackets:np.array, n_vel, CAR:dict, plot:bool):
         """keeps ALL state from each pair of node state combination"""
         attributes = ["mass", "μ", "α", "α_d", "max steer angle", "max velocity", "tire width", "wheelbase"]
         mass, μ, α, α_d, max_steer_angle, max_velocity, tire_width, wheelbase = [CAR[key] for key in attributes]
@@ -390,8 +390,8 @@ def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.a
         start_node._stateList[0]._previousNode = Node(0,start_node._xy - 2*wheelbase*start_node._stateList[0]._entryVector, 0, 0)
 
         for i in range(len(brackets)-1,0,-1):
-            # tmp = rclpyNode("tmp")
-            # tmp.get_logger().info(f"Bracket: {i}\n")
+            tmp = rclpyNode("tmp")
+            tmp.get_logger().info(f"Bracket: {i}\n")
             print(f"Bracket: {i}\n")
             
             if i == 2: 
@@ -481,6 +481,13 @@ def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.a
             TrackHelpers.Plot(False, df.inner, "inner boundary")
             # outer boundary
             TrackHelpers.Plot(False, df.outer, "outer boundary")
+            # actual car position
+            plt.plot(car_position[0], car_position[1], "or", label="actual car position")
+            # optimal path
+            im = TrackHelpers.plotOptimal(best_xy, best_velocities, "optimal race line")
+            plt.colorbar(im, label='velocity (m/s)')
+            plt.title("Optimal Trajectory Colored by Velocity")
+
             # nodes
             for i,B in enumerate(brackets):
                 all_nodes = B._nodeList
@@ -490,12 +497,9 @@ def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.a
                     col = "black"
                 TrackHelpers.Plot(True, all_nodes, "nodes", col)
 
-            # optimal path
-            im = TrackHelpers.plotOptimal(best_xy, best_velocities, "optimal race line")
-            plt.colorbar(im, label='velocity (m/s)')
-            plt.title("Optimal Trajectory Colored by Velocity")
 
             p.savefig(f"{os.path.dirname(__file__)}/Race lines/{track_name}.png", dpi=600)
+            plt.legend(["left boundary", "right boundary", "actual car position", "optimal race line"])
             plt.show()
 
         return start_node, brackets, cost/60

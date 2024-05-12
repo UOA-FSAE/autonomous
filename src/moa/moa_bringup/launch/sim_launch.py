@@ -19,8 +19,8 @@ def generate_launch_description():
 
         # path viz
         launch_ros.actions.Node(
-            package='path_planning_visualization',
-            executable='visualize2',
+            package='path_planning',
+            executable='shortest_path_viz',
             name='path_viz',
         ),
 
