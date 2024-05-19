@@ -77,7 +77,7 @@ class StanleyControl(Node):
         self.k_speed = 1.0 #speed Controller gain
         self.cam_fron_axle_dist= 1 #[m] Wheel base of vehicle
         self.max_steer = 27.0  # [degrees] max steering angle
-        self.target_speed = 20/3.6 #[m/s]
+        self.target_speed = 3.6/3.6 #[m/s]
 
         #Subscribe for car pose and track
         self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
@@ -107,8 +107,10 @@ class StanleyControl(Node):
             delta = math.degrees(theta_e + theta_d)
             delta = np.clip(delta, -self.max_steer, self.max_steer)
             self.steering_angle = delta
+            self.target_speed = 3.6/3.6
         else:
             self.steering_angle = 0
+            self.target_speed = 0
             self.get_logger().info("Warning: no trajectory found, will set steering angle to 0!!!!")
 
         # Publish command for velocity
