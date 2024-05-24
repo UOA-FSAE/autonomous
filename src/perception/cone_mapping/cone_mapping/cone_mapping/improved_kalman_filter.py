@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
-from std_msgs.msg import String
+# from std_msgs.msg import Float32
 from moa_msgs.msg import ConeMap
 from moa_msgs.msg import Cone
 from geometry_msgs.msg import Point
@@ -12,6 +12,8 @@ from geometry_msgs.msg import Pose
 
 import math
 import numpy as np
+
+# import datetime
 
 import kdtree
 
@@ -60,15 +62,41 @@ class Cone_Mapper(Node):
         # Current cone id
         self.current_cone_id = 1
 
-        # Initial error in the estimate (parameter to tune)
+################################################################################ (parameters to tune)
+
+        # Initial error in the estimate
         self.default_cone_covariance = [10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-        # Error in measurement (parameter to tune)
+        # Error in measurement
         self.error_in_measurement = 5
 
-        # Cone match radius (parameter to tune)
+        # Cone match radius
         self.match_radius = 0.5
 
+################################################################################ (measure duration for each cone map update)
+
+    #     # Create update duration publisher
+    #     self.duration_publisher = self.create_publisher(Float32, 'duration', 10)
+
+    #     # Record the total update duration
+    #     self.total_time = 0
+
+    #     # Record the number of updates
+    #     self.counter = 0
+
+    #     # Publish the average cone map update duration every 10s
+    #     self.timer = self.create_timer(10.0, self.average_time_callback)
+
+    # # Calculate the average cone map update duration
+    # def average_time_callback(self):
+    #     duration_msg = Float32()
+    #     average_duration = self.total_time / self.counter
+    #     duration_msg.data = average_duration
+    #     self.total_time = 0
+    #     self.counter = 0
+    #     self.duration_publisher.publish(duration_msg)
+
+################################################################################
 
     def listener_callback(self, msg: ConeMap) -> None:
         """This function updates the existing cone map and publish it to the /cone_map topic
@@ -76,7 +104,12 @@ class Cone_Mapper(Node):
         Args:
             msg (ConeMap): input cone map from the /cone_detection topic
         """
+        # before = datetime.datetime.now()
         self.update_existing_cone_map(msg)
+        # after = datetime.datetime.now()
+        # duration = after - before
+        # self.total_time += duration.total_seconds()
+        # self.counter += 1
         self.publisher.publish(self.Cone_map)
 
 
@@ -302,7 +335,7 @@ class Cone_Mapper(Node):
         pose_with_covariance.covariance = covariance_vector
         output_cone.pose = pose_with_covariance
         output_cone.id = cone_id
-        output_cone.colour = color
+        output_cone.colour = int(color)
         return output_cone
     
 
