@@ -12,9 +12,6 @@ class Acceleration_algorithm(Node):
         super().__init__("Acceleration")
         self.get_logger().info("Acceleration Started")
 
-        ## Current speed setting
-        self.current_speed = 20/3.6 #In m/s
-
         # subscribe to Cone detection result
         self.create_subscription(ConeMap, "cone_detection", self.main_hearback, 5)
 
@@ -22,14 +19,15 @@ class Acceleration_algorithm(Node):
         self.drive_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
         self.cmd_vel_pub = self.create_publisher(AckermannDriveStamped, "cmd_vel", 5)
 
-        #Start the car
-        self.publish_ackermann()
-
 
     def main_hearback(self, msg: ConeMap):
-        #If there are no cones, make throttle to 0
         if len(msg.cones) == 0:
+            #No cones, make throttle to 0
             self.current_speed = 0.0
+            self.publish_ackermann()
+        else:
+            #There is cones, adjust throttle to target speed
+            self.current_speed = 20/3.6 #In m/s
             self.publish_ackermann()
 
 
