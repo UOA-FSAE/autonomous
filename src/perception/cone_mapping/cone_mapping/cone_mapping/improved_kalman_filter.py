@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
-# from std_msgs.msg import Float32
+from std_msgs.msg import Float32
 from moa_msgs.msg import ConeMap
 from moa_msgs.msg import Cone
 from geometry_msgs.msg import Point
@@ -12,8 +12,7 @@ from geometry_msgs.msg import Pose
 
 import math
 import numpy as np
-
-# import datetime
+import threading
 
 import kdtree
 
@@ -75,28 +74,36 @@ class Cone_Mapper(Node):
 
 ################################################################################ (measure duration for each cone map update)
 
-    #     # Create update duration publisher
-    #     self.duration_publisher = self.create_publisher(Float32, 'duration', 10)
+        # Create update duration publisher
+        self.duration_publisher = self.create_publisher(Float32, 'duration', 10)
 
-    #     # Record the total update duration
-    #     self.total_time = 0
+        # Record the total update duration
+        self.total_time = 0
 
-    #     # Record the number of updates
-    #     self.counter = 0
+        # Record the number of updates
+        self.counter = 0
 
-    #     # Publish the average cone map update duration every 10s
-    #     self.timer = self.create_timer(10.0, self.average_time_callback)
+        # Lock for thread safety
+        self.lock = threading.Lock()
 
-    # # Calculate the average cone map update duration
-    # def average_time_callback(self):
-    #     duration_msg = Float32()
-    #     average_duration = self.total_time / self.counter
-    #     duration_msg.data = average_duration
-    #     self.total_time = 0
-    #     self.counter = 0
-    #     self.duration_publisher.publish(duration_msg)
+        # Create a timer to calculate the average duration for each cone map update
+        self.timer = self.create_timer(10.0, self.average_time_callback)
 
-################################################################################
+    def average_time_callback(self):
+        """This function calculates and publishes the average cone map update duration every 10s to the /duration topic
+        """
+        duration_msg = Float32()
+        with self.lock:
+            try:
+                average_duration = self.total_time / self.counter
+            except ZeroDivisionError:
+                average_duration = 0
+            self.total_time = 0
+            self.counter = 0
+        duration_msg.data = average_duration
+        self.duration_publisher.publish(duration_msg)
+
+################################################################################ (cone_mapping functions)
 
     def listener_callback(self, msg: ConeMap) -> None:
         """This function updates the existing cone map and publish it to the /cone_map topic
@@ -104,12 +111,13 @@ class Cone_Mapper(Node):
         Args:
             msg (ConeMap): input cone map from the /cone_detection topic
         """
-        # before = datetime.datetime.now()
+        before = self.get_clock().now()
         self.update_existing_cone_map(msg)
-        # after = datetime.datetime.now()
-        # duration = after - before
-        # self.total_time += duration.total_seconds()
-        # self.counter += 1
+        after = self.get_clock().now()
+        duration = (after - before).nanoseconds
+        with self.lock:
+            self.total_time += duration
+            self.counter += 1
         self.publisher.publish(self.Cone_map)
 
 
