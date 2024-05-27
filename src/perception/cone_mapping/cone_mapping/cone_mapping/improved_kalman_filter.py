@@ -90,16 +90,23 @@ class Cone_Mapper(Node):
         self.timer = self.create_timer(10.0, self.average_time_callback)
 
     def average_time_callback(self):
-        """This function calculates and publishes the average cone map update duration every 10s to the /duration topic
+        """This function calculates and publishes the average cone map update duration every 10s to the /duration topic and write to a file
         """
-        duration_msg = Float32()
+        # Calculate the average update duration for the most recent 10s
         with self.lock:
             try:
                 average_duration = self.total_time / self.counter
             except ZeroDivisionError:
-                average_duration = 0
+                average_duration = 0.0
             self.total_time = 0
             self.counter = 0
+
+        # Write the average update duration to a file
+        with open("/home/fsae/Documents/pang/cone_mapping_data/ikf.txt", "a") as file:
+            file.write(f"{average_duration}\n")
+
+        # Publishes the average update duration to the /duration topic
+        duration_msg = Float32()
         duration_msg.data = average_duration
         self.duration_publisher.publish(duration_msg)
 
@@ -111,13 +118,18 @@ class Cone_Mapper(Node):
         Args:
             msg (ConeMap): input cone map from the /cone_detection topic
         """
+        # Update the existing cone map with new measurements
         before = self.get_clock().now()
         self.update_existing_cone_map(msg)
         after = self.get_clock().now()
-        duration = (after - before).nanoseconds
+
+        # Calculate the update duration in micro seconds
+        duration = (after - before).nanoseconds / 1000
         with self.lock:
             self.total_time += duration
             self.counter += 1
+
+        # Publishes the existing cone map to the /cone_map topic
         self.publisher.publish(self.Cone_map)
 
 
