@@ -91,7 +91,8 @@ def importTrack(track_info:pd.DataFrame=None, trackname:str=None, plot:bool=Fals
         "outer": outer,
         "inner": inner,
         "cline": center_points.tolist(),
-        "p_vector": p_vector
+        "p_vector": p_vector,
+        "lap_distance": lap_distance,
         })
 
     if plot:
@@ -285,6 +286,20 @@ def getBrackets(df:pd.DataFrame, n_nodes, plot:bool=False):
 
     return brackets
 
+def getSectionofTrack(df, brackets, d_start, d_end):
+    df_range = np.where(df.lap_distance[df.lap_distance <= d_end] >= d_start)[0]
+    
+    df = pd.DataFrame({
+        "outer": df.outer[df_range],
+        "inner": df.inner[df_range],
+        "cline": df.cline[df_range],
+        "p_vector": df.p_vector[df_range],
+        "lap_distance": df.lap_distance[df_range],
+        })
+    brackets = brackets[df_range]
+
+    return df, brackets
+
 # def belman_ford_path(df, velocity_range, brackets, start_node, track_name=None, plot:bool=False):
 #     # Initialise first set of paths from first bracket
 #     for node in brackets[-1]._nodeList:
@@ -356,22 +371,28 @@ def getBrackets(df:pd.DataFrame, n_nodes, plot:bool=False):
 
 #     return start_node
 
-def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.array, n_vel, μ, mass, α, α_d, max_steer_angle, tire_width, wheelbase, max_velocity, plot):
+def optimal_path(track_name:str, car_position, df:pd.DataFrame, start_node:Node, brackets:np.array, n_vel, CAR:dict, plot:bool):
         """keeps ALL state from each pair of node state combination"""
+        attributes = ["mass", "μ", "α", "α_d", "max steer angle", "max velocity", "tire width", "wheelbase"]
+        mass, μ, α, α_d, max_steer_angle, max_velocity, tire_width, wheelbase = [CAR[key] for key in attributes]
+
         traction_force = PathHelpers.getMaxTractionForce(μ, mass)
         velocity_range = np.linspace(0, max_velocity, n_vel)
-        min_steer_rad= wheelbase/np.sin(np.deg2rad(max_steer_angle)) + 0.5* tire_width
+        min_steer_rad = wheelbase/np.sin(np.deg2rad(max_steer_angle)) + 0.5*tire_width
         
         for node in brackets[-1]._nodeList:
             for velocity in velocity_range:
                 for previous_node in brackets[-2]._nodeList:
                     entry_vector = TrackHelpers.getVector(previous_node._xy, node._xy, True)
-                    state = State(node, entry_vector, velocity, 0.0, previous_node, False)
+                    state = State(node, entry_vector, velocity, 0.0, previous_node)
                     node._stateList.append(state)
+        
+        start_node._stateList[0]._previousNode = Node(0,start_node._xy - 2*wheelbase*start_node._stateList[0]._entryVector, 0, 0)
 
         for i in range(len(brackets)-1,0,-1):
             tmp = rclpyNode("tmp")
             tmp.get_logger().info(f"Bracket: {i}\n")
+            print(f"Bracket: {i}\n")
             
             if i == 2: 
                 previous_node_list = [start_node];
@@ -383,13 +404,13 @@ def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.a
                 current_node_list = brackets[i-1]._nodeList
                 previous_node_list = brackets[i-2]._nodeList; 
 
-            for current_node in current_node_list:
+            def process_current_node(current_node):
+            # for current_node in current_node_list:
                 # current_node._stateList=[]
                 # Initialising statelist for the current node
                 for previous_node in previous_node_list:
                     entry_vector = TrackHelpers.getVector(previous_node._xy, current_node._xy, True)
                     current_node._stateList.append(State(current_node, entry_vector, 0.0, np.inf, previous_node, False, True))
-                    current_node._stateList.append(State(current_node, entry_vector, 0.0, np.inf, previous_node, False, False, True))
                     for velocity in velocity_range:
                         state = State(current_node, entry_vector, velocity, np.inf, previous_node)
                         current_node._stateList.append(state)
@@ -397,50 +418,60 @@ def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.a
                 for next_node in brackets[i]._nodeList:
                     distance_between_nodes = TrackHelpers.getDistance(current_node._xy, next_node._xy)  
                     for current_state in current_node._stateList:                      
-                        prev_xy = current_state._xy-np.array(current_state._entryVector)*distance_between_nodes if i == 1 else current_state._previousNode._xy 
-                        traction_velocity, radius = PathHelpers.getTractionVelocity3p(prev_xy, current_node._xy,next_node._xy,traction_force, mass)
+                        # prev_xy = current_state._previousNode._xy if i != 1 else current_state._xy-np.array(current_state._entryVector)*distance_between_nodes 
+                        traction_velocity, radius = PathHelpers.getTractionVelocity3p(current_state._previousNode._xy, current_node._xy, next_node._xy, traction_force, mass)
+                        # print(traction_velocity, radius)
                         if radius < min_steer_rad:
                             continue    # skip current current state
 
                         for next_node_state in next_node._stateList:
                             if next_node_state._previousNode == current_node:
-                                min_va, max_va = PathHelpers.minmaxAccelerationVelocity(next_node_state._velocity, distance_between_nodes,α,α_d)
+                                min_va, max_va = PathHelpers.minmaxAccelerationVelocity(next_node_state._velocity, distance_between_nodes, α, α_d)
                                 
                                 if traction_velocity < min_va:
                                     continue    # skip next state
                                 
-                                if current_state._min:
-                                    # accelerating, optimal minimum speed state
-                                    ideal_velocity = min_va
-                                    traverse_time = ((2*distance_between_nodes)/(ideal_velocity+next_node_state._velocity)) + next_node_state._cost
-                                    if traverse_time < current_state._cost:
-                                        current_state._velocity = ideal_velocity
-                                        current_state._cost = traverse_time
-                                        current_state._nextState = next_node_state
-                                elif current_state._max:
+                                # if current_state._min:
+                                #     # accelerating, optimal minimum speed state
+                                #     ideal_velocity = min_va
+                                #     traverse_time = ((2*distance_between_nodes)/(ideal_velocity+next_node_state._velocity)) + next_node_state._cost
+                                #     if traverse_time < current_state._cost:
+                                #         current_state._velocity = ideal_velocity
+                                #         current_state._cost = traverse_time
+                                #         current_state._nextState = next_node_state
+                                if current_state._max:
                                     # braking, optimum maximum speed state
                                     ideal_velocity = min(traction_velocity, max_va, max_velocity)
-                                    traverse_time = ((2*distance_between_nodes)/(ideal_velocity+next_node_state._velocity)) + next_node_state._cost
+                                    tmp = current_state._velocity 
+                                    current_state._velocity = ideal_velocity
+                                    traverse_time = PathHelpers.getTraverseTime(distance_between_nodes, current_state, next_node_state)
                                     if traverse_time < current_state._cost:
                                         current_state._velocity = ideal_velocity
                                         current_state._cost = traverse_time
                                         current_state._nextState = next_node_state
+                                    else:
+                                        current_state._velocity = tmp
 
                                 # non ideal state
-                                if min_va <= current_state._velocity <= min(traction_velocity, max_va, max_velocity):
-                                    traverse_time = ((2*distance_between_nodes)/(current_state._velocity+next_node_state._velocity)) + next_node_state._cost
+                                elif min_va <= current_state._velocity < min(traction_velocity, max_va, max_velocity):
+                                    traverse_time = PathHelpers.getTraverseTime(distance_between_nodes, current_state, next_node_state)
                                     if traverse_time < current_state._cost:
+                                        # print('called')
                                         current_state._cost = traverse_time
                                         current_state._nextState = next_node_state
-
+            
                 # for state in current_node._stateList
                 #     if state._cost == Inf; deleteState!(state); end
-
+            # executor = concurrent.futures.ProcessPoolExecutor(8)
+            # futures = [executor.submit(process_current_node, current_node) for current_node in current_node_list]
+            # concurrent.futures.wait(futures)
+            _ = list(map(process_current_node, current_node_list))
+            # _ = [process_current_node(n) for n in current_node_list]
 
         # get optimal/best path by iterating through EVERY SINGLE state LOL
         print("getting best path")
         best_xy, best_velocities, cost = getBestStates(start_node)
-        print(best_xy, "\n", best_velocities,"\n")
+        print(best_xy, "\n\n", best_velocities,"\n")
 
         if plot:
             # plotting        
@@ -450,11 +481,25 @@ def optimal_path(track_name:str, df:pd.DataFrame, start_node:Node, brackets:np.a
             TrackHelpers.Plot(False, df.inner, "inner boundary")
             # outer boundary
             TrackHelpers.Plot(False, df.outer, "outer boundary")
+            # actual car position
+            plt.plot(car_position[0], car_position[1], "or", label="actual car position")
             # optimal path
             im = TrackHelpers.plotOptimal(best_xy, best_velocities, "optimal race line")
-            plt.colorbar(im)
+            plt.colorbar(im, label='velocity (m/s)')
+            plt.title("Optimal Trajectory Colored by Velocity")
+
+            # nodes
+            for i,B in enumerate(brackets):
+                all_nodes = B._nodeList
+                if i == len(brackets)-1:
+                    col = "green"
+                else:
+                    col = "black"
+                TrackHelpers.Plot(True, all_nodes, "nodes", col)
+
 
             p.savefig(f"{os.path.dirname(__file__)}/Race lines/{track_name}.png", dpi=600)
+            plt.legend(["left boundary", "right boundary", "actual car position", "optimal race line"])
             plt.show()
 
         return start_node, brackets, cost/60
@@ -465,7 +510,6 @@ def getBestStates(start_node:Node):
     velocities = []
     for state in start_node._stateList:
         current_state = state
-        tmp_cost = current_state._cost
         while current_state:
             best_xy.append(current_state._xy)
             velocities.append(current_state._velocity)

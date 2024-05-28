@@ -11,7 +11,7 @@ class State():
         self._previousNode = previousNode
         self._nextState = nextState
         self._max = Imax
-        self._min = Imin
+        # self._min = Imin
 
 class Node():
     def __init__(self, bid, xy, innerdistance, outerdistance) -> None:
