@@ -30,7 +30,6 @@ setup(
             'center_line = path_planning.simple_centerline_planner:main',
             'shortest_path = path_planning.trajectory_shortest_path:main',
             'shortest_path_viz = path_planning.shortest_path_viz:main',
-            'trajectory_generation = path_planning.trajectory_generation:main'
         ],
     },
 )
