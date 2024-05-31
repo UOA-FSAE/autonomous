@@ -33,6 +33,9 @@ import numpy as np
 #import matplotlib.pyplot as plt 
 import time
 
+import threading
+from std_msgs.msg import Float32
+
 class Cone_Mapper(Node):
 
     def __init__(self):
@@ -95,19 +98,70 @@ class Cone_Mapper(Node):
         #self.Kalman_gain = 1;
         self.counter = 0
 
+################################################################################ (measure duration for each cone map update)
+
+        # Create update duration publisher
+        self.duration_publisher = self.create_publisher(Float32, 'duration', 10)
+
+        # Record the total update duration
+        self.total_time = 0
+
+        # Record the number of updates
+        self.counter = 0
+
+        # Lock for thread safety
+        self.lock = threading.Lock()
+
+        # Create a timer to calculate the average duration for each cone map update
+        self.timer = self.create_timer(10.0, self.average_time_callback)
+
+    def average_time_callback(self):
+        """This function calculates and publishes the average cone map update duration every 10s to the /duration topic and write to a file
+        """
+        # Calculate the average update duration for the most recent 10s
+        with self.lock:
+            try:
+                average_duration = self.total_time / self.counter
+            except ZeroDivisionError:
+                average_duration = 0.0
+            self.total_time = 0
+            self.counter = 0
+
+        # Write the average update duration to a file
+        with open("/home/fsae/Documents/pang/cone_mapping_data/kf.txt", "a") as file:
+            file.write(f"{average_duration}\n")
+
+        # Publishes the average update duration to the /duration topic
+        duration_msg = Float32()
+        duration_msg.data = average_duration
+        self.duration_publisher.publish(duration_msg)
+
     def listener_callback(self, msg):
+        # Update the existing cone map with new measurements
+        before = self.get_clock().now()
+        self.kalman_filter_update(msg)
+        after = self.get_clock().now()
+
+        # Calculate the update duration in micro seconds
+        duration = (after - before).nanoseconds / 1000
+        with self.lock:
+            self.total_time += duration
+            self.counter += 1
+
+        self.publisher.publish(self.Cone_map)
+
         # self.get_logger().info('Mapped result: "%s"' % msg.cones)
         #print("Listened")
         #self.Transformation_test(msg);
         #self.publisher.publish(msg) # for debug
 
-        self.Add_All_Measurement_Test(msg);
+        # self.Add_All_Measurement_Test(msg);
         #self.kalman_filter_update(msg)
 
         #self.always_trust_position()
-        self.publisher.publish(self.Cone_map)
+        # self.publisher.publish(self.Cone_map)
 
-        self.get_logger().info("Cone Map Published")
+        # self.get_logger().info("Cone Map Published")
 
         # print("######################New Message##########################")
         # is_first = True

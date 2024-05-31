@@ -22,6 +22,7 @@ setup(
 		    'console_scripts': [
 		            'kf = cone_mapping.mapper_kalman_filter:main',
 		            'dbscan = cone_mapping.mapper_DBSCAN:main',
+                    'ikf = cone_mapping.improved_kalman_filter:main',
 		    ],
 	},
 )

@@ -64,13 +64,13 @@ class Cone_Mapper(Node):
 ################################################################################ (parameters to tune)
 
         # Initial error in the estimate
-        self.default_cone_covariance = [10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        self.default_cone_covariance = [5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         # Error in measurement
-        self.error_in_measurement = 5
+        self.error_in_measurement = 2.5
 
         # Cone match radius
-        self.match_radius = 0.5
+        self.match_radius = 0.1
 
 ################################################################################ (measure duration for each cone map update)
 
