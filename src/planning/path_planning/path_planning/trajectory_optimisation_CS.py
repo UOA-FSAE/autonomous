@@ -40,7 +40,6 @@ class trajectory_optimization(Node):
         # self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed, 10)
 
         # publishers
-        # self.best_trajectory_publisher = self.create_publisher(AckermannDrive, "moa/selected_trajectory", 10)
         self.best_trajectory_publisher = self.create_publisher(PoseArray, "moa/selected_trajectory", 10)
         self.within_boundary_trajectories_publisher = self.create_publisher(AllTrajectories, 'moa/inbound_trajectories', 10)
         self.best_trajectory_index = self.create_publisher(Int16, "moa/best_trajectory_index", 10)
@@ -92,10 +91,10 @@ class trajectory_optimization(Node):
             
             # adjust boundaries
             # self._leftboundary, self._rightboundary = self.get_adjusted_boundaries(leftboundary, rightboundary)
-            # self._leftboundary = leftboundary
-            # self._rightboundary = rightboundary
+            self._leftboundary = leftboundary
+            self._rightboundary = rightboundary
             # self._track_width = track_width
-            # self._center_coods = coods
+            self._center_coods = center_coordinates
 
             
             if self._state_msg.id == self._trajectories_msg.id: # check if the steering angle (states) and generate trajectories are the same
@@ -122,22 +121,12 @@ class trajectory_optimization(Node):
                     trajectories.append(PoseArray(poses=ps))
                     alltrajectories_msg = {"id": msg.id, "trajectories": trajectories}
 
-                    # publish within boundary trajectory states
-                    # states_msg = []
-                    # for sta in states:
-                    #     sargs = {"steering_angle": sta,
-                    #             "steering_angle_velocity": 0.0,
-                    #             "speed": self._current_speed,
-                    #             "acceleration": 0.0,
-                    #             "jerk": 0.0}
-                    #     states_msg.append(AckermannDrive(**sargs))
-                    # self.within_boundary_states_publisher.publish(AllStates(id=msg.id, states=states_msg))
-
+                    # publish msgs
                     self.within_boundary_trajectories_publisher.publish(AllTrajectories(**alltrajectories_msg)) # within bound pub
                     self.best_trajectory_publisher.publish(posearray_msg)   # best trajectory pub
                     self.best_steering_angle_pub.publish(Float32(data=states[best_trajectory_idx])) # optimal steering angle pub
 
-                    self.get_logger().info("msg published")
+                    self.get_logger().info("OPTIMAL TRAJECTORY COMPUTED")
             else:
                 self.get_logger().info(f"Ids state:{self._state_msg.id} and trajectory:{self._trajectories_msg.id} do not match")
             
@@ -152,33 +141,6 @@ class trajectory_optimization(Node):
                 plt.legend()
                 plt.show()
                 self._once = False
-    
-
-    def get_left_boundary(self, rightboundary, track_width):
-        angle = -90 * np.pi / 180
-        leftboundary = []
-        # loop through all left boundary points
-        for i in range(len(rightboundary)):
-            P = rightboundary[i]
-            # check what point is
-            if i == 0:
-                # forward point
-                vector = self.get_vector(rightboundary[i], rightboundary[i+1], True)
-            elif i == len(rightboundary)-1:
-                # backward point
-                vector = self.get_vector(rightboundary[i-1], rightboundary[i], True)
-            else:
-                # centeral points
-                vector = self.get_vector(rightboundary[i-1], rightboundary[i+1], True)
-
-            # rotate vector 
-            vector = self.get_rotated_vector(angle,vector)
-            # compute new point
-            new_point = P + track_width * vector
-            # append new point
-            leftboundary.append(new_point)
-
-        return leftboundary
     
     def get_center_line(self, leftboundary, rightboundary):
         '''approximates the track's center line'''
@@ -201,67 +163,13 @@ class trajectory_optimization(Node):
             coods.append([X, float(fun(X))])
 
         return coods
+
+    def get_shapely_linestring(self, points) -> LineString:
+        '''create a shapely linestring from an array/list of [x,y] points'''
+        return LineString([(P[0], P[1]) for P in points])
     
-    def get_local_boundary(self, position_orientation, car_position, leftboundary, rightboundary):
-        position_vector, rotation_matrix = self.get_transformation_matrix(position_orientation)
-        x1, y1 = car_position
-        # output = self.apply_transformation(position_vector, rotation_matrix, x1, y1) - position_vector
-        dist = [0]*len(leftboundary)
-        dist2 = [0]*len(rightboundary)
-        for i, P in enumerate(leftboundary):
-            x2, y2 = P
-            # output = self.apply_transformation(position_vector, rotation_matrix, x2, y2) - position_vector
-            # y2 = output[1][0]
-            dist[i] = self.get_distance(x1, y1, x2, y2)
-            # self.get_logger().info(f"dist = {ydist[i]}")
-        for i, P in enumerate(rightboundary):
-            x2, y2 = P
-            dist2[i] = self.get_distance(x1, y1, x2, y2)
-        
-        start_index = max(np.argmin(np.array(dist)), np.argmin(np.array(dist2)))
-
-        return start_index
-    
-    def interpolate_boundary(self, leftboundary, rightboundary):
-        # interpolate
-        lx = [P[0] for P in leftboundary]
-        ly = [P[1] for P in leftboundary]
-        rx = [P[0] for P in rightboundary]
-
-        ry = [P[1] for P in rightboundary]
-        funcL = interpolate.interp1d(lx, ly, kind='quadratic')
-        funcR = interpolate.interp1d(rx, ry, kind='quadratic')
-
-        xlrange = np.linspace(min(lx), max(lx))
-        xrrange = np.linspace(min(rx), max(rx))
-        self.get_logger().info(f"length of xlrange = {len(xlrange)}")
-        lb = []
-        rb = []
-        for P in xlrange:
-            lb.append([P,funcL(P)])
-
-        for P in xrrange:
-            rb.append([P,funcR(P)])
-
-        return lb, rb
-
-    def get_vector(self, p1, p2, unit=True):
-        '''calculates point vector based on slope'''
-        vector = np.array(p2)-np.array(p1)
-        if unit:
-            return vector / self.get_magnitude(vector)
-        
-        return vector
-    
-    def get_rotated_vector(self, angle, vector):
-        # rotation matrix
-        rotate = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
-
-        return np.dot(rotate,np.array(vector))
-    
-    def get_magnitude(self, vector):
-        return np.sqrt(sum(vector**2))
-    
+    def get_avg_point(self, x1, y1, x2, y2):
+        return [((x1 + x2)/2), ((y1 + y2)/2)]
 
     # ===========================================================
     # TRAJECTORY DELETION
@@ -289,33 +197,22 @@ class trajectory_optimization(Node):
         #             # trajectories.pop([i for i in range(len(trajectories)) if T==trajectories[i]][0])
         #             break
 
-        # shapely library 
-        self._left_boundary_linestring = LineString([(P[0], P[1]) for P in self._leftboundary])
-
-        pts_list = [(P[0], P[1]) for P in self._rightboundary]
-        # if self._debug:
-        #     pts_list.pop(0)
-        self._right_boundary_linestring = LineString(pts_list)
+        left_boundary_linestring = self.get_shapely_linestring(self._leftboundary)
+        right_boundary_linestring = self.get_shapely_linestring(self._rightboundary)
 
         # track width 
         track_width = self._track_width
 
-        for i in range(len(trajectories)):
-            # trajectory line string
-            trajectory = LineString([(P.position.x, P.position.y) for P in trajectories[i].poses])
-
-            if i == len(trajectories)/2 - 1:
-                print('the long one')
+        for i in range(len(trajectories)):  # loop each trajectory
+            trajectory = self.get_shapely_linestring([[P.position.x, P.position.y] for P in trajectories[i].poses])
 
             tmp = None
-            # check intersection
-            if trajectory.intersects(self._left_boundary_linestring):
+            if trajectory.intersects(left_boundary_linestring):   # left bound intersection
                 # get intersection point/s
-                tmp = trajectory.intersection(self._left_boundary_linestring)
+                tmp = trajectory.intersection(left_boundary_linestring)
                 intersection = "left"
-
-            elif trajectory.intersects(self._right_boundary_linestring):
-                tmp = trajectory.intersection(self._right_boundary_linestring)
+            elif trajectory.intersects(right_boundary_linestring):    # right bound intersection
+                tmp = trajectory.intersection(right_boundary_linestring)
                 intersection = "right"
 
             if tmp is not None:
@@ -345,6 +242,7 @@ class trajectory_optimization(Node):
         print(f"removed indices = {remove_trajectories_indices}")
         self.out_of_bounds_indicies.publish(Int32MultiArray(data=remove_trajectories_indices))
 
+        # remove out of bound trajectories
         [(trajectories.pop(index), states.pop(index)) for index in list(reversed(remove_trajectories_indices))]
 
     def get_distance(self,x1,y1,x2,y2):
@@ -390,115 +288,151 @@ class trajectory_optimization(Node):
 
     # ===========================================================
     # OPTIMISATION
-    def optimisation(self, trajectories, states):
+    def optimisation(self, trajectories):
         '''returns the best trajectory'''
 
         self.get_logger().info("Optimisation Started")
-        return self.get_best_trajectory_state(trajectories, states) 
+        return self.get_best_trajectory_state(trajectories) 
 
-    def get_best_trajectory_state(self, trajectories, states):
-        '''finds the best trajectory'''
+    def get_best_trajectory_state(self, trajectories):
+        '''finds the best trajectory from the set'''
 
         trajectory_distances = np.ones(len(trajectories)) * np.inf
-        trajectory_lengths = np.zeros(len(trajectories))
-
         # get track width
         width = self._track_width
         # get center line
         center_linestring = LineString(self._center_coods)
 
-        for i in range(len(trajectories)):
-            trajectory = self.get_shapely_linestring(trajectories[i].poses)
+        for i in range(len(trajectories)):  # loop through each trajectory
+            # trajectory = self.get_shapely_linestring(trajectories[i].poses) # trajectory i as a line
+            P = trajectories[i].poses[-1].position  # end point of trajectory i
+            end_point = shapelyPoint(P.x,P.y)   # as a point
+            trajectory_distances[i] = end_point.distance(center_linestring) # distance to centerline
 
-            # distance to center line
-            # average_distance = self.get_average_distance_to_center_trajectory(trajectories[i], center_linestring, to_center_line)
-            # endpoint 
-            P = trajectories[i].poses[-1].position
-            end_point = shapelyPoint(P.x,P.y)
-            average_distance = end_point.distance(center_linestring)
+        return self.get_best_trajectory_index(trajectory_distances)
 
-            trajectory_distances[i] = average_distance
-            trajectory_lengths[i] = trajectory.length
-
-        return self.get_best_trajectory_index(trajectory_lengths, trajectory_distances)
-    
-    def get_average_distance_to_center_trajectory(self, trajectory, center_linestring, toCenterLine=True):
-        # if distance to centerline (from trajecotry) or other way round
-        if toCenterLine:
-            num_points = len(trajectory.poses)
-        else:
-            num_points = len(center_linestring)
-
-        total_distance = np.zeros(num_points)
-
-        for j in range(num_points):
-            if toCenterLine:
-                ps = trajectory.poses[j]
-                point = self.get_shapely_point(ps.position.x, ps.position.y)
-                total_distance[j] = point.distance(center_linestring)
-            else:
-                ps = center_linestring[j]
-                point = self.get_shapely_point(ps[0], ps[1])
-                # TRAJECTORY MUST BE A LINESTRING NOT A POSEARRAY
-                total_distance[j] = point.distance(trajectory)
-        
-        return np.mean(total_distance)
-    
-    def get_shapely_point(self, x, y) -> shapelyPoint:
-        return shapelyPoint(x,y)
-    
-    def get_shapely_linestring(self, poses) -> LineString:
-        return LineString([(P.position.x, P.position.y) for P in poses])
-    
-    def get_avg_point(self, x1, y1, x2, y2):
-        return [((x1 + x2)/2), ((y1 + y2)/2)]
-
-    def get_geometry_distance(self, geometry1, geometry2):
-        '''calculates the eucledian distance bewteen two shapely geometries'''
-        # this is to calculate trajectory length using only poses/points (DECAP)
-        # poses = trajectory.poses
-        # p0 = np.array([poses[0].position.x, poses[0].position.y])
-        # p1 = np.array([poses[1].position.x, poses[1].position.y])
-        # intL = np.linalg.norm(p1-p0,ord=2)
-        # arc_length = (len(poses)-1) * intL
-        
-        return geometry1.distance(geometry2)
-        # return frechet_distance(geometry1, geometry2)
-
-    def get_best_trajectory_index(self, trajectory_lengths, trajectory_distances): 
+    def get_best_trajectory_index(self, trajectory_distances): 
+        idx = None
         try:
             objective_function = trajectory_distances 
             idx = int(np.ceil(np.argmin(objective_function)))
             self.best_trajectory_index.publish(Int16(data=idx))
-            return idx
         except ValueError:
-            return None
+            self.get_logger().info("error calculating objective value")
+
+        return idx
+    
+# FUNCTIONS/CODE NOT NEEDED ATM BUT MAYBE IN THE FUTURE
+    # def get_left_boundary(self, rightboundary, track_width):
+    #     angle = -90 * np.pi / 180
+    #     leftboundary = []
+    #     # loop through all left boundary points
+    #     for i in range(len(rightboundary)):
+    #         P = rightboundary[i]
+    #         # check what point is
+    #         if i == 0:
+    #             # forward point
+    #             vector = self.get_vector(rightboundary[i], rightboundary[i+1], True)
+    #         elif i == len(rightboundary)-1:
+    #             # backward point
+    #             vector = self.get_vector(rightboundary[i-1], rightboundary[i], True)
+    #         else:
+    #             # centeral points
+    #             vector = self.get_vector(rightboundary[i-1], rightboundary[i+1], True)
+
+    #         # rotate vector 
+    #         vector = self.get_rotated_vector(angle,vector)
+    #         # compute new point
+    #         new_point = P + track_width * vector
+    #         # append new point
+    #         leftboundary.append(new_point)
+
+    #     return leftboundary
+
+    # def get_local_boundary(self, position_orientation, car_position, leftboundary, rightboundary):
+    #     position_vector, rotation_matrix = self.get_transformation_matrix(position_orientation)
+    #     x1, y1 = car_position
+    #     # output = self.apply_transformation(position_vector, rotation_matrix, x1, y1) - position_vector
+    #     dist = [0]*len(leftboundary)
+    #     dist2 = [0]*len(rightboundary)
+    #     for i, P in enumerate(leftboundary):
+    #         x2, y2 = P
+    #         # output = self.apply_transformation(position_vector, rotation_matrix, x2, y2) - position_vector
+    #         # y2 = output[1][0]
+    #         dist[i] = self.get_distance(x1, y1, x2, y2)
+    #         # self.get_logger().info(f"dist = {ydist[i]}")
+    #     for i, P in enumerate(rightboundary):
+    #         x2, y2 = P
+    #         dist2[i] = self.get_distance(x1, y1, x2, y2)
         
-    def get_position_of_cart(self, cone_map):
-        # first cone
-        localization_data = cone_map.cones[0]
-        x = localization_data.pose.pose.position.x
-        y = localization_data.pose.pose.position.y
-        theta = localization_data.pose.pose.orientation.w
-        return x, y, theta
+    #     start_index = max(np.argmin(np.array(dist)), np.argmin(np.array(dist2)))
 
-    def get_transformation_matrix(self, position_and_orientation):
-        # theta = position_and_orientation[2] - np.pi/2
-        cart_x = position_and_orientation[0]
-        cart_y = position_and_orientation[1]
-        theta = position_and_orientation[2]
-        # 2d trasformation matrix 
-        rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]])
-        position_vector = np.array([[cart_x], [cart_y]])
+    #     return start_index
 
-        return position_vector, rotation_matrix
+    # def interpolate_boundary(self, leftboundary, rightboundary):
+    #     # interpolate
+    #     lx = [P[0] for P in leftboundary]
+    #     ly = [P[1] for P in leftboundary]
+    #     rx = [P[0] for P in rightboundary]
 
-    def apply_transformation(self, position_vector, rotation_matrix, point_x, point_y):
-        point = np.array([[point_x], [point_y]])
-        # matrix multiplication for rotation then translate from car position
-        transformed_point = np.matmul(rotation_matrix, point) + position_vector
-        return transformed_point
+    #     ry = [P[1] for P in rightboundary]
+    #     funcL = interpolate.interp1d(lx, ly, kind='quadratic')
+    #     funcR = interpolate.interp1d(rx, ry, kind='quadratic')
 
+    #     xlrange = np.linspace(min(lx), max(lx))
+    #     xrrange = np.linspace(min(rx), max(rx))
+    #     self.get_logger().info(f"length of xlrange = {len(xlrange)}")
+    #     lb = []
+    #     rb = []
+    #     for P in xlrange:
+    #         lb.append([P,funcL(P)])
+
+    #     for P in xrrange:
+    #         rb.append([P,funcR(P)])
+
+    #     return lb, rb
+
+    # def get_vector(self, p1, p2, unit=True):
+    #     '''calculates point vector based on slope'''
+    #     vector = np.array(p2)-np.array(p1)
+    #     if unit:
+    #         return vector / self.get_magnitude(vector)
+        
+    #     return vector
+    
+    # def get_rotated_vector(self, angle, vector):
+    #     # rotation matrix
+    #     rotate = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+
+    #     return np.dot(rotate,np.array(vector))
+    
+    # def get_magnitude(self, vector):
+        # return np.sqrt(sum(vector**2))
+    
+    # def get_position_of_cart(self, cone_map):
+    #     # first cone
+    #     localization_data = cone_map.cones[0]
+    #     x = localization_data.pose.pose.position.x
+    #     y = localization_data.pose.pose.position.y
+    #     theta = localization_data.pose.pose.orientation.w
+    #     return x, y, theta
+
+    # def get_transformation_matrix(self, position_and_orientation):
+    #     # theta = position_and_orientation[2] - np.pi/2
+    #     cart_x = position_and_orientation[0]
+    #     cart_y = position_and_orientation[1]
+    #     theta = position_and_orientation[2]
+    #     # 2d trasformation matrix 
+    #     rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]])
+    #     position_vector = np.array([[cart_x], [cart_y]])
+
+    #     return position_vector, rotation_matrix
+
+    # def apply_transformation(self, position_vector, rotation_matrix, point_x, point_y):
+    #     point = np.array([[point_x], [point_y]])
+    #     # matrix multiplication for rotation then translate from car position
+    #     transformed_point = np.matmul(rotation_matrix, point) + position_vector
+    #     return transformed_point
 
 def main():
     rclpy.init()
