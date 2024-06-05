@@ -23,19 +23,20 @@ class trajectory_optimization(Node):
         super().__init__("trajectory_optimisation")
         self.get_logger().info("Trajectory Optimisation Node Started")
 
-        # self.declare_parameters(
-        #     namespace='',
-        #     parameters=[
-        #         ('', True)
-        #     ]
-        # )
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+                ('delete', True)
+            ]
+        )
 
         # attributes
         self._once = True
+        self._delete = self.get_parameter("delete").get_parameter_value().bool_value
 
         # subscribers
         self.create_subscription(AllStates, "moa/states", self.set_states, 10)
-        self.create_subscription(AllTrajectories, "moa/trajectories", self.get_generated_trajectories, 10)
+        self.create_subscription(AllTrajectories, "moa/trajectories", self.set_generated_trajectories, 10)
         self.create_subscription(ConeMap, "cone_map", self.callback, 10)
         # self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed, 10)
 
@@ -49,18 +50,88 @@ class trajectory_optimization(Node):
 
     def set_states(self, msg: AllStates) -> None: self._state_msg = msg
 
-    def set_generated_trajectories(self, msg: AllTrajectories) -> None: self._trajectories_msg = msg
+    def set_generated_trajectories(self, msg: AllTrajectories) -> None: 
+        self._trajectories_msg = msg
+        self.get_logger().info(f"traj len = {len(msg.trajectories)}")
 
     def callback(self, msg:ConeMap) -> None:
         '''retrives cone msg and find trajectory closest to centerline'''
-        self.get_logger().info(f"all states: {hasattr(self,'_state_msg')}"
-                        f" | current speed: {hasattr(self,'_current_speed')}" \
-                        f" | left boundaries: {hasattr(self,'_leftboundary')}"\
-                        f" | right boundaries: {hasattr(self,'_rightboundary')}")
-        
-        cones = msg.cones   # get cones
 
-        # boundary list
+        if hasattr(self, "_state_msg") and hasattr(self, "_trajectories_msg"):
+            self.get_logger().info(f"all states: {hasattr(self,'_state_msg')}"
+                            f" | current speed: {hasattr(self,'_current_speed')}" \
+                            f" | left boundaries: {hasattr(self,'_leftboundary')}"\
+                            f" | right boundaries: {hasattr(self,'_rightboundary')}")
+            
+            leftboundary, rightboundary, car_position = self.get_boundaries(msg.cones)    # get boundaries
+                
+            # get local boundary points
+            # position_orientation = self.get_position_of_cart(msg)
+            # starting_index = self.get_local_boundary(position_orientation, car_position, leftboundary, rightboundary)
+            # leftboundary = leftboundary[starting_index:]
+            # rightboundary = rightboundary[starting_index:]
+
+            # leftboundary, rightboundary = self.interpolate_boundary(leftboundary, rightboundary)
+
+            # get center line
+            centerline = self.get_center_line(leftboundary, rightboundary)
+
+            # x1, y1, x2, y2 = leftboundary[0][0], leftboundary[0][1], rightboundary[0][0], rightboundary[0][1]
+            
+            # adjust boundaries
+            self._leftboundary = leftboundary
+            self._rightboundary = rightboundary
+            self._centerline = centerline
+
+            
+            if self._state_msg.id == self._trajectories_msg.id: # check if the steering angle (states) and generated trajectories are the same
+                states = [ackerman_msg.steering_angle for ackerman_msg in self._state_msg.states]
+                trajectories = self._trajectories_msg.trajectories.copy()   # COPY THIS! else errors will pop up like centerline added in trajectories
+
+
+                if self._delete:
+                    self.get_logger().info(f"trajectories before deletion = {len(trajectories)}")
+                    self.trajectory_deletion(trajectories, states)  # delete invalid trajectories
+                    self.get_logger().info(f"number of paths after deletion = {len(trajectories)}")
+
+                best_trajectory_idx = self.optimisation(trajectories)   # find best/optimised trajectory
+                
+                if best_trajectory_idx == None: # check if no trajectory found
+                    self.get_logger().info("no valid trajectories found")
+                else:    
+                    self.get_logger().info(f"best indx = {best_trajectory_idx}")
+                    self.get_logger().info(f"best steering angle is = {states[best_trajectory_idx]}")
+
+                    # publish best trajectory
+                    args1 = {"header": Header(stamp=Time(sec=0,nanosec=0), frame_id='path_optimisation'),
+                            "poses": trajectories[best_trajectory_idx].poses}
+                    # publish valid (within boundaries) trajectories including center line
+                    ps = [Pose(position=Point(x=P[0], y=P[1], z=0.0)) for P in centerline]
+                    trajectories.append(PoseArray(poses=ps))
+                    args2 = {"id": self._trajectories_msg.id, "trajectories": trajectories}
+                    args3 = {"data": states[best_trajectory_idx]}   # float32 msg
+
+                    # publish msgs
+                    self.best_trajectory_publisher.publish(PoseArray(**args1))   # best trajectory pub
+                    self.within_boundary_trajectories_publisher.publish(AllTrajectories(**args2)) # within bound pub
+                    self.best_steering_angle_pub.publish(Float32(**args3)) # optimal steering angle pub
+
+                    self.get_logger().info("OPTIMAL TRAJECTORY COMPUTED")
+            else:
+                self.get_logger().info(f"Ids state:{self._state_msg.id} and trajectory:{self._trajectories_msg.id} do not match")
+            
+            # plot track
+            if self._once:
+                # plot
+                plt.plot([P[0] for P in leftboundary], [P[1] for P in leftboundary], "ob", label='leftboundary')
+                plt.plot([P[0] for P in rightboundary], [P[1] for P in rightboundary], "oy", label='rightboundary')
+                plt.plot([P[0] for P in centerline], [P[1] for P in centerline], "ok", label='centerline')
+                plt.plot([car_position[0]],[car_position[1]],'or', label='car position')
+                plt.legend()
+                plt.show()
+                self._once = False
+
+    def get_boundaries(self, cones):
         leftboundary = []
         rightboundary = []
         for i in range(len(cones)):
@@ -73,94 +144,31 @@ class trajectory_optimization(Node):
                     rightboundary.append([x,y])
             else:
                 car_position = [x,y]    # first cone is car position
-            
-            
-            # get local boundary points
-            # position_orientation = self.get_position_of_cart(msg)
-            # starting_index = self.get_local_boundary(position_orientation, car_position, leftboundary, rightboundary)
-            # leftboundary = leftboundary[starting_index:]
-            # rightboundary = rightboundary[starting_index:]
+        
+        return leftboundary, rightboundary, car_position
 
-            # leftboundary, rightboundary = self.interpolate_boundary(leftboundary, rightboundary)
 
-            # get center line
-            center_coordinates = self.get_center_line(leftboundary, rightboundary)
-
-            # x1, y1, x2, y2 = leftboundary[0][0], leftboundary[0][1], rightboundary[0][0], rightboundary[0][1]
-            # track_width = self.get_distance(x1, y1, x2, y2)
-            
-            # adjust boundaries
-            # self._leftboundary, self._rightboundary = self.get_adjusted_boundaries(leftboundary, rightboundary)
-            self._leftboundary = leftboundary
-            self._rightboundary = rightboundary
-            # self._track_width = track_width
-            self._center_coods = center_coordinates
-
-            
-            if self._state_msg.id == self._trajectories_msg.id: # check if the steering angle (states) and generate trajectories are the same
-                states = [ackerman_msg.steering_angle for ackerman_msg in self._state_msg.states]
-                trajectories = self._trajectories_msg
-
-                self.get_logger().info(f"trajectories before deletion = {len(trajectories)}")
-                self.trajectory_deletion(trajectories, states)  # delete invalid trajectories
-                self.get_logger().info(f"number of paths after deletion = {len(trajectories)}")
-
-                best_trajectory_idx = self.optimisation(trajectories, states)   # find best/optimised trajectory
-                if best_trajectory_idx == None: # check if no trajectory found
-                    self.get_logger().info("no valid trajectories found")
-                else:    
-                    self.get_logger().info(f"best steering angle is = {states[best_trajectory_idx]}")
-
-                    # publish best trajectory
-                    args = {"header": Header(stamp=Time(sec=0,nanosec=0), frame_id='best_trajectory'),
-                            "poses": trajectories[best_trajectory_idx].poses}
-                    posearray_msg = PoseArray(**args)
-
-                    # publish valid (within boundaries) trajectories including center line
-                    ps = [Pose(position=Point(x=P[0], y=P[1], z=0.0)) for P in self._center_coods]
-                    trajectories.append(PoseArray(poses=ps))
-                    alltrajectories_msg = {"id": msg.id, "trajectories": trajectories}
-
-                    # publish msgs
-                    self.within_boundary_trajectories_publisher.publish(AllTrajectories(**alltrajectories_msg)) # within bound pub
-                    self.best_trajectory_publisher.publish(posearray_msg)   # best trajectory pub
-                    self.best_steering_angle_pub.publish(Float32(data=states[best_trajectory_idx])) # optimal steering angle pub
-
-                    self.get_logger().info("OPTIMAL TRAJECTORY COMPUTED")
-            else:
-                self.get_logger().info(f"Ids state:{self._state_msg.id} and trajectory:{self._trajectories_msg.id} do not match")
-            
-
-            # plot track
-            if self._once:
-                # plot
-                plt.plot([P[0] for P in leftboundary], [P[1] for P in leftboundary], "-g", label='leftboundary')
-                plt.plot([P[0] for P in rightboundary], [P[1] for P in rightboundary], "-r", label='rightboundary')
-                plt.plot([P[0] for P in center_coordinates], [P[1] for P in center_coordinates], "ob", label='centerline')
-                plt.plot([car_position[0]],[car_position[1]],'or', label='car position')
-                plt.legend()
-                plt.show()
-                self._once = False
-    
     def get_center_line(self, leftboundary, rightboundary):
         '''approximates the track's center line'''
         # the midpoint is the average of the coordinates
         coods = []
-        x = []
-        y = []
+        xps = []
+        yps = []
         num_cones = min(len(leftboundary), len(rightboundary))
         for i in range(num_cones):
             x1, y1 = leftboundary[i]
             x2, y2 = rightboundary[i]
-            tmp = self.get_avg_point(x1,y1,x2,y2)
-            x.append(tmp[0])
-            y.append(tmp[1])
+            x, y = self.get_avg_point(x1,y1,x2,y2)
+            xps.append(x)
+            yps.append(y)
+            coods.append([x,y])
 
         # interpolate center line
-        fun = interpolate.interp1d(x, y, kind='quadratic')
-        xrange = np.linspace(min(x), max(x))
-        for X in xrange:
-            coods.append([X, float(fun(X))])
+        if False:
+            fun = interpolate.interp1d(x, y, kind='quadratic')
+            xrange = np.linspace(min(x), max(x))
+            for X in xrange:
+                coods.append([X, float(fun(X))])
 
         return coods
 
@@ -171,8 +179,7 @@ class trajectory_optimization(Node):
     def get_avg_point(self, x1, y1, x2, y2):
         return [((x1 + x2)/2), ((y1 + y2)/2)]
 
-    # ===========================================================
-    # TRAJECTORY DELETION
+    ''' ---------------------------------- DELETION ---------------------------------- '''
     def trajectory_deletion(self, trajectories, states):
         '''Caller for trajectory deletion if there are trajectories'''
 
@@ -200,44 +207,40 @@ class trajectory_optimization(Node):
         left_boundary_linestring = self.get_shapely_linestring(self._leftboundary)
         right_boundary_linestring = self.get_shapely_linestring(self._rightboundary)
 
-        # track width 
-        track_width = self._track_width
-
         for i in range(len(trajectories)):  # loop each trajectory
             trajectory = self.get_shapely_linestring([[P.position.x, P.position.y] for P in trajectories[i].poses])
+            num_poses = len(trajectories[i].poses)
 
-            tmp = None
+            # check trajectory intersection
+            ips = None  # ips = intersection points
             if trajectory.intersects(left_boundary_linestring):   # left bound intersection
                 # get intersection point/s
-                tmp = trajectory.intersection(left_boundary_linestring)
+                ips = trajectory.intersection(left_boundary_linestring)
                 intersection = "left"
             elif trajectory.intersects(right_boundary_linestring):    # right bound intersection
-                tmp = trajectory.intersection(right_boundary_linestring)
+                ips = trajectory.intersection(right_boundary_linestring)
                 intersection = "right"
 
-            if tmp is not None:
-                # new pose list
-                list_of_poses = []
-                if type(tmp) is MultiPoint:
-                    tmp_x = tmp.centroid.x
-                    tmp_y = tmp.centroid.y
+            if ips is not None:
+                remove_pose_indices = []    # poses to remove (index)
+                if type(ips) is MultiPoint:
+                    tmp_x = ips.centroid.x
+                    tmp_y = ips.centroid.y
                 else:
-                    tmp_x = tmp.x
-                    tmp_y = tmp.y
-                # go through each pose
-                for j, P in enumerate(trajectories[i].poses):
-                    # get distance between points
-                    # distance = self.get_distance(x1=tmp_x, y1=tmp_y, x2=P.position.x, y2=P.position.y)
-                    in_bounds = self.get_in_of_bounds(inter=intersection,x1=tmp_x,y1=tmp_y,x2=P.position.x,y2=P.position.y)
-                    if in_bounds:
-                        list_of_poses.append(P)
+                    tmp_x = ips.x
+                    tmp_y = ips.y
+
+                for j, P in enumerate(trajectories[i].poses):   # loop through trajectory i
+                    if num_poses >= 2: 
+                        in_bounds = self.is_within_boundaries(inter=intersection,x1=tmp_x,y1=tmp_y,x2=P.position.x,y2=P.position.y) # get if pose outside bounds
+                        if not in_bounds:
+                            remove_pose_indices.append(j)   # if pose outside 
                     else:
-                        if len(list_of_poses) < 2:
-                            remove_trajectories_indices.append(i)
-                        else:
-                            trajectories[i].poses = list_of_poses
+                        remove_trajectories_indices.append(i)   # remove trajectory and stop
                         break
-        
+                
+                [trajectories[i].poses.pop(index) for index in list(reversed(remove_pose_indices))] # remove out of bound poses for trajectory i
+
         # publish indicies
         print(f"removed indices = {remove_trajectories_indices}")
         self.out_of_bounds_indicies.publish(Int32MultiArray(data=remove_trajectories_indices))
@@ -248,46 +251,14 @@ class trajectory_optimization(Node):
     def get_distance(self,x1,y1,x2,y2):
         return np.sqrt(((x2-x1)**2 + (y2-y1)**2))
     
-    def get_in_of_bounds(self,inter,x1,y1,x2,y2):
+    def is_within_boundaries(self,inter,x1,y1,x2,y2):
         if inter == "right":
             return x2<x1 and y2<y1
         elif inter == "left":
             return x2>x1 and y2<y1
-    
-    def compare_with_boundary(self, x, y, tol):
-        '''
-        Compares a coordinate with the left and right boundary coordinates of the track map
+    ''' ---------------------------------- DELETION ---------------------------------- '''
 
-        inputs
-            x (float): x position of coordinate
-            y (float): y position of coordinate
-        return
-            (boolean): True if point on either boundary
-        
-        * Assumes same number of points are given for left and right boundary
-        '''
-        lxyt = []
-        rxyt = []
-        for i in range(len(self.rightbound)):
-            blx, bly = self.leftbound[i]
-            brx, bry = self.rightbound[i]
-            # on left boundary
-            if i != 0:
-                # lxyt = abs(x-blx) <= 1e-1 and abs(y-bly) <= 1e-1
-                lxyt.append(np.sqrt(((x-blx)**2 + (y-bly)**2)))
-            else:
-                lxyt.append(np.inf)
-            # on right boundary
-            # rxyt = abs(x-brx) <= 1e-1 and abs(y-bry) <= 1e-1
-            rxyt.append(np.sqrt(((x-brx)**2 + (y-bry)**2)))
-        # check if near boundary
-        if min(lxyt) <= tol or min(rxyt) <= tol:
-            return True
-        else:
-            return False
-
-    # ===========================================================
-    # OPTIMISATION
+    ''' ---------------------------------- OPTIMISATION ---------------------------------- '''
     def optimisation(self, trajectories):
         '''returns the best trajectory'''
 
@@ -298,10 +269,8 @@ class trajectory_optimization(Node):
         '''finds the best trajectory from the set'''
 
         trajectory_distances = np.ones(len(trajectories)) * np.inf
-        # get track width
-        width = self._track_width
         # get center line
-        center_linestring = LineString(self._center_coods)
+        center_linestring = LineString(self._centerline)
 
         for i in range(len(trajectories)):  # loop through each trajectory
             # trajectory = self.get_shapely_linestring(trajectories[i].poses) # trajectory i as a line
@@ -315,14 +284,17 @@ class trajectory_optimization(Node):
         idx = None
         try:
             objective_function = trajectory_distances 
-            idx = int(np.ceil(np.argmin(objective_function)))
+            idx = int(np.argmin(objective_function))
+            if idx > 398:
+                print("stop here")
             self.best_trajectory_index.publish(Int16(data=idx))
         except ValueError:
             self.get_logger().info("error calculating objective value")
 
         return idx
-    
-# FUNCTIONS/CODE NOT NEEDED ATM BUT MAYBE IN THE FUTURE
+    ''' ---------------------------------- OPTIMISATION ---------------------------------- '''
+
+''' DEPRECATED/UNUSED CODE ATM BUT MAYBE NEEDED IN THE FUTURE '''
     # def get_left_boundary(self, rightboundary, track_width):
     #     angle = -90 * np.pi / 180
     #     leftboundary = []
@@ -434,6 +406,38 @@ class trajectory_optimization(Node):
     #     transformed_point = np.matmul(rotation_matrix, point) + position_vector
     #     return transformed_point
 
+    # def compare_with_boundary(self, x, y, tol):
+    #     '''
+    #     Compares a coordinate with the left and right boundary coordinates of the track map
+
+    #     inputs
+    #         x (float): x position of coordinate
+    #         y (float): y position of coordinate
+    #     return
+    #         (boolean): True if point on either boundary
+        
+    #     * Assumes same number of points are given for left and right boundary
+    #     '''
+    #     lxyt = []
+    #     rxyt = []
+    #     for i in range(len(self.rightbound)):
+    #         blx, bly = self.leftbound[i]
+    #         brx, bry = self.rightbound[i]
+    #         # on left boundary
+    #         if i != 0:
+    #             # lxyt = abs(x-blx) <= 1e-1 and abs(y-bly) <= 1e-1
+    #             lxyt.append(np.sqrt(((x-blx)**2 + (y-bly)**2)))
+    #         else:
+    #             lxyt.append(np.inf)
+    #         # on right boundary
+    #         # rxyt = abs(x-brx) <= 1e-1 and abs(y-bry) <= 1e-1
+    #         rxyt.append(np.sqrt(((x-brx)**2 + (y-bry)**2)))
+    #     # check if near boundary
+    #     if min(lxyt) <= tol or min(rxyt) <= tol:
+    #         return True
+    #     else:
+    #         return False
+        
 def main():
     rclpy.init()
     exe = SingleThreadedExecutor()

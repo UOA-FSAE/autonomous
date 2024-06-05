@@ -39,7 +39,7 @@ class pub_viz(Node):
     #     self.invalid_bounds_indicies = msg.data
 
     def show_paths(self, msg: AllTrajectories):
-        if hasattr(self,"chosen_trajectory"):
+        if hasattr(self,"chosen_trajectory") and hasattr(self, "inbounds"):
             line_list = []
             paths = msg.trajectories
             paths.append(self.inbounds.trajectories[-1]) # append center line
