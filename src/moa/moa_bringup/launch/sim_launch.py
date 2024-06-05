@@ -8,7 +8,7 @@ def generate_launch_description():
             package='aruco_detection',
             executable='aruco_detection',
             name='aruco_detection'
-        ), 
+        ),
 
         # cone mapping
         launch_ros.actions.Node(

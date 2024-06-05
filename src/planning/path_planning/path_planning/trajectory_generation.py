@@ -22,7 +22,7 @@ class trajectory_generator(Node):
             namespace='',
             parameters=[
                 ('debug', True),
-                ('timer', 7.0),
+                ('timer', 0.1),
             ]
         )
 
@@ -122,7 +122,7 @@ class trajectory_generator(Node):
             # inverse tan is in radians
             angle = np.arctan(dx/dy)
             angs[i] = (angle if dx < 0 else angle)
-            print(f"passed angle = {angs[i]} for dx = {dx}")
+            # print(f"passed angle = {angs[i]} for dx = {dx}")
             
             # transform coordinates from fixed to car 
             post_trans_pose = self.apply_transformation(car_position, rotation_matrix, val, y[i])
@@ -147,6 +147,8 @@ class trajectory_generator(Node):
 
         # list of points as tuples
         points = [(x[i],y[i]) for i in range(n)]
+
+        # self.get_logger().info(f"len of traj = {len(trajectories)}")
 
         return trajectories, angs
 
