@@ -79,7 +79,7 @@ class pub_viz(Node):
             sargs = {'timestamp': Time(sec=0,nanosec=0),
                         'frame_id': 'global_frame',
                         'id': f'{self.id}',
-                        'lifetime': Duration(sec=2,nanosec=100),
+                        'lifetime': Duration(sec=0,nanosec=500000000),
                         'frame_locked': False,
                         'lines': line_list}
             

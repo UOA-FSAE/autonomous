@@ -61,11 +61,18 @@ class trajectory_optimization(Node):
             self.get_logger().info(f"all states: {hasattr(self,'_state_msg')}"
                             f" | current speed: {hasattr(self,'_current_speed')}" \
                             f" | left boundaries: {hasattr(self,'_leftboundary')}"\
-                            f" | right boundaries: {hasattr(self,'_rightboundary')}")
+                            f" | right boundaries: {hasattr(self,'_rightboundary')}")   
             
+            # yup = 1
+            # xup = -0.5
+            # count = 0
+            # while count < 10:
+            # msg.cones[0].pose.pose.position.x += xup
+            # msg.cones[0].pose.pose.position.y += yup
+
             leftboundary, rightboundary, car_position = self.get_boundaries(msg.cones)    # get boundaries.
             position_orientation = self.get_position_of_cart(msg)
-            # leftboundary, rightboundary = self.get_relative_boundaries(leftboundary, rightboundary, car_position, position_orientation) # get local boundaries
+            leftboundary, rightboundary = self.get_relative_boundaries(leftboundary, rightboundary, car_position, position_orientation) # get local boundaries
 
             # get center line
             centerline = self.get_center_line(leftboundary, rightboundary, interpolate=True)
@@ -118,6 +125,7 @@ class trajectory_optimization(Node):
             else:
                 self.get_logger().info(f"Ids state:{self._state_msg.id} and trajectory:{self._trajectories_msg.id} do not match")
 
+
     def get_boundaries(self, cones):
         leftboundary = []
         rightboundary = []
@@ -135,26 +143,27 @@ class trajectory_optimization(Node):
         return leftboundary, rightboundary, car_position
     
     def get_relative_boundaries(self, leftboundary, rightboundary, car_position, position_orientation):
-        position_vector, rotation_matrix = self.get_transformation_matrix(position_orientation)
+        # position_vector, rotation_matrix = self.get_transformation_matrix(position_orientation)
         xc, yc = car_position
-        see_ahead = 15
+        see_ahead = 4
         leftboundary_distance = [0]*len(leftboundary)
         rightboundary_distance = [0]*len(rightboundary)
         # two for loops cuz lists are not same length
         for i, P in enumerate(leftboundary):    # go through all leftboundary points
             xl, yl = P  # global points
-            xl, yl = self.apply_transformation(position_vector, rotation_matrix, xl, yl) # get local point
+            # xl, yl = self.apply_transformation(position_vector, rotation_matrix, xl, yl) # get local point
             leftboundary_distance[i] = self.get_distance(xc, yc, xl, yl) # distance between car and left boundary point i
         for i, P in enumerate(rightboundary):
             xr, yr = P  # global points
-            xr, yr = self.apply_transformation(position_vector, rotation_matrix, xr, yr) # get local point
+            # xr, yr = self.apply_transformation(position_vector, rotation_matrix, xr, yr) # get local point
             rightboundary_distance[i] = self.get_distance(xc, yc, xr, yr)   # distance between car and right boundary point i
         
-        start = max(np.argmin(np.array(leftboundary_distance)), np.argmin(np.array(rightboundary_distance)))
+        vals = np.argmin(np.array(leftboundary_distance)), np.argmin(np.array(rightboundary_distance))
+        self.get_logger().info(f"vals = {vals}")
+        start = max(vals)
         end = start+see_ahead+1
 
         return leftboundary[start:end], rightboundary[start:end]
-
 
     def get_center_line(self, leftboundary, rightboundary, interpolate:False):
         '''approximates the track's center line'''
