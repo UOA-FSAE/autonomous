@@ -23,7 +23,7 @@ def generate_launch_description():
             executable='trajectory_generation',
             name='trajectory_generation',
             parameters=[{'debug': True, 
-                         'timer': 0.5}],
+                         'timer': 1.0}],
         ),
 
         # path optimization
@@ -31,7 +31,8 @@ def generate_launch_description():
             package='path_planning',
             executable='trajectory_optimisation',
             name='trajectory_optimisation',
-            parameters=[{'debug': True}],
+            parameters=[{'delete': False,
+                         'interpolate': False}],
         ),
 
         # controller

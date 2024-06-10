@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 import numpy as np
+import scipy.integrate
+import scipy.interpolate
 from shapely import LineString, MultiPoint
 from shapely import Point as shapelyPoint
 import scipy
@@ -26,13 +28,15 @@ class trajectory_optimization(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('delete', True)
+                ('delete', True),
+                ('interpolate', False)
             ]
         )
 
         # attributes
         self._once = True
         self._delete = self.get_parameter("delete").get_parameter_value().bool_value
+        self._interpolate = self.get_parameter("interpolate").get_parameter_value().bool_value
 
         # subscribers
         self.create_subscription(AllStates, "moa/states", self.set_states, 10)
@@ -67,15 +71,16 @@ class trajectory_optimization(Node):
             # xup = -0.5
             # count = 0
             # while count < 10:
-            # msg.cones[0].pose.pose.position.x += xup
-            # msg.cones[0].pose.pose.position.y += yup
+                # msg.cones[0].pose.pose.position.x += xup
+                # msg.cones[0].pose.pose.position.y += yup
 
             leftboundary, rightboundary, car_position = self.get_boundaries(msg.cones)    # get boundaries.
             position_orientation = self.get_position_of_cart(msg)
-            leftboundary, rightboundary = self.get_relative_boundaries(leftboundary, rightboundary, car_position, position_orientation) # get local boundaries
+            if self._interpolate:
+                leftboundary, rightboundary = self.get_relative_boundaries(leftboundary, rightboundary, car_position, position_orientation) # get local boundaries
 
             # get center line
-            centerline = self.get_center_line(leftboundary, rightboundary, interpolate=True)
+            centerline = self.get_center_line(leftboundary, rightboundary, interpolate=self._interpolate)
             # x1, y1, x2, y2 = leftboundary[0][0], leftboundary[0][1], rightboundary[0][0], rightboundary[0][1]
             
             # adjust boundaries
@@ -124,6 +129,8 @@ class trajectory_optimization(Node):
                     self.get_logger().info("OPTIMAL TRAJECTORY COMPUTED")
             else:
                 self.get_logger().info(f"Ids state:{self._state_msg.id} and trajectory:{self._trajectories_msg.id} do not match")
+                
+                # count += 1
 
 
     def get_boundaries(self, cones):
@@ -143,9 +150,11 @@ class trajectory_optimization(Node):
         return leftboundary, rightboundary, car_position
     
     def get_relative_boundaries(self, leftboundary, rightboundary, car_position, position_orientation):
+        leftboundary = np.array(leftboundary).copy()
+        rightboundary = np.array(rightboundary).copy()
         # position_vector, rotation_matrix = self.get_transformation_matrix(position_orientation)
         xc, yc = car_position
-        see_ahead = 4
+        see_ahead = 2
         leftboundary_distance = [0]*len(leftboundary)
         rightboundary_distance = [0]*len(rightboundary)
         # two for loops cuz lists are not same length
@@ -158,12 +167,19 @@ class trajectory_optimization(Node):
             # xr, yr = self.apply_transformation(position_vector, rotation_matrix, xr, yr) # get local point
             rightboundary_distance[i] = self.get_distance(xc, yc, xr, yr)   # distance between car and right boundary point i
         
-        vals = np.argmin(np.array(leftboundary_distance)), np.argmin(np.array(rightboundary_distance))
-        self.get_logger().info(f"vals = {vals}")
-        start = max(vals)
-        end = start+see_ahead+1
+        # SIM GIVES OUR UNSORTED BOUNDARY POINTS!!
+        closest_indices_l = np.sort(np.argsort(leftboundary_distance)[:see_ahead+1]).tolist() # indices of leftboundary points closest to car
+        closest_indices_r = np.sort(np.argsort(rightboundary_distance)[:see_ahead+1]).tolist() # indices of rightboundary points closest to car
+        if max(closest_indices_l) <= len(rightboundary)-1:  # index exists in both boundaries
+            idx_range = closest_indices_l
+        else:
+            idx_range = closest_indices_r
+        # vals = np.argmin(np.array(leftboundary_distance)), np.argmin(np.array(rightboundary_distance))
+        self.get_logger().info(f"vals = {idx_range}")
+        # start = max(vals)
+        # end = start+see_ahead+1
 
-        return leftboundary[start:end], rightboundary[start:end]
+        return leftboundary[idx_range], rightboundary[idx_range]
 
     def get_center_line(self, leftboundary, rightboundary, interpolate:False):
         '''approximates the track's center line'''
@@ -185,12 +201,12 @@ class trajectory_optimization(Node):
             if num_cones >= 3:  # min points for quad/cubic interp
                 radius = self.get_arc_radius(coods[0], coods[1], coods[2])
                 self.get_logger().info(f"RADIUS = {radius}")
-                if radius <= 100:  # only interp on corners not straights
-                    coods = []
-                    f = scipy.interpolate.interp1d(xps, yps, kind='quadratic')
-                    xrange = np.linspace(min(xps), max(xps), num=25)
-                    for X in xrange:
-                        coods.append([X, float(f(X))])
+                # if radius <= 1000:  # only interp on corners not straights
+                coods = []
+                f = scipy.interpolate.interp1d(xps, yps, kind='quadratic')
+                xrange = np.linspace(min(xps), max(xps), num=50)
+                for X in xrange:
+                    coods.append([X, float(f(X))])
             else:
                 # linear interp - but how and needed?
                 pass
@@ -229,6 +245,12 @@ class trajectory_optimization(Node):
         plt.plot([P[0] for P in rightboundary], [P[1] for P in rightboundary], "oy", label='rightboundary')
         plt.plot([P[0] for P in centerline], [P[1] for P in centerline], "ok", label='centerline')
         plt.plot([car_position[0]],[car_position[1]],'or', label='car position')
+        # annotate points
+        for i in range(len(leftboundary)):
+            plt.annotate(f"{i}", leftboundary[i], textcoords='data')
+        for i in range(len(rightboundary)):
+            plt.annotate(f"{i}", rightboundary[i], textcoords='data')
+        plt.grid()
         plt.legend()
         plt.show()
 
@@ -361,8 +383,14 @@ class trajectory_optimization(Node):
         for i in range(len(trajectories)):  # loop through each trajectory
             # trajectory = self.get_shapely_linestring(trajectories[i].poses) # trajectory i as a line
             P = trajectories[i].poses[-1].position  # end point of trajectory i
-            end_point = shapelyPoint(P.x,P.y)   # as a point
-            trajectory_distances[i] = end_point.distance(center_linestring) # distance to centerline
+            xp, yp = [P.x, P.y]
+            # end_point = shapelyPoint(xp,yp)   # as a point
+            to_centerpoint_dist = []
+            for P in self._centerline:
+                cx,cy = P
+                to_centerpoint_dist.append(self.get_distance(xp,yp,cx,cy))
+            dist = min(to_centerpoint_dist)
+            trajectory_distances[i] = dist # distance to centerline
 
         return self.get_best_trajectory_index(trajectory_distances)
 
