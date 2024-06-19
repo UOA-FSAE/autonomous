@@ -17,6 +17,13 @@ def generate_launch_description():
             name='dbscan',
         ),
 
+        # car position
+        launch_ros.actions.Node(
+            package='cone_mapping',
+            executable='car_position',
+            name='car_position',
+        ),
+
         # path generation
         launch_ros.actions.Node(
             package='path_planning',

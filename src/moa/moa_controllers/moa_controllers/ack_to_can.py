@@ -126,9 +126,10 @@ class ack_to_can(Node):
 
         # set CAN header/data/id 
         can_msg.can.id = self.can_id
-        can_msg.can.data = self.ackermann_to_can_parser(ack_msg)
+        data = self.ackermann_to_can_parser(ack_msg)
 
-        if can_msg.can.data is not None:
+        if data is not None:
+            can_msg.can.data = data
             # publish CAN to topic
             self.can_pub.publish(can_msg)
 
