@@ -83,7 +83,7 @@ class ack_to_can(Node):
             self.get_logger().warn('ackermann drive JERK out of bounds')
             return None
         
-        elif -45 > ack_msg.drive.steering_angle or ack_msg.drive.steering_angle > 45:  # radians
+        elif -22 > ack_msg.drive.steering_angle or ack_msg.drive.steering_angle > 22:  # degrees
             self.get_logger().warn('ackermann drive STEERING_ANGLE out of bounds')
             return None
 
