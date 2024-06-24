@@ -5,16 +5,13 @@ from geometry_msgs.msg import Pose, PoseArray
 import threading
 import time
 import numpy as np
-from gymnasium import Env
-from gymnasium.spaces import Discrete, Dict, Box
-from gymnasium.vector.utils import create_empty_array
-from tensorflow import keras
-from keras.models import Sequential
-from keras.layers import Dense, Flatten
-from keras.optimizers.legacy import Adam
-from rl.agents.dqn import DQNAgent
-from rl.policy import BoltzmannQPolicy
-from rl.memory import SequentialMemory
+from .environment import CarEnv
+from . import train
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
 
 
 # Constants
@@ -132,7 +129,6 @@ class RLEnvironmentNode(Node):
             'speed': self.desired_speed
         }
         
-
 # Get reward
     def get_reward(self):
         reward = self.track_point_reached
@@ -146,7 +142,6 @@ class RLEnvironmentNode(Node):
             return
         
         self.reset_in_progress = True
-        print("TIMESTEPS REACHED")
 
         self.delete_car_pub.publish(String(data="test"))
 
@@ -169,103 +164,21 @@ def main(args=None):
 
     env = CarEnv(rl_environment_node)
 
-    obs = env.reset()
-    actions = env.action_space.n
-    time.sleep(1)
+    model = train.Model(env)
 
+    finished = model.main()
+
+    if finished:
+        print("Training finished")
     # rl_environment_node.get_logger().info("Observation: " + str(obs))
-
-    dqn = build_agent(build_model(obs, actions), actions)
-    dqn.compile(Adam(learning_rate=0.01), metrics=['mae'])
-    dqn.fit(env, nb_steps=500000, visualize=False, verbose=1)
-
-    dqn.save_weights('dqn_weights.h5f', overwrite=True)
 
     rl_environment_node.destroy_node()
     rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()
 
 
-def encode_obs(states) -> np.array:
-    angles = states['angles']
-    speed = states['speed']
-    speed_array = np.array([speed])  # Convert speed to a single-element array
-    array = np.concatenate([angles, speed_array], axis=0) # Concatenate along the first axis
-    return array
 
 
 
-def build_model(obs, actions):
-    model = Sequential()
-    model.add(Flatten(input_shape=(1,) + obs.shape))
-    model.add(Dense(64, activation='relu'))
-    model.add(Dense(32, activation='relu'))
-    model.add(Dense(actions, activation='linear'))
-    print(model.summary())
-    return model     
-    
-
-def build_agent(model, actions):
-    policy = BoltzmannQPolicy()
-    memory = SequentialMemory(limit=500000, window_length=1)
-    dqn = DQNAgent(model=model, memory=memory, policy=policy, nb_actions=actions, nb_steps_warmup=10, target_model_update=1e-2)
-    return dqn
-
-
-## Car Environment class
-# This class defines the environment for the car
-# The action space is defined as Discrete with 3 actions
-# The observation space is defined as angles and speed
-class CarEnv(Env):
-    def __init__(self, rl_environment_node):
-        # Define action and observation space
-        self.action_space = Discrete(3)
-        self.max_timesteps = 5000
-        self.timesteps = 0
-        self.num_angles = 30
-
-        self.observation_space = Dict({
-            'angles': Box(low=0, high=180, shape=(self.num_angles,), dtype=np.float32),  # Angles from 0 to 180 degrees
-            'speed': Box(low=-1.0, high=100.0, shape=(1,), dtype=np.float32)  # Speed from -1.0 to 100.0
-        })
-
-        self.rl_environment_node = rl_environment_node  
-    
-    def step(self, action):
-        # Execute one time step within the environment
-        self.timesteps += 1
-        if self.timesteps >= self.max_timesteps:
-            raw_observation = self.rl_environment_node.get_observation()
-            obs = create_empty_array(self.observation_space, n=1, fn=np.zeros)
-            obs['angles'] = raw_observation['angles'][:self.num_angles]
-            obs['speed'] = raw_observation['speed']
-            obs = encode_obs(obs)
-            return obs, 0, True, {}
-        
-        reward = self.rl_environment_node.get_reward()
-
-        raw_observation = self.rl_environment_node.get_observation()
-        obs = create_empty_array(self.observation_space, n=1, fn=np.zeros)
-        obs['angles'] = raw_observation['angles'][:self.num_angles]
-        obs['speed'] = raw_observation['speed']
-        obs = encode_obs(obs)
-
-        self.rl_environment_node.publish_desired_speed(action)
-        
-        return obs, reward, False, {}
-        
-    def reset(self):
-        # Reset the state of the environment to an initial state
-        self.rl_environment_node.reset_environment()
-        self.timesteps = 0
-
-        raw_observation = self.rl_environment_node.get_observation()
-        obs = create_empty_array(self.observation_space, n=1, fn=np.zeros)
-        obs['angles'] = raw_observation['angles'][:self.num_angles]
-        obs['speed'] = raw_observation['speed']
-        obs = encode_obs(obs)
-        return obs
-        

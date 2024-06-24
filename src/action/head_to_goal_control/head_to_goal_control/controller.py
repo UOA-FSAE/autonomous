@@ -176,19 +176,42 @@ class head_to_goal_control_algorithm(Node):
             return track_point_in_local_frame
 
 # Picking and maintaining a track point
-    def update_track_point(self, msg: PoseArray): #Main logic
-        # Pick new tracking point if no tracking point is selected or old tracking point is no longer visible
-        if self.need_new_track_point():
+    def update_track_point(self, msg: PoseArray):
+        new_track_point = self.get_track_point_in_global_frame(msg)
+        
+        # Check if a new track point is required and is significantly different from the previous one
+        if self.need_new_track_point() and self.track_point_changed(new_track_point):
             self.get_logger().info("Update track point")
-            self.Pose_to_track_in_global_frame = self.get_track_point_in_global_frame(msg)
+            self.Pose_to_track_in_global_frame = new_track_point
             self.speed_decay_constant += 1
             msg = Bool()
             msg.data = True
             self.track_point_reached_pub.publish(msg)
         else:
             self.speed_decay_constant = 0
-        
+
         self.track_point_pub.publish(self.Pose_to_track_in_global_frame)
+
+    def track_point_changed(self, new_track_point: Pose):
+        if not hasattr(self, "Pose_to_track_in_global_frame"):
+            return True
+        
+        elif self.Pose_to_track_in_global_frame is None:
+            return True
+        
+        old_track_point = self.Pose_to_track_in_global_frame
+        distance = self.calculate_distance(old_track_point, new_track_point)
+        threshold = 2.0  # Adjust this value as needed
+        
+        return distance > threshold
+
+    def calculate_distance(self, pose1: Pose, pose2: Pose):
+        x1 = pose1.position.x
+        y1 = pose1.position.y
+        x2 = pose2.position.x
+        y2 = pose2.position.y
+        
+        return ((x2 - x1)**2 + (y2 - y1)**2)**0.5
 
 # Check if there is a track point to track
     def need_new_track_point(self):
