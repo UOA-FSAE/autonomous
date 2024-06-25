@@ -11,3 +11,6 @@
 [submodule "Tracks/racetrack-database"]
 	path = src/planning/path_planning/path_planning/shortest_path/Tracks/racetrack-database
 	url = https://github.com/TUMFTM/racetrack-database.git
+[submodule "ROS2-protobuff-compiler"]
+	path = ROS2-protobuff-compiler
+	url = https://github.com/UOA-FSAE/ROS2-protobuff-compiler.git
