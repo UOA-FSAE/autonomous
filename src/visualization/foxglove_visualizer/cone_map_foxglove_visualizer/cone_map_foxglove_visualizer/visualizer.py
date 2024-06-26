@@ -20,7 +20,11 @@ class ConePublisher(Node):
         self.get_logger().info("Cone Map Visualization Initialization Completed")
 
     def cone_map_callback(self, msg):
-        list_of_cones = msg.cones[1:]
+        left_cones = msg.left_cones
+        right_cones = msg.right_cones
+        all_cones = left_cones.copy()
+        all_cones.append(right_cones.copy())
+        list_of_cones = all_cones
         self.publish_cones(list_of_cones)
 
     def localization_callback(self, msg):

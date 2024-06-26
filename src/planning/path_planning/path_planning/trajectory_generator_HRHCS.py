@@ -33,16 +33,20 @@ class trajectory_generator(Node):
         self.all_states_publisher = self.create_publisher(AllStates, "moa/states", 10)
 
         # subscribers
-        self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed, 10)
-        self.create_subscription(ConeMap, "cone_map", self.set_cone_map, 10)
+        self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed_cb, 10)
+        self.create_subscription(ConeMap, "cone_map", self.set_cone_map_cb, 10)
+        self.create_subscription(Pose, "car_position", self.set_car_pose_cb, 10)
 
         # time in between trajectory generation
         self.create_timer(self._timer, self.generate_trajectories)
 
 
-    def set_current_speed(self, msg:AckermannDrive) -> None: self._current_speed = msg.speed
+    def set_current_speed_cb(self, msg:AckermannDrive) -> None: self._current_speed = msg.speed
     
-    def set_cone_map(self, msg:ConeMap) -> None: self._cone_map = msg
+    def set_cone_map_cb(self, msg:ConeMap) -> None: self._cone_map = msg
+    
+    def set_car_pose_cb(self, pose_msg: Pose) -> None:
+        self._car_position = pose_msg
 
 
     # BEST TRAJECTORY PUBLISHER
@@ -111,6 +115,7 @@ class trajectory_generator(Node):
         trajectories = []
         # get position of car (first cone in cone map data)
         position_and_orientation = self.get_position_of_cart(cone_map)
+    
         # get transformation matrix 
         position_vector, rotation_matrix = self.get_transformation_matrix(position_and_orientation)
         for steering_angle in candidate_steering_angle:
@@ -122,12 +127,11 @@ class trajectory_generator(Node):
 
         return trajectories, candidate_steering_angle
 
-    def get_position_of_cart(self, cone_map):
+    def get_position_of_cart(self, car_pose: Pose):
         # first cone
-        localization_data = cone_map.cones[0]
-        x = localization_data.pose.pose.position.x
-        y = localization_data.pose.pose.position.y
-        theta = localization_data.pose.pose.orientation.w
+        x = car_pose.position.x
+        y = car_pose.position.y
+        theta = car_pose.orientation.w
         return x, y, theta
 
     def get_transformation_matrix(self, position_and_orientation):

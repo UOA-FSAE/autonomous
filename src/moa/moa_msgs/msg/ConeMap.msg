@@ -1,2 +1,3 @@
 # List of cones detected and where they are
-Cone[]                               cones     
+Point[] right_cones
+Point[] left_cones
