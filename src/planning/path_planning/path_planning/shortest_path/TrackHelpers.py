@@ -2,6 +2,7 @@
 # imports
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 def getDistance(p1:np.array, p2:np.array):
     return getMagnitude((p2-p1))
@@ -28,7 +29,7 @@ def getMidPoint(p1:np.array, p2:np.array): return (p2 + p1)/2
 
 
 def getAngle(p1:np.array, p2:np.array):
-    diff = p2-p1
+    diff = p1-p2
     x = diff[0]
     y = diff[1]
 
@@ -46,7 +47,7 @@ def getAngleRotation(v1, v2):
     det = x1*y2 - y1*x2      # Determinant
     angle = np.arctan2(det, dot)  # atan2(y, x) or atan2(sin, cos)
 
-    return angle
+    return min(angle, np.pi-angle)
 
 
 # function getVectorLineIntersection(v1::Vector, p1::Vector,v2::Vector, p2::Vector)
@@ -147,3 +148,16 @@ def Plot(nodes:bool, vector_list:np.array, label:str,col=None):
     
     return all_x, all_y
 
+def plotOptimal(vector_list:np.array, velocities:np.array,  label:str):
+    all_x = [P[0] for P in vector_list]
+    all_y = [P[1] for P in vector_list]
+    # col = cm.jet((velocities-np.min(velocities))/(np.max(velocities)-np.min(velocities)))
+    cmap = plt.cm.get_cmap("autumn_r")
+    ax = plt.subplot()
+    for i in range(len(all_x)-1):
+        ax.plot([all_x[i], all_x[i+1]], [all_y[i], all_y[i+1]], c=cmap(velocities[i]/np.max(velocities)), label=label)
+    im = ax.scatter(all_x, all_y, c=velocities, s=0, cmap=cmap)
+    # im = cm.ScalarMappable(cmap=cmap)
+    # im = im.set_array(velocities)
+
+    return im

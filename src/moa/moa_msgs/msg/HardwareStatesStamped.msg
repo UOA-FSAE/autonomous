@@ -1,3 +1,0 @@
-std_msgs/Header header
-
-HardwareStates hardware_states

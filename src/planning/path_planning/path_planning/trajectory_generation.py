@@ -22,7 +22,7 @@ class trajectory_generator(Node):
             namespace='',
             parameters=[
                 ('debug', True),
-                ('timer', 7.0),
+                ('timer', 0.1),
             ]
         )
 
