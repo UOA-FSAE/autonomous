@@ -75,6 +75,12 @@ class trajectory_optimization(Node):
                 # msg.cones[0].pose.pose.position.y += yup
 
             leftboundary, rightboundary, car_position = self.get_boundaries(msg.cones)    # get boundaries.
+            if len(leftboundary) < 2:
+                self.get_logger().info("NOT ENOUGH LEFT CONES")
+                return
+            if len(rightboundary) < 2:
+                self.get_logger().info("NOT ENOUGH RIGHT CONES")
+                return
             position_orientation = self.get_position_of_cart(msg)
             if self._interpolate:
                 leftboundary, rightboundary = self.get_relative_boundaries(leftboundary, rightboundary, car_position, position_orientation) # get local boundaries
@@ -311,10 +317,11 @@ class trajectory_optimization(Node):
         #             rm_inds.append(i)
         #             # trajectories.pop([i for i in range(len(trajectories)) if T==trajectories[i]][0])
         #             break
-
-        left_boundary_linestring = self.get_shapely_linestring(self._leftboundary)
-        right_boundary_linestring = self.get_shapely_linestring(self._rightboundary)
-
+        try:
+            left_boundary_linestring = self.get_shapely_linestring(self._leftboundary)
+            right_boundary_linestring = self.get_shapely_linestring(self._rightboundary)
+        except:
+            return
         for i in range(len(trajectories)):  # loop each trajectory
             trajectory = self.get_shapely_linestring([[P.position.x, P.position.y] for P in trajectories[i].poses])
             num_poses = len(trajectories[i].poses)

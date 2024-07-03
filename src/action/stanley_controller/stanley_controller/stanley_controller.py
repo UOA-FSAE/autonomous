@@ -149,7 +149,7 @@ class StanleyControl(Node):
 
         self.cmd_drive_pub.publish(msg1)
         self.cmd_vis_pub.publish(msg2)
-        self.cmd_vel_pub.publish(msg3)
+        #self.cmd_vel_pub.publish(msg3)
 
     
     def get_front_axle_position(self,cam_pos,car_yaw):

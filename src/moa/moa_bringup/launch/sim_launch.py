@@ -3,7 +3,14 @@ import launch_ros.actions
 
 def generate_launch_description():
     return launch.LaunchDescription([
-        # cone map
+        # acceleration
+	launch_ros.actions.Node(
+	    package="acceleration",
+	    executable="controller",
+	    name="acceleration"
+	),
+
+	# cone map
         launch_ros.actions.Node(
             package='aruco_detection',
             executable='aruco_detection',
