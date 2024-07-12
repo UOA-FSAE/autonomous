@@ -1,7 +1,7 @@
 from pyPS4Controller.controller import Controller
 import rclpy
-from rclpy.node import node
-from ackerman_msgs.msg import AckermannDrive, AckermannDriveStamped
+from rclpy.node import Node
+from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
 from std_msgs.msg import Header
 
 # R3 right and left buttons max is 32767 when pressed and -32767 when fully released
@@ -11,7 +11,7 @@ class joystick_teleop(Node):
     def __init__(self, max_speed):
         # publisher
         super().__init__("joystick_teleop")
-        self.logger().info("joystick teleoperation node started")
+        self.get_logger().info("joystick teleoperation node started")
         # now make sure the controller is paired over the Bluetooth and turn on the listener        
         joystick = MyController(max_speed = max_speed,
                                 min_speed = 0,
@@ -67,7 +67,7 @@ class MyController(Controller):  # create a custom class for your controller and
         return AckermannDrive(**args)
 
     def get_ackerman_stamped(self, ackerman_msg):
-        args = {"header": Header(stamp=self.get_clock().now().to_msg(),
+        args = {"header": Header(stamp=Node("joystick_teleop").get_clock().now().to_msg(),
                                   frame_id="joystick_teleop"),
                 "drive": ackerman_msg}
         
@@ -246,8 +246,14 @@ class MyController(Controller):  # create a custom class for your controller and
     #     print("on_playstation_button_release")
 
 def main(args=None):
+    rclpy.init(args=args)
+
     max_speed = 10
-    joystick_teleop(max_speed)
+    node = joystick_teleop(max_speed)
+    rclpy.spin(node)
+
+    node.destroy_node()
+    rclpy.shutdown()
 
 if __name__ == "__main__":
     main()
