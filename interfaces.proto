@@ -14,7 +14,7 @@ message BoundaryStamped {
     repeated float32 coords = 2;
 }
 
-message Can {
+message CAN {
     uint16 id = 1;
     bool is_rtr = 2;
     repeated uint8 data = 3;
@@ -29,7 +29,7 @@ message CandidateStates {
     repeated CandidateState candidateState = 1;
 }
 
-message CanStamped {
+message CANStamped {
     std_msgs.Header header = 1;
     CAN can = 2;
 }
