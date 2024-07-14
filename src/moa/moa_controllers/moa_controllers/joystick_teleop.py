@@ -248,7 +248,7 @@ class MyController(Controller):  # create a custom class for your controller and
 def main(args=None):
     rclpy.init(args=args)
 
-    max_speed = 10
+    max_speed = 2
     node = joystick_teleop(max_speed)
     rclpy.spin(node)
 
