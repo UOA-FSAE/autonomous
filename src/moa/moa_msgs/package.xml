@@ -11,6 +11,7 @@
 
   <depend>std_msgs</depend>
   <depend>geometry_msgs</depend>
+  <exec_depend>ackermann_msgs</exec_depend>
 
   <build_depend>rosidl_default_generators</build_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>

@@ -1,14 +1,25 @@
-FROM stereolabs/zed:4.0-devel-cuda12.1-ubuntu22.04
+FROM stereolabs/zed:4.0-tools-devel-l4t-r35.4
 LABEL Name=zed_sdk Version=0.0.1
 
 SHELL [ "/bin/bash", "-c" ]
 
 WORKDIR /ws
-COPY ../ /
 
-# setup sources.list and keys
-RUN echo "deb http://packages.ros.org/ros2/ubuntu jammy main" > /etc/apt/sources.list.d/ros2-latest.list && \
-    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
+
+RUN apt update && apt install -y gnupg wget software-properties-common && \
+    add-apt-repository universe
+
+RUN wget -qO - https://isaac.download.nvidia.com/isaac-ros/repos.key | \
+    apt-key add - && \
+    echo 'deb https://isaac.download.nvidia.com/isaac-ros/ubuntu/main focal main' | \
+    tee -a "/etc/apt/sources.list"
+
+RUN apt update && apt install curl -y && \
+    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu focal main" | \
+    tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
 # setup timezone & install packages
 RUN apt-get update && apt-get install -q -y --no-install-recommends \
@@ -16,17 +27,14 @@ RUN apt-get update && apt-get install -q -y --no-install-recommends \
     dirmngr \
     gnupg2 \
     git \
-    ros-humble-ros-core=0.10.0-1* \
+    ros-humble-ros-base \
     build-essential \
     python3-colcon-common-extensions \
     python3-colcon-mixin \
     python3-rosdep \
-    python3-vcstool \
-    ros-humble-foxglove-bridge
-
-# setup environment
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
+    python3-vcstool && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
 
 ENV ROS_DISTRO humble
 
@@ -40,21 +48,36 @@ RUN rosdep init && \
       https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
     colcon metadata update
 
-# # install ros2 packages
-# RUN mkdir /ws/src/ && cd "$_" && \
-#     git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
-#     cd .. && \
-#     source /opt/ros/humble/setup.bash && \ 
-#     rosdep update && \
-#     rosdep install --from-paths src --ignore-src -r -y && \
-#     colcon build --parallel-workers $(nproc) --symlink-install \
-#     --event-handlers console_direct+ --base-paths src \
-#     --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
-#     ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-#     ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' && \
-    # rm -rf /var/lib/apt/lists/* && \
-    # echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
-    # echo "source /ws/install/setup.bash" >> ~/.bashrc
+COPY ./src/perception/ /ws/src/perception/
+COPY ./src/moa/moa_description /ws/src/moa/moa_description
+COPY ./src/moa/moa_msgs /ws/src/moa/moa_msgs
 
-# ENTRYPOINT ["../ros_entrypoint.sh"]
-# CMD ["bash"]
+# install ros2 packages
+RUN cd /ws/src/ && \
+    git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
+    cd .. && \
+    source /opt/ros/humble/setup.bash && \ 
+    rosdep update && apt-get update && \
+    rosdep install --from-paths src -y -r --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
+
+RUN cd /usr/local/zed && \
+    pip install requests && \
+    python3 get_python_api.py
+
+RUN source /opt/ros/humble/setup.bash && \
+    colcon build --parallel-workers $(nproc) --symlink-install \
+        --event-handlers console_direct+ --base-paths src \
+        --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
+        ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
+        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
+
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \ 
+    echo "source /ws/install/setup.bash" >> ~/.bashrc
+
+RUN . ~/.bashrc
+
+COPY ./.devcontainer/SN31421864.conf /usr/local/zed/settings/SN31421864.conf
+
+CMD ["bash"]
