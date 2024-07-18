@@ -9,6 +9,8 @@ services:
     environment:
       - DISPLAY
       - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - ROS_DOMAIN_ID=47
     volumes:
       - ..:/ws
     network_mode: host
@@ -33,6 +35,8 @@ services:
     environment:
       - DISPLAY
       - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - ROS_DOMAIN_ID=47
     volumes:
       #- ..:/ws
       #- ../src:/ws/src
@@ -55,7 +59,9 @@ services:
       resources:
         reservations:
           devices:
-            - capabilities: [gpu]
+            - driver: nvidia
+              device_ids: []
+              capabilities: [gpu]
     privileged: true
     devices:
       - /dev:/dev
