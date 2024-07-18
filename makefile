@@ -1,87 +1,54 @@
-.SUFFIXES:
-.SILENT:
+all:
+	@echo "usage: make [COMMAND]"
+	@echo
+	@echo "COMMAND options:"
+	@echo "    help"
+	@echo "        - show this message"
+	@echo "    compose [SERVICE]"
+	@echo "        - run docker-compose up and run required services"
+	@echo
+	@echo "SERVICE options:"
+	@echo "    [blank]"
+	@echo "        - run simple on developer machine"
 
+help: all
 
-ifeq ($(OS),Windows_NT)
-PREREQS = docker docker-compose code
-GPU := $(shell wmic path win32_VideoController get name | findstr "NVIDIA")
-	ifneq ($(strip $(GPU)),)
-GPU_ID := $(shell nvidia-smi --query-gpu=index --format=csv,noheader | findstr "^[0-9]")
-	endif
-K := $(foreach exec,$(PREREQS),\
-	$(if $(shell where $(exec)),some string,$(error "No $(exec) in PATH")))
-pwd := $(strip $(shell cd))
+ROS2_IMAGE_NAME = autonomous
+
+ifeq ($(OS),Windows_NT) 
+    detected_OS := Windows
 else
-	ifeq ($(shell grep "Jetson" /proc/device-tree/model -ao), Jetson)
-GPU := true
-	endif
-
-	ifneq ($(filter arm%,$(shell uname -p)),)
-        ARCH := ARM
-    endif
-
-PREREQS = docker compose code
-GPU := $(shell lspci | grep -i "NVIDIA")
-	ifneq ($(strip $(GPU)),)
-GPU_ID := $(shell nvidia-smi --list-gpus | grep -oP '(\d+)' | head -1)
-	endif
-
-K := $(foreach exec,$(PREREQS),\
-	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH")))
+    detected_OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
 endif
+
+# ifeq ($(detected_OS),Windows)
+#     echo 1
+# endif
+# ifeq ($(detected_OS),Darwin)        # Mac OS X
+#     @echo "hello"
+# endif
+# ifeq ($(detected_OS),Linux)
+#     echo 3
+# endif
 
 .PHONY: build
-build: $(pwd)
-#	docker build -t autonomous_img . -f ros2_ws.Dockerfile
-ifneq ($(strip $(GPU)),)
-	$(info using GPU container)
-	cp .docker_templates/docker-compose.GPU.yml .devcontainer/docker-compose.yml
-	cp .docker_templates/zed.Dockerfile .devcontainer/zed.Dockerfile
-	sed -i 's/NVIDIA_VISIBLE_DEVICES=.*/NVIDIA_VISIBLE_DEVICES=0/g' .devcontainer/docker-compose.yml
-	
-	if [ -f "/etc/nv_tegra_release" ]; then \
-		sed -i 's/zed:.*/zed:4.0-tools-devel-jetson-jp4.6.1/g' .devcontainer/zed.Dockerfile; \
-	else \
-		echo "Not jetson";\
-	fi
+# make build target=jetson
+build:
+	docker-compose -f ./docker-compose-$(detected_OS).yml -p local_run build $(target)
 
-#	docker run -d \
-#	--gpus all \
-#	--env DISPLAY \
-#	--env NVIDIA_VISIBLE_DEVICES=$(GPU_ID) \
-#	--env NVIDIA_DRIVER_CAPABILITIES=all \
-#	--env ROS_DOMAIN_ID=47 \
-#	--volume $(pwd):/ws \
-#	--network host \
-#	--ipc host \
-#	--interactive \
-#	--tty \
-#	--name autonomous \
-#	autonomous_img \
-#	/bin/bash
+.PHONY: upp
+up:
+	docker-compose -f ./docker-compose-$(detected_OS).yml -p local_run run $(target)
 
-else
-	$(info using CPU container)
-	cp .docker_templates/docker-compose.CPU.yml .devcontainer/docker-compose.yml
-# 	docker run -d \
-# 	--env DISPLAY \
-# 	--env ROS_DOMAIN_ID=47 \
-# 	--volume $(pwd):/ws \
-# 	--network host \
-# 	--ipc host \
-# 	--interactive \
-# 	--tty \
-# 	--name autonomous \
-# 	autonomous_img \
-# 	/bin/bash
-endif
+.PHONY: down
+down:
+	docker-compose down
 
-	cp .docker_templates/ros2_ws.Dockerfile .devcontainer/ros2_ws.Dockerfile
-ifeq ($(strip $(ARCH)),ARM)
-	$(info using ARM container)
-	sed -i 's/osrf\/ros:humble-desktop/arm64v8\/ros:humble/' .devcontainer/ros2_ws.Dockerfile
-endif 
+.PHONY: talker
+talker:
+	docker exec -it $(shell docker ps -qf "name=autonomous_ros2-1") source /opt/ros/humble/setup.bash
+	docker exec -it $(shell docker ps -qf "name=autonomous_ros2-1") ros2 run demo_nodes_cpp talker
 
-.PHONY: start
-start: build
-	docker compose -f .devcontainer/docker-compose.yml up -d
+.PHONY: listener
+listener:
+	docker exec -it $(shell docker ps -qf "name=ros2_ros2_1") ros2 run demo_nodes_cpp listener
