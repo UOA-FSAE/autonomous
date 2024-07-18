@@ -1,0 +1,60 @@
+<?xml version='1.0'?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!--wheel macro-->
+    <xacro:macro name="tyre_link" params="name *origin">
+        <link name="${name}">
+            <visual>
+                <xacro:insert_block name='origin'/>
+                <geometry>
+                    <mesh filename='package://moa_description/meshes/wheel.stl'/>
+                </geometry>
+                <material name='black'>
+                    <color rgba='0 0 0 1'/>
+                </material> 
+            </visual>
+
+            <!-- inertial-->
+            <inertial>
+                <mass value="5.0"/>
+                <!-- assumed a box/cubeoid -->
+                <inertia ixx="3.33" ixy="0.0" ixz="0.0" iyy="3.33" iyz="0.0" izz="3.33"/>
+            </inertial>
+
+            <!-- collision-->
+            <collision>
+                <geometry>
+                    <!-- <box size="1.0 1.0 1.0"/> -->
+                    <mesh filename='package://moa_description/meshes/wheel.stl'/>
+                </geometry>
+            </collision>
+        </link> 
+    </xacro:macro> 
+
+    <!--kingpin macro-->
+    <xacro:macro name='kingpin_link' params='name *origin'>
+        <link name="${name}">
+            <visual>
+                <xacro:insert_block name='origin'/>
+                <geometry>
+                    <cylinder radius='${kingpin_radius}' length='${kingpin_length}'/>
+                </geometry>
+            </visual>
+            
+            <!-- inertial-->
+            <inertial>
+                <mass value="0.5"/>
+                <!-- assumed solid cylinder -->
+                <inertia ixx="0.00006210" ixy="0.0" ixz="0.0" iyy="0.00006210" iyz="0.0" izz="0.000002520"/>
+            </inertial>
+
+            <!--collision-->
+            <collision>
+                <geometry>
+                    <cylinder radius='${kingpin_radius}' length='${kingpin_length}'/>
+                </geometry>
+            </collision>
+        </link>
+    </xacro:macro>
+
+</robot>

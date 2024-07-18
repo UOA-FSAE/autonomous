@@ -1,0 +1,22 @@
+
+1. Follow tutorial: https://medium.com/augmented-startups/yolov7-training-on-custom-data-b86d23e6623\
+2. To transfer FSOCO JSON files to txt files:
+	- Create workspace on Roboflow
+	- Upload images and bounding boxes
+	- Export txt files for YOLOv7
+4. create and run venv
+3. run python3 train.py --weights yolov7.pt --data "/data/cones_custom.yaml" --workers 4 --batch-size 4 --img 416 --cfg cfg/training/yolov7.yaml --name yolov7 --hyp data/hyp.scratch.p5.yaml --epochs 50
+
+
+Resources: 
+https://github.com/MarkDana/RealtimeConeDetection
+This repo has Trained single-class YoloV3 model and a small dataset
+
+https://github.com/jhan15/traffic_cones_detection
+This repo has trained multi-class YoloV5 model. 
+
+https://www.kaggle.com/c/cone-detection-challenge-ECEN489
+The cone detection challenge dataset
+
+https://universe.roboflow.com/robotica-xftin/traffic-cones-4laxg/dataset/1/images
+The cone dataset
