@@ -83,7 +83,7 @@ class ack_to_can(Node):
             self.get_logger().warn('ackermann drive JERK out of bounds')
             return None
         
-        elif -45 > ack_msg.drive.steering_angle or ack_msg.drive.steering_angle > 45:  # radians
+        elif -22 > ack_msg.drive.steering_angle or ack_msg.drive.steering_angle > 22:  # degrees
             self.get_logger().warn('ackermann drive STEERING_ANGLE out of bounds')
             return None
 
@@ -126,9 +126,10 @@ class ack_to_can(Node):
 
         # set CAN header/data/id 
         can_msg.can.id = self.can_id
-        can_msg.can.data = self.ackermann_to_can_parser(ack_msg)
+        data = self.ackermann_to_can_parser(ack_msg)
 
-        if can_msg.can.data is not None:
+        if data is not None:
+            can_msg.can.data = data
             # publish CAN to topic
             self.can_pub.publish(can_msg)
 

@@ -24,7 +24,7 @@ class trajectory_following(Node):
         #         ('debug', False)
         #     ]
         # )
-        self._distance_to_front = 3.0
+        self._distance_to_front = 0.9
 
         qos_profile = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
@@ -84,7 +84,7 @@ class trajectory_following(Node):
             # publish msgs
             args = {"steering_angle": float(steering_angle_deg),
                     "steering_angle_velocity": 0.0,
-                    "speed": 7.0,
+                    "speed": 3.0,
                     "acceleration": 0.0,
                     "jerk": 0.0}
             

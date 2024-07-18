@@ -23,12 +23,6 @@ class pub_viz(Node):
         # sub to all trajectories points and states
         self.all_paths = self.create_subscription(AllTrajectories, "moa/inbound_trajectories", self.set_inbound_trajectories, 10)
         self.create_subscription(AllTrajectories, "moa/trajectories", self.show_paths, 10)
-        #self.all_states = self.create_subscription(AllStates, "moa/inbound_states", self.get_all_states, 5)
-        # selected path
-        #self.chosen_states = self.create_subscription(AckermannDrive, "moa/selected_trajectory", self.get_chosen_state_idx, 5)
-        # self.create_subscription(PoseArray, "moa/selected_trajectory", self.get_chosen_trajectory, 5)
-        # self.chosen_path = self.create_subscription(PoseArray, "moa/selected_trajectory", self.show_chosen_paths, 5)
-        # self.next_destination = self.create_subscription(Pose, "moa/next_destination", self.save_next_destination, 5)
         self.create_subscription(Int16, "moa/best_trajectory_index", self.get_chosen_trajectory, 10)
         self.create_subscription(Int32MultiArray,"moa/out_of_bounds",self.set_out_of_bounds_indicies, 10)
 
@@ -69,6 +63,7 @@ class pub_viz(Node):
                         # blue
                         tcols = Color(r=0.0, g=0.0, b=255.0, a=1.0)
                         thickness = 3.0
+                        self.get_logger().info(f"center pts: {len(pths[i].poses)}")
                     # out of bounds
                     elif i in self.invalid_bounds_indicies:
                         appeneded += 1

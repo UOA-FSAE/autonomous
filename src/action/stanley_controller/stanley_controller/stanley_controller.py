@@ -5,7 +5,8 @@ import math
 from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import Pose
 from moa_msgs.msg import ConeMap
-from ackermann_msgs.msg import AckermannDrive
+from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
+from std_msgs.msg import Header
 
 def angle_mod(x, zero_2_2pi=False, degree=False):
     """
@@ -76,37 +77,42 @@ class StanleyControl(Node):
         self.k_stanley = 5.0 #stanley Controller gain
         self.k_speed = 1.0 #speed Controller gain
         self.cam_fron_axle_dist= 1 #[m] Wheel base of vehicle
-        self.max_steer = np.radians(27.0)  # [rad] max steering angle
-        self.target_speed = 150/3.6 #[m/s]
+        self.max_steer = 27.0  # [degrees] max steering angle
+        self.target_speed = 3.6/3.6 #[m/s]
 
         #Subscribe for car pose and track
         self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
-        self.create_subscription(ConeMap, "cone_map", self.main_hearback, 5)
+        self.create_subscription(Pose, "car_position", self.main_hearback, 5)
         #Publish result
-        self.cmd_vel_pub = self.create_publisher(AckermannDrive, "/drive", 5)
+        self.cmd_drive_pub = self.create_publisher(AckermannDrive, "/drive", 5)
         self.cmd_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
+        self.cmd_vel_pub = self.create_publisher(AckermannDriveStamped, "/cmd_vel", 5)
         self.create_publisher(Pose, "moa/track_point", 5)
     
     def main_hearback(self, msg):
-        car_pose = msg.cones[0].pose.pose
+        car_pose = msg
         camera_position = [car_pose.position.x,car_pose.position.y]
         car_yaw = car_pose.orientation.w
+        self.car_yaw_corrected = self.normalize_angle(car_yaw-4.71)
+        
 
         if hasattr(self, "trajectory_in_global_frame"):
             #Get Car front axle center position
-            axle_pos = self.get_front_axle_position(camera_position,car_yaw)
+            axle_pos = self.get_front_axle_position(camera_position,self.car_yaw_corrected)
             #Get closest point on track and distance error
-            cls_point,error_front_axle = self.get_closest_track_point(axle_pos,car_yaw)
-            #Compute target yaw
+            cls_point,error_front_axle = self.get_closest_track_point(axle_pos,self.car_yaw_corrected)
+            #Compute target yaw - Angle from positive x in radians
             target_yaw = self.cal_target_yaw(cls_point)
             #Compute steering angle
-            theta_e = self.normalize_angle(target_yaw-car_yaw)
-            theta_d = np.arctan2(self.k_stanley * error_front_axle, self.target_speed)
-            delta = theta_e + theta_d
+            theta_e = -(target_yaw-self.car_yaw_corrected)
+            theta_d = -np.arctan2(self.k_stanley * error_front_axle, self.target_speed)
+            delta = math.degrees(theta_e + theta_d)
             delta = np.clip(delta, -self.max_steer, self.max_steer)
             self.steering_angle = delta
+            self.target_speed = 3.6/3.6
         else:
             self.steering_angle = 0
+            self.target_speed = 0
             self.get_logger().info("Warning: no trajectory found, will set steering angle to 0!!!!")
 
         # Publish command for velocity
@@ -136,8 +142,14 @@ class StanleyControl(Node):
                 "acceleration": 0.0,
                 "jerk": 0.0}
         msg2 = AckermannDrive(**args2)
-        self.cmd_vel_pub.publish(msg1)
+        
+        args3 = {"header": Header(stamp=self.get_clock().now().to_msg(),frame_id="stanley_controller"), 
+                 "drive": msg1}
+        msg3 = AckermannDriveStamped(**args3)
+
+        self.cmd_drive_pub.publish(msg1)
         self.cmd_vis_pub.publish(msg2)
+        #self.cmd_vel_pub.publish(msg3)
 
     
     def get_front_axle_position(self,cam_pos,car_yaw):
@@ -156,13 +168,32 @@ class StanleyControl(Node):
         return target_idx, error_front_axle
     
     def cal_target_yaw(self,cls_point):
+        if(cls_point==(len(self.ty)-1)):
+            dy = self.ty[cls_point]-self.ty[cls_point-1]
+            dx = self.tx[cls_point]-self.tx[cls_point-1]
+        else:
+            dy = self.ty[cls_point+1]-self.ty[cls_point]
+            dx = self.tx[cls_point+1]-self.tx[cls_point]
+
+        target_yaw_op1 = self.normalize_angle(np.arctan2(dy,dx))
+        target_yaw_op2 = self.normalize_angle(target_yaw_op1 + np.pi)
+
+        yaw_diff_1 = abs(target_yaw_op1-self.car_yaw_corrected)
+        yaw_diff_2 = abs(target_yaw_op2-self.car_yaw_corrected)
+        target_yaw2 = target_yaw_op1 if yaw_diff_1<yaw_diff_2 else target_yaw_op2
+
         dy_dx = np.gradient(self.ty, self.tx)
         # The gradient at the specified point_index
-        rate= dy_dx[cls_point]
-        return np.arctan(rate)
+        rate = dy_dx[cls_point]
+        target_yaw = np.arctan(rate)
+        if(rate)<0: 
+            target_yaw = 3.14+target_yaw
+
+
+        return target_yaw2
     
     def normalize_angle(self,angle):
-        return angle_mod(angle)
+        return angle_mod(angle,zero_2_2pi=True)
     
 
 
