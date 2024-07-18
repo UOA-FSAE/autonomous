@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+message AllStates {
+    uint16 id = 1; 
+    repeated ackermann_msgs.AckermannDrive states = 2;
+}
+
+message AllTrajectories {
+    uint16 id = 1;
+    repeated geometry_msgs.PoseArray trajectories = 2;
+}
+message BoundaryStamped {
+    std_msgs.Header header = 1;
+    repeated float32 coords = 2;
+}
+
+message CAN {
+    uint16 id = 1;
+    bool is_rtr = 2;
+    repeated uint8 data = 3;
+}
+
+message CandidateState {
+    Ackermann ackermann = 1;
+    float32 lateralVel = 2;
+}
+
+message CandidateStates {
+    repeated CandidateState candidateState = 1;
+}
+
+message CANStamped {
+    std_msgs.Header header = 1;
+    CAN can = 2;
+}
+
+message Cone {
+    uint32 id = 0; // ID value of cone (optional, defaults to 0 if not given)
+
+    float32 confidence = 1; // The confidence that this is the cone, a percentage value from 0 to 100 (defaults to 0.0)
+
+    uint8 colour = 2; // The color of the cone: 0 for Blue, 1 for Orange, 2 for Yellow, and 3 for Other
+
+    geometry_msgs.PoseWithCovariance pose = 3; // Position of cone (x, y, z) and rotation
+
+    float32 radius = 4; // Size of cone, radius (should default to 0.0)
+    float32 height = 5; // Size of cone, height (should default to 0.0)
+
+}
+// ? can this be renamed to Cones?
+message ConeMap { 
+    repeated Cone cones = 1; // List of cones detected and where they are     
+}
+message ConeMapStamped {
+    std_msgs.Header header = 1;
+    ConeMap cone_map = 2;
+}
+message ConeStamped {
+    std_msgs.Header header = 1;
+    Cone cone = 2;
+}
+message HardwareStates {
+    uint8 ebs_active = 1;
+    uint8 ts_active = 2;
+    uint8 in_gear = 3;
+    uint8 master_switch_on = 4;
+    uint8 asb_ready = 5;
+    uint8 brakes_engaged = 6;
+}
+message HardwareStatesStamped {
+    std_msgs.Header header = 1;
+    HardwareStates hardware_states = 2;
+}
+message MissionStates {
+    uint8 mission_selected = 1;
+    uint8 mission_finished = 2;
+}
+message MissionStatesStamped {
+    std_msgs.Header header = 1;
+    MissionStates mission_states = 2;
+}
+
+message OccupancyGrid{
+    std_msgs.Header header = 1;
+    repeated Rptuint8 occupancyGrid = 2;
+    float32 resolution = 3;
+}
+
+service Services {
+    rpc CANSendReq (CANSendReqRequest) returns (CANSendReqResponce); 
+}
+message CANSendReqRequest {   
+    CAN can = 1;
+}
+message CANSendReqResponce {
+    bool sent =1;
+}
