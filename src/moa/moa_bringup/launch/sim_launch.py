@@ -3,18 +3,32 @@ import launch_ros.actions
 
 def generate_launch_description():
     return launch.LaunchDescription([
-        # cone map
-        # launch_ros.actions.Node(
-        #     package='aruco_detection',
-        #     executable='aruco_detection',
-        #     name='aruco_detection'
-        # ),
+        # acceleration
+	launch_ros.actions.Node(
+	    package="acceleration",
+	    executable="controller",
+	    name="acceleration"
+	),
+
+	# cone map
+        launch_ros.actions.Node(
+            package='aruco_detection',
+            executable='aruco_detection',
+            name='aruco_detection'
+        ),
 
         # cone mapping
         launch_ros.actions.Node(
             package='cone_mapping',
             executable='dbscan',
             name='dbscan',
+        ),
+
+        # car position
+        launch_ros.actions.Node(
+            package='cone_mapping',
+            executable='car_position',
+            name='car_position',
         ),
 
         # path generation
@@ -37,10 +51,17 @@ def generate_launch_description():
 
         # controller
         launch_ros.actions.Node(
-            package='moa_controllers',
-            executable='trajectory_follower',
-            name='trajectory_follower',
+            package='stanley_controller',
+            executable='controller',
+            name='controller',
         ),
+
+        # steer torque
+        # launch_ros.actions.Node(
+        #     package='steer_torque_from_ackermann',
+        #     executable='steer_torque_from_ackermann',
+        #     name='steer_torque_from_ackermann',
+        # ),
 
         # path viz
         launch_ros.actions.Node(

@@ -315,10 +315,11 @@ class trajectory_optimization(Node):
         #             rm_inds.append(i)
         #             # trajectories.pop([i for i in range(len(trajectories)) if T==trajectories[i]][0])
         #             break
-
-        left_boundary_linestring = self.get_shapely_linestring(self._leftboundary)
-        right_boundary_linestring = self.get_shapely_linestring(self._rightboundary)
-
+        try:
+            left_boundary_linestring = self.get_shapely_linestring(self._leftboundary)
+            right_boundary_linestring = self.get_shapely_linestring(self._rightboundary)
+        except:
+            return
         for i in range(len(trajectories)):  # loop each trajectory
             trajectory = self.get_shapely_linestring([[P.position.x, P.position.y] for P in trajectories[i].poses])
             num_poses = len(trajectories[i].poses)

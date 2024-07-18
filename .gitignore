@@ -10,3 +10,5 @@ kaggle.json
 .gitignore
 .vscode/c_cpp_properties.json
 **/__pycache__/
+*.msg
+*.srv
