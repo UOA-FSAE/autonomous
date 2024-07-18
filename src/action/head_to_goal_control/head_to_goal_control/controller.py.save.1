@@ -15,17 +15,17 @@ from std_msgs.msg import Header
 class head_to_goal_control_algorithm(Node):
     def __init__(self):
         super().__init__("Head_To_Goal_Controller")
-        self.get_logger().info("Head to Goal Controller Node v5 Started")
+        self.get_logger().info("Head to Goal Controller Node v4 Started")
 
         # Constant to tune (touch me please it makes me feel horny ahhhhhhh!)
         ## Tuning for look ahead distance
-        self.look_up_distance = 1
-        self.cancel_distance = 0.7
+        self.look_up_distance = 2
+        self.cancel_distance = 0.5
         ## Tuning for PID controller
-        self.P = 200
+        self.P = 30
         self.max_steering_angle = 20.0
         #self.max_speed = 2.5
-        self.max_speed = 3.0
+        self.max_speed = 4.0
         self.speed_adjuster_width = 15
         ## Current speed setting
         self.current_speed = 0
