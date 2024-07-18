@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
 	entry_points={
 		    'console_scripts': [
-		            'listener = cone_mapping.subscriber_member_function:main',
+		            'kf = cone_mapping.mapper_kalman_filter:main',
+		            'dbscan = cone_mapping.mapper_DBSCAN:main',
 		    ],
 	},
 )

@@ -1,1 +1,0 @@
-ackermann_msgs/AckermannDrive[] trajectories

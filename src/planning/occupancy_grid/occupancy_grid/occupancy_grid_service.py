@@ -35,15 +35,15 @@ class Occupancy_grid(Node):
         )
 
         # TODO change to service branch 31
-        # self.subscription = self.create_subscription(
-        #     ConeMap,
-        #     'cone_map',
-        #     self.publish_occ_grid,
-        #     10
-        # )
+        self.subscription = self.create_subscription(
+            ConeMap,
+            'cone_map',
+            self.publish_occ_grid,
+            10
+        )
 
         self.resolution = 0.1 # in m/pixel 
-        self.car_width = 1.5 # in m TODO change to acutal width
+        self.car_width = 1 # in m TODO change to acutal width
     
     def publish_occ_grid(self, msg):
         bound_l, bound_r, occ_grid = self.gen_occ_grid(msg)
@@ -73,15 +73,15 @@ class Occupancy_grid(Node):
 
         # Put high integer value on cone occupancy grid and return cones that are left and cones that are right
         cones_l, cones_r = self.fill_occupancy_grid(cone_map, occupancy_grid_matrix, x_list, y_list)
-        # cv.imwrite('occ_grid.png', occupancy_grid_matrix)
+        cv.imwrite('occ_grid.png', occupancy_grid_matrix)
         
         # interpolate between cones
         self.interpolate_bounds(occupancy_grid_matrix, cones_l, cones_r, x_list, y_list)
-        # cv.imwrite('interpolated.png', occupancy_grid_matrix)
+        cv.imwrite('interpolated.png', occupancy_grid_matrix)
 
         # apply bodyfit adjustment
         bodyfit_adj = self.bodyfit_adjust(occupancy_grid_matrix, self.car_width)
-        # cv.imwrite('shrunken.png', bodyfit_adj)
+        cv.imwrite('shrunken.png', bodyfit_adj)
 
         # extract left and right edges from occupancy grid
         adj_bound_l, adj_bound_r = self.sep_l_r_bounds(bodyfit_adj, x_list, y_list)
@@ -202,39 +202,44 @@ class Occupancy_grid(Node):
     def interpolate_bounds(self, occ_grid : np.ndarray, left : np.ndarray, right : np.ndarray, x_list : np.ndarray, y_list : np.ndarray):
         '''
             Interpolates points between cones to complete the track boundary
-            
-            Inputs: 
+
+            Inputs:
             occ_grid = Occupancy grid with cones inputted
             left = list cone coordinates for left boundary
             right = list cone coordinates for right boundary
 
             Output:
-            
+
         '''
-        
+
         x_l, y_l = left[::,0], left[::,1]
-        x_r, y_r = right[::,0], right[::,1] 
-        
+        x_r, y_r = right[::,0], right[::,1]
+
         mat_h, mat_w = np.shape(occ_grid)
-        
-        spline_tck_l, u_l = splprep([x_l, y_l], s=2, per=True) # can tune s
-        spline_tck_r, u_r = splprep([x_r, y_r], s=2, per=True) # can tune s
+        print(mat_h);
+        print(mat_w);
+
+        spline_tck_l, u_l = splprep([x_l, y_l], s=2, per=False) # can tune s
+        spline_tck_r, u_r = splprep([x_r, y_r], s=2, per=False) # can tune s
 
         eval_points = 10**(math.ceil(math.log10(mat_w))+1)
 
-        # evaluate spline at given point 
-        xi_l, yi_l = splev(np.linspace(0,1,eval_points), spline_tck_l) 
+        # evaluate spline at given point
+        xi_l, yi_l = splev(np.linspace(0,1,eval_points), spline_tck_l)
         xi_r, yi_r = splev(np.linspace(0,1,eval_points), spline_tck_r)
 
         interp_left, interp_right = np.column_stack((xi_l, yi_l)), np.column_stack((xi_r, yi_r))
 
         # fill in interpolated points in occupancy grid
         for pt in np.vstack((interp_left, interp_right)):
-            x = round(pt[0])
-            y = round(pt[1])
-            occ_grid[y][x] = 255
+            try:
+                x = round(pt[0])
+                y = round(pt[1])
+                occ_grid[y][x] = 255
+            except IndexError:
+                self.get_logger().info("Warning: Index error for interpolation!")
 
-        return 
+        return
 
     def bodyfit_adjust(self, occ_grid : np.ndarray, width : float) -> np.ndarray:
         '''

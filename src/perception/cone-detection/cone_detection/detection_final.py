@@ -3,8 +3,8 @@ import rclpy
 from rclpy.node import Node
 from moa_msgs.msg import ConeStamped
 from moa_msgs.msg import ConeMapStamped
-from mapping_interfaces.msg import ConeMap
-from mapping_interfaces.msg import Cone
+from moa_msgs.msg import ConeMap
+from moa_msgs.msg import Cone
 
 import sys
 import numpy as np
@@ -84,8 +84,9 @@ class detection(Node):
         self.obj_runtime_param = sl.ObjectDetectionRuntimeParameters()
 
         # ... [Initialize the ROS 2 publisher for DetectedObject message]
-        self.publisher = self.create_publisher(ConeMap, 'cone_detection', 10)
-        self.timer = self.create_timer(0.5, self.run_detection)
+        #self.publisher = self.create_publisher(ConeMap, 'cone_detection', 10)
+        self.publisher = self.create_publisher(ConeMap, 'cone_map', 10)
+        self.timer = self.create_timer(0.1, self.run_detection)
 
         self.counter = 0
 
@@ -191,12 +192,12 @@ class detection(Node):
         self.image_net = self.image_left_tmp.get_data()
         lock.release()
         self.run_signal = True
-        print("here")
+        #print("here")
         # -- Detection running on the other thread
         while self.run_signal:
             #print(run_signal);
             sleep(0.001)
-        print("outside loop")
+        #print("outside loop")
         # Wait for detections
         lock.acquire()
         # -- Ingest detections

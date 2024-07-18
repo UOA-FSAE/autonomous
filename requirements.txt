@@ -261,3 +261,5 @@ xkit==0.0.0
 yarg==0.1.9
 zipp==1.0.0
 numpy
+opencv-python
+opencv-contrib-python
