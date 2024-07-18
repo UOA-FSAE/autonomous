@@ -76,10 +76,8 @@ class trajectory_optimization(Node):
 
             leftboundary, rightboundary, car_position = self.get_boundaries(msg.cones)    # get boundaries.
             if len(leftboundary) < 2:
-                self.get_logger().info("NOT ENOUGH LEFT CONES")
                 return
             if len(rightboundary) < 2:
-                self.get_logger().info("NOT ENOUGH RIGHT CONES")
                 return
             position_orientation = self.get_position_of_cart(msg)
             if self._interpolate:
@@ -106,17 +104,17 @@ class trajectory_optimization(Node):
 
 
                 if self._delete:
-                    self.get_logger().info(f"trajectories before deletion = {len(trajectories)}")
+                    # self.get_logger().info(f"trajectories before deletion = {len(trajectories)}")
                     self.trajectory_deletion(trajectories, states)  # delete invalid trajectories
-                    self.get_logger().info(f"number of paths after deletion = {len(trajectories)}")
+                    # self.get_logger().info(f"number of paths after deletion = {len(trajectories)}")
 
                 best_trajectory_idx = self.optimisation(trajectories)   # find best/optimised trajectory
                 
                 if best_trajectory_idx == None: # check if no trajectory found
                     self.get_logger().info("no valid trajectories found")
                 else:    
-                    self.get_logger().info(f"best indx = {best_trajectory_idx}")
-                    self.get_logger().info(f"best steering angle is = {states[best_trajectory_idx]}")
+                    # self.get_logger().info(f"best indx = {best_trajectory_idx}")
+                    # self.get_logger().info(f"best steering angle is = {states[best_trajectory_idx]}")
 
                     # publish best trajectory
                     args1 = {"header": Header(stamp=Time(sec=0,nanosec=0), frame_id='path_optimisation'),
@@ -132,7 +130,7 @@ class trajectory_optimization(Node):
                     self.within_boundary_trajectories_publisher.publish(AllTrajectories(**args2)) # within bound pub
                     self.best_steering_angle_pub.publish(Float32(**args3)) # optimal steering angle pub
 
-                    self.get_logger().info("OPTIMAL TRAJECTORY COMPUTED")
+                    # self.get_logger().info("OPTIMAL TRAJECTORY COMPUTED")
             else:
                 self.get_logger().info(f"Ids state:{self._state_msg.id} and trajectory:{self._trajectories_msg.id} do not match")
                 
@@ -206,7 +204,7 @@ class trajectory_optimization(Node):
         if interpolate:
             if num_cones >= 3:  # min points for quad/cubic interp
                 radius = self.get_arc_radius(coods[0], coods[1], coods[2])
-                self.get_logger().info(f"RADIUS = {radius}")
+                # self.get_logger().info(f"RADIUS = {radius}")
                 # if radius <= 1000:  # only interp on corners not straights
                 coods = []
                 f = scipy.interpolate.interp1d(xps, yps, kind='quadratic')
