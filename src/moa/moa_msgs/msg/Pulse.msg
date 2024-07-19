@@ -1,3 +1,2 @@
-# Pulse message
-bool value
-event_type string
+bool value 
+string event_type 

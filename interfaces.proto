@@ -86,6 +86,11 @@ message OccupancyGrid{
     float32 resolution = 3;
 }
 
+message Pulse{
+    bool value = 0;
+    string event_type = 1;
+}
+
 service Services {
     rpc CANSendReq (CANSendReqRequest) returns (CANSendReqResponce); 
 }
