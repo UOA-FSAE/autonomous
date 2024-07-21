@@ -34,14 +34,14 @@ services:
       - DISPLAY
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
-      #- ..:/ws
+      - ..:/ws
       #- ../src:/ws/src
-      - ../bringup:/ws/bringup
-      - ../src/visualization/:/ws/src/visualization/
-      - ../src/moa/moa_description:/ws/src/moa/moa_description
-      - ../src/moa/moa_msgs:/ws/src/moa/moa_msgs
-      - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
-      - ../bringup:/ws/bringup
+      # - ../bringup:/ws/bringup
+      # - ../src/visualization/:/ws/src/visualization/
+      # - ../src/moa/moa_description:/ws/src/moa/moa_description
+      # - ../src/moa/moa_msgs:/ws/src/moa/moa_msgs
+      # - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
+      # - ../bringup:/ws/bringup
       - /tmp/.X11-unix:/tmp/.X11-unix
       - /dev:/dev
       
