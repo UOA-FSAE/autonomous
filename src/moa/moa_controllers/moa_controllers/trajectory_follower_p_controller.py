@@ -7,14 +7,17 @@ from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
 from rclpy.executors import SingleThreadedExecutor
 from std_msgs.msg import Float32, Float64
 
-from geometry_msgs.msg import PoseArray
+from geometry_msgs.msg import PoseArray, Pose
 from moa_msgs.msg import ConeMap
+
 from std_msgs.msg import Header
 from builtin_interfaces.msg import Time
 import numpy as np
 
 class trajectory_following(Node):
     def __init__(self):
+
+        self._car_position: Pose
         super().__init__("Trajectory_Following")
         self.get_logger().info("Trajectory Following Node Started")
 
@@ -42,6 +45,7 @@ class trajectory_following(Node):
         self.create_subscription(PoseArray, "moa/selected_trajectory", self.get_desired_pose, qos_profile)
         self.create_subscription(Float32, "moa/selected_steering_angle", self.get_steering_angle, qos_profile)  
         self.create_subscription(ConeMap, "cone_map", self.callback, qos_profile)
+        self.create_subscription(ConeMap, "car_position", self.car_pos_cb)
 
         # publishers (including simulation)
         self.moa_steering_pub = self.create_publisher(AckermannDriveStamped, "cmd_vel", 10)
@@ -52,7 +56,9 @@ class trajectory_following(Node):
     
     def get_desired_pose(self, msg:PoseArray): self._desired_pose = msg.poses[-1]
 
-    # def get_car_position(self, msg:ConeMap): self._car_position = msg.cones[0].pose.pose.position
+    def get_car_position(self, pose:Pose): self._car_position = pose
+
+
 
     def callback(self, msg:ConeMap):
         if hasattr(self, "_steering_angle"):
