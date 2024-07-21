@@ -12,9 +12,6 @@ from ultralytics import YOLO
 from threading import Lock, Thread
 from time import sleep
 
-import ogl_viewer.viewer as gl
-import cv_viewer.tracking_viewer as cv_viewer
-
 lock = Lock()
 run_signal = False
 exit_signal = False
@@ -99,6 +96,7 @@ def main():
 
     # Create a InitParameters object and set configuration parameters
     init_params = sl.InitParameters(input_t=input_type, svo_real_time_mode=True)
+    init_params.camera_resolution = sl.RESOLUTION.HD720
     init_params.coordinate_units = sl.UNIT.METER
     init_params.depth_mode = sl.DEPTH_MODE.ULTRA  # QUALITY
     init_params.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Y_UP
@@ -115,7 +113,8 @@ def main():
 
     print("Initialized Camera")
 
-    positional_tracking_parameters = sl.PositionalTrackingParameters()
+    py_transform = sl.Transform()
+    positional_tracking_parameters = sl.PositionalTrackingParameters(_init_pos=py_transform)
     # If the camera is static, uncomment the following line to have better performances and boxes sticked to the ground.
     # positional_tracking_parameters.set_as_static = True
     zed.enable_positional_tracking(positional_tracking_parameters)
@@ -154,7 +153,7 @@ def main():
             # Retrieve display data
             zed.get_position(cam_w_pose, sl.REFERENCE_FRAME.WORLD)
             for object in objects.object_list:
-                print("{} {}".format(object.raw_label, object.position))
+                print("{} {} {}".format(object.id, object.raw_label, object.position))
         else:
             exit_signal = True
 
