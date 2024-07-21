@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
+
+import sys
 import numpy as np
 
 import argparse
 import torch
 import cv2
 import pyzed.sl as sl
+from ultralytics import YOLO
 
 from threading import Lock, Thread
 from time import sleep
 
 import ogl_viewer.viewer as gl
 import cv_viewer.tracking_viewer as cv_viewer
-
-from inference.models.utils import get_roboflow_model
 
 lock = Lock()
 run_signal = False
@@ -32,33 +33,31 @@ def xywh2abcd(xywh, im_shape):
     # | Object |
     # D ------ C
 
-    output[0][0] = int(x_min)
-    output[0][1] = int(y_min)
+    output[0][0] = x_min
+    output[0][1] = y_min
 
-    output[1][0] = int(x_max)
-    output[1][1] = int(y_min)
+    output[1][0] = x_max
+    output[1][1] = y_min
 
-    output[2][0] = int(x_max)
-    output[2][1] = int(y_max)
+    output[2][0] = x_max
+    output[2][1] = y_max
 
-    output[3][0] = int(x_min)
-    output[3][1] = int(y_max)
+    output[3][0] = x_min
+    output[3][1] = y_max
     return output
 
 def detections_to_custom_box(detections, im0):
     output = []
-
-    for i, prediction in detections.predictions:
-        xywh = [prediction.x, prediction.y, prediction.width, prediction.height]
+    for i, det in enumerate(detections):
+        xywh = det.xywh[0]
 
         # Creating ingestable objects for the ZED SDK
         obj = sl.CustomBoxObjectData()
         obj.bounding_box_2d = xywh2abcd(xywh, im0.shape)
-        obj.label = int(prediction.class_id)
-        obj.probability = float(prediction.conf)
+        obj.label = det.cls
+        obj.probability = det.conf
         obj.is_grounded = False
         output.append(obj)
-
     return output
 
 
@@ -67,17 +66,18 @@ def torch_thread(weights, img_size, conf_thres=0.2, iou_thres=0.45):
 
     print("Intializing Network...")
 
+    model = YOLO(weights)
+
     while not exit_signal:
         if run_signal:
             lock.acquire()
 
             img = cv2.cvtColor(image_net, cv2.COLOR_BGRA2RGB)
-
-            # Inference image to find faces
-            results = weights.infer(image=img, confidence=conf_thres, iou_threshold=iou_thres)[0]
+            # https://docs.ultralytics.com/modes/predict/#video-suffixes
+            det = model.predict(img, save=False, imgsz=img_size, conf=conf_thres, iou=iou_thres)[0].cpu().numpy().boxes
 
             # ZED CustomBox format (with inverse letterboxing tf applied)
-            detections = detections_to_custom_box(results, image_net)
+            detections = detections_to_custom_box(det, image_net)
             lock.release()
             run_signal = False
         sleep(0.01)
@@ -86,19 +86,7 @@ def torch_thread(weights, img_size, conf_thres=0.2, iou_thres=0.45):
 def main():
     global image_net, exit_signal, run_signal, detections
 
-    # Roboflow model
-    model_name = "fsae-autonomous-cone-detection"
-    model_version = "1"
-    api_key = "HRZLnQrwYBnB2XoN2XHQ"
-
-    # Get Roboflow face model (this will fetch the model from Roboflow)
-    model = get_roboflow_model(
-        model_id="{}/{}".format(model_name, model_version),
-        # Replace ROBOFLOW API KEY with your Roboflow API Key
-        api_key= api_key
-    )
-
-    capture_thread = Thread(target=torch_thread, kwargs={'weights': model, 'img_size': opt.img_size, "conf_thres": opt.conf_thres})
+    capture_thread = Thread(target=torch_thread, kwargs={'weights': opt.weights, 'img_size': opt.img_size, "conf_thres": opt.conf_thres})
     capture_thread.start()
 
     print("Initializing Camera...")
@@ -135,6 +123,7 @@ def main():
     obj_param = sl.ObjectDetectionParameters()
     obj_param.detection_model = sl.OBJECT_DETECTION_MODEL.CUSTOM_BOX_OBJECTS
     obj_param.enable_tracking = True
+    obj_param.enable_segmentation = False  # designed to give person pixel mask with internal OD
     zed.enable_object_detection(obj_param)
 
     objects = sl.Objects()
@@ -202,7 +191,7 @@ def main():
 
             cv2.imshow("ZED | 2D View and Birds View", global_image)
             key = cv2.waitKey(10)
-            if key == 27:
+            if key == 27 or key == ord('q') or key == ord('Q'):
                 exit_signal = True
         else:
             exit_signal = True
@@ -215,7 +204,7 @@ def main():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='yolov8m.pt', help='model.pt path(s)')
-    parser.add_argument('--svo', type=str, default=None, help='optional svo file')
+    parser.add_argument('--svo', type=str, default=None, help='optional svo file, if not passed, use the plugged camera instead')
     parser.add_argument('--img_size', type=int, default=416, help='inference size (pixels)')
     parser.add_argument('--conf_thres', type=float, default=0.4, help='object confidence threshold')
     opt = parser.parse_args()
