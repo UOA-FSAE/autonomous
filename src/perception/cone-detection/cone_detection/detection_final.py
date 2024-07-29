@@ -15,7 +15,7 @@ import cv2
 import pyzed.sl as sl
 import torch.backends.cudnn as cudnn
 
-sys.path.insert(0, './yolov7')
+sys.path.insert(0, './yolov8')
 from models.experimental import attempt_load
 from utils.general import check_img_size, non_max_suppression, scale_coords, xyxy2xywh
 from utils.torch_utils import select_device
@@ -24,10 +24,12 @@ from utils.datasets import letterbox
 from threading import Lock, Thread
 from time import sleep
 
+from ultralytics import YOLO
+
 global exit_signal,detections, weights, img_size, conf_thres
 
 #Basic arguments of the scripts
-weights = "yolov7m.pt"
+weights = "yolov8m.pt"
 img_size = 416
 conf_thres = 0.4
 
@@ -158,25 +160,29 @@ class detection(Node):
         imgsz = img_size
         
         # Load model
-        model = attempt_load(weights, map_location=device)  # load FP32
-        stride = int(model.stride.max())  # model stride
-        imgsz = check_img_size(imgsz, s=stride)  # check img_size
-        if half:
-            model.half()  # to FP16
-        cudnn.benchmark = True
 
-        # Run inference
-        if device.type != 'cpu':
-            model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
+        #model = attempt_load(weights, map_location=device)  # load FP32
+        model = YOLO(weights)
+        #stride = int(model.stride.max())  # model stride
+        #imgsz = check_img_size(imgsz, s=stride)  # check img_size
+        # if half:
+        #     model.half()  # to FP16
+        # cudnn.benchmark = True
+        #
+        # # Run inference
+        # if device.type != 'cpu':
+        #     model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
         
         while not exit_signal:
             #print("looping in another thread")
             if self.run_signal:
                 lock.acquire()
-                img, ratio, pad = self.img_preprocess(self.image_net, device, half, imgsz)
 
-                pred = model(img)[0]
-                det = non_max_suppression(pred, conf_thres, iou_thres)
+                #img, ratio, pad = self.img_preprocess(self.image_net, device, half, imgsz)
+                img = cv2.cvtColor(image_net, cv2.COLOR_BGRA2BGR)
+                #pred = model(img)[0]
+                #det = non_max_suppression(pred, conf_thres, iou_thres)
+                det = model.predict(img, save=False, imsize=imgsz, conf=conf_thres, iou=iou_thres)[0].cpu().numpy.boxes
 
                 # ZED CustomBox format (with inverse letterboxing tf applied)
                 detections = self.detections_to_custom_box(det, img, self.image_net)
@@ -283,8 +289,6 @@ class detection(Node):
         print(height_message);
 
 
-
-
 def main(args=None):
     rclpy.init(args=args)
     cone_detection = detection()
@@ -292,6 +296,7 @@ def main(args=None):
     exit_signal = True
     cone_detection.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
