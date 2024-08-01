@@ -14,3 +14,6 @@
 [submodule "ROS2-protobuff-compiler"]
 	path = ROS2-protobuff-compiler
 	url = https://github.com/UOA-FSAE/ROS2-protobuff-compiler.git
+[submodule "MinCurve_PredefinedTracks"]
+	path = MinCurve_PredefinedTracks
+	url = https://github.com/Siva-Sriram/MinCurve_PredefinedTracks.git
