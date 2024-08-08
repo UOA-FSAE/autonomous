@@ -36,7 +36,8 @@ build: $(pwd)
 ifneq ($(strip $(GPU)),)
 	$(info using GPU container)
 	cp .docker_templates/docker-compose.GPU.yml .devcontainer/docker-compose.yml
-	cp .docker_templates/zed.Dockerfile .devcontainer/zed.Dockerfile
+	cp .docker_templates/zed.Dev.Dockerfile .devcontainer/zed.Dockerfile
+	cp .docker_templates/zed.Dev.Dockerfile .devcontainer/zed.Dockerfile
 	sed -i 's/NVIDIA_VISIBLE_DEVICES=.*/NVIDIA_VISIBLE_DEVICES=0/g' .devcontainer/docker-compose.yml
 	
 	if [ -f "/etc/nv_tegra_release" ]; then \
