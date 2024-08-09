@@ -53,3 +53,15 @@ For detailed documentation about this project, please visit the **Wiki** tab on 
 ### Ros2
 
 Running commands: `ros2 <command>`
+
+# autonomous
+
+1. build a service (eg. jetson, autonomous_ros2)
+```
+make build target=jetson
+```
+
+2. run a service
+```
+make up target=jetson
+```

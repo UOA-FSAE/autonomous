@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'cone_mapping'
+package_name = 'test_plan_act_algorithems'
 
 setup(
     name=package_name,
@@ -13,16 +13,15 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='dyu056',
-    maintainer_email='daniel.yu@fsae.co.nz',
+    maintainer='chris',
+    maintainer_email='chrisgraham908@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
-	entry_points={
-		    'console_scripts': [
-		            'kf = cone_mapping.mapper_kalman_filter:main',
-		            'dbscan = cone_mapping.mapper_DBSCAN:main',
-                    'car_position = cone_mapping.car_position:main',
-		    ],
-	},
+    entry_points={
+        'console_scripts': [
+            'aruco_triangle = test_plan_act_algorithems.aruco_triangle:main',
+            'aruco_middle = test_plan_act_algorithems.aruco_middle:main',
+        ],
+    },
 )
