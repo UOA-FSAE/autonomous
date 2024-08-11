@@ -39,14 +39,14 @@ RUN apt-get update && apt-get install -q -y --no-install-recommends \
 ENV ROS_DISTRO humble
 
 # setup colcon mixin and metadata
-RUN rosdep init && \
-    rosdep update --rosdistro $ROS_DISTRO && \
-    colcon mixin add default \
-      https://raw.githubusercontent.com/colcon/colcon-mixin-repository/master/index.yaml && \
-    colcon mixin update && \
-    colcon metadata add default \
-      https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
-    colcon metadata update
+# RUN rosdep init && \
+#     rosdep update --rosdistro $ROS_DISTRO && \
+#     colcon mixin add default \
+#       https://raw.githubusercontent.com/colcon/colcon-mixin-repository/master/index.yaml && \
+#     colcon mixin update && \
+#     colcon metadata add default \
+#       https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
+#     colcon metadata update
 
 COPY ./src/perception/ /ws/src/perception/
 COPY ./src/moa/moa_description /ws/src/moa/moa_description
@@ -64,7 +64,11 @@ RUN cd /ws/src/ && \
 
 RUN cd /usr/local/zed && \
     pip install requests && \
-    python3 get_python_api.py
+    python3 get_python_api.py \
+    pip3 install ultralytics \
+    pip3 install torch \
+    pip3 install pyopengl \ 
+    pip3 install pyzed 
 
 RUN source /opt/ros/humble/setup.bash && \
     colcon build --parallel-workers $(nproc) --symlink-install \
@@ -75,9 +79,5 @@ RUN source /opt/ros/humble/setup.bash && \
 
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \ 
     echo "source /ws/install/setup.bash" >> ~/.bashrc
-
-RUN . ~/.bashrc
-
-COPY ./.devcontainer/SN31421864.conf /usr/local/zed/settings/SN31421864.conf
 
 CMD ["bash"]

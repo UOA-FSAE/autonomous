@@ -1,12 +1,26 @@
-FROM stereolabs/zed:4.0-tools-devel-l4t-r35.4
-LABEL Name=zed_sdk Version=0.0.1
+FROM nvcr.io/nvidia/l4t-base:35.4.1
+LABEL Name=autonomous Version=0.0.1
 
 SHELL [ "/bin/bash", "-c" ]
 
 WORKDIR /ws
 
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libopenblas-dev \
+        libopenmpi-dev \
+        openmpi-bin \
+        openmpi-common \
+        gfortran \
+        libomp-dev  \
+        nvidia-cuda-dev \
+        nvidia-cudnn8-dev && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
+
+RUN apt update && apt install locales && \
+    locale-gen en_US en_US.UTF-8 && \
+    update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 
 RUN apt update && apt install -y gnupg wget software-properties-common && \
     add-apt-repository universe
@@ -21,61 +35,39 @@ RUN apt update && apt install curl -y && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu focal main" | \
     tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
-# setup timezone & install packages
-RUN apt-get update && apt-get install -q -y --no-install-recommends \
-    tzdata \
-    dirmngr \
-    gnupg2 \
-    git \
+ENV ROS_DISTRO humble
+
+RUN apt update && apt install --no-install-recommends -y \
     ros-humble-ros-base \
+    ros-dev-tools \
     build-essential \
     python3-colcon-common-extensions \
     python3-colcon-mixin \
     python3-rosdep \
-    python3-vcstool && \
+    python3-vcstool \ 
+    python3-pip \
+    ros-humble-foxglove-bridge && \
     rm -rf /var/lib/apt/lists/* && \
-    apt-get clean
+    apt-get clean && \
+    echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc 
+    
+COPY . .
 
-ENV ROS_DISTRO humble
+RUN rosdep init && rosdep update --rosdistro $ROS_DISTRO && apt-get update && \
+    cd /ws && \
+    rosdep install --from-paths src -y -r --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \ 
+    rm -rf /var/lib/apt/lists/* 
 
-# setup colcon mixin and metadata
-RUN rosdep init && \
-    rosdep update --rosdistro $ROS_DISTRO && \
-    colcon mixin add default \
-      https://raw.githubusercontent.com/colcon/colcon-mixin-repository/master/index.yaml && \
-    colcon mixin update && \
-    colcon metadata add default \
-      https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
-    colcon metadata update
+ENV PYTORCH_URL=https://developer.download.nvidia.com/compute/redist/jp/v512/pytorch/torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl PYTORCH_WHL=torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl 
 
-COPY ./src/perception/ /ws/src/perception/
-COPY ./src/moa/moa_description /ws/src/moa/moa_description
-COPY ./src/moa/moa_msgs /ws/src/moa/moa_msgs
+RUN cd /opt && \
+    wget --quiet --show-progress --progress=bar:force:noscroll --no-check-certificate ${PYTORCH_URL} -O ${PYTORCH_WHL} && \
+    pip3 install --verbose ${PYTORCH_WHL}
 
-# install ros2 packages
-RUN cd /ws/src/ && \
-    git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
-    cd .. && \
-    source /opt/ros/humble/setup.bash && \ 
-    rosdep update && apt-get update && \
-    rosdep install --from-paths src -y -r --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \
-    rm -rf /var/lib/apt/lists/* && \
-    apt-get clean
-
-RUN cd /usr/local/zed && \
-    pip install requests && \
-    python3 get_python_api.py
+RUN python3 -c 'import torch; print(f"PyTorch version: {torch.__version__}"); print(f"CUDA available:  {torch.cuda.is_available()}"); print(f"cuDNN version:   {torch.backends.cudnn.version()}"); print(torch.__config__.show());'
 
 RUN source /opt/ros/humble/setup.bash && \
     colcon build --parallel-workers $(nproc) --symlink-install \
-        --event-handlers console_direct+ --base-paths src \
-        --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
-        ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
+        --event-handlers console_direct+ --base-paths src 
 
-RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \ 
-    echo "source /ws/install/setup.bash" >> ~/.bashrc
-
-RUN . ~/.bashrc
-
-CMD ["bash"]
+CMD [ "bash" ]
