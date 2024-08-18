@@ -41,7 +41,7 @@ class detection(Node):
         self.run_signal = False
         super().__init__('detector')
 
-        # Initialize ZED camera and YOLOv7
+        # Initialize ZED camera and YOLOv8
         capture_thread = Thread(target=self.torch_thread,kwargs={'weights': weights, 'img_size': img_size, "conf_thres": conf_thres})
         capture_thread.start()
         
@@ -85,7 +85,7 @@ class detection(Node):
         self.py_translation = sl.Translation()
         self.obj_runtime_param = sl.ObjectDetectionRuntimeParameters()
 
-        # ... [Initialize the ROS 2 publisher for DetectedObject message]
+        # ... [Initialize the ROS2 publisher for DetectedObject message]
         #self.publisher = self.create_publisher(ConeMap, 'cone_detection', 10)
         self.publisher = self.create_publisher(ConeMap, 'cone_map', 10)
         self.timer = self.create_timer(0.1, self.run_detection)
