@@ -39,14 +39,14 @@ RUN apt-get update && apt-get install -q -y --no-install-recommends \
 ENV ROS_DISTRO humble
 
 # setup colcon mixin and metadata
-# RUN rosdep init && \
-#     rosdep update --rosdistro $ROS_DISTRO && \
-#     colcon mixin add default \
-#       https://raw.githubusercontent.com/colcon/colcon-mixin-repository/master/index.yaml && \
-#     colcon mixin update && \
-#     colcon metadata add default \
-#       https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
-#     colcon metadata update
+RUN rosdep init && \
+    rosdep update --rosdistro $ROS_DISTRO && \
+    colcon mixin add default \
+      https://raw.githubusercontent.com/colcon/colcon-mixin-repository/master/index.yaml && \
+    colcon mixin update && \
+    colcon metadata add default \
+      https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
+    colcon metadata update
 
 COPY ./src/perception/ /ws/src/perception/
 COPY ./src/moa/moa_description /ws/src/moa/moa_description
