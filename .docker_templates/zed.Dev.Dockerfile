@@ -1,4 +1,4 @@
-FROM stereolabs/zed:4.0-devel-cuda12.1-ubuntu22.04
+FROM stereolabs/zed:4.1-devel-cuda12.1-ubuntu22.04 
 LABEL Name=zed_sdk Version=0.0.1
 
 SHELL [ "/bin/bash", "-c" ]
@@ -67,5 +67,9 @@ RUN source /opt/ros/humble/setup.bash && \
         ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
 
 RUN echo "source /ws/install/setup.bash" >> ~/.bashrc
+
+RUN . ~/.bashrc
+
+COPY ./.devcontainer/SN31421864.conf /usr/local/zed/settings/SN31421864.conf
 
 CMD ["bash"]

@@ -32,13 +32,14 @@ class pure_pursuit_algorithm(Node):
         # subscribe to best trajectory
         self.best_trajectory_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
         self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.main_hearback, 5)
+        self.create_subscription(Pose, "car_position", self.get_car_position, 5)
         self.cmd_vel_pub = self.create_publisher(AckermannDrive, "/drive", 5)
         self.cmd_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
         self.track_point_pub = self.create_publisher(Pose, "moa/track_point", 5)
 
     def main_hearback(self, msg: ConeMap):
         # Update car's current location and update transformation matrix
-        self.car_pose = msg.cones[0].pose.pose
+        self.car_pose = self.car_position_pose
         self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.convert_to_transformation_matrix(self.car_pose.position.x, self.car_pose.position.y, self.car_pose.orientation.w)
 
         # Before proceed, check whether we have a trajectory input
@@ -206,6 +207,8 @@ class pure_pursuit_algorithm(Node):
         msg2 = AckermannDrive(**args2)
         self.cmd_vel_pub.publish(msg1)
         self.cmd_vis_pub.publish(msg2)
+    
+    def get_car_position(self, msg:Pose): self.car_position_pose = msg
 
 def main(args=None):
     rclpy.init(args=args)

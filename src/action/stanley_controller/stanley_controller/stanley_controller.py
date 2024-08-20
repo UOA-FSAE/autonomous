@@ -5,7 +5,8 @@ import math
 from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import Pose
 from moa_msgs.msg import ConeMap
-from ackermann_msgs.msg import AckermannDrive
+from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
+from std_msgs.msg import Header
 
 def angle_mod(x, zero_2_2pi=False, degree=False):
     """
@@ -83,8 +84,9 @@ class StanleyControl(Node):
         self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
         self.create_subscription(Pose, "car_position", self.main_hearback, 5)
         #Publish result
-        self.cmd_vel_pub = self.create_publisher(AckermannDrive, "/drive", 5)
+        self.cmd_drive_pub = self.create_publisher(AckermannDrive, "/drive", 5)
         self.cmd_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
+        self.cmd_vel_pub = self.create_publisher(AckermannDriveStamped, "/cmd_vel", 5)
         self.create_publisher(Pose, "moa/track_point", 5)
     
     def main_hearback(self, msg):
@@ -140,8 +142,14 @@ class StanleyControl(Node):
                 "acceleration": 0.0,
                 "jerk": 0.0}
         msg2 = AckermannDrive(**args2)
-        self.cmd_vel_pub.publish(msg1)
+        
+        args3 = {"header": Header(stamp=self.get_clock().now().to_msg(),frame_id="stanley_controller"), 
+                 "drive": msg1}
+        msg3 = AckermannDriveStamped(**args3)
+
+        self.cmd_drive_pub.publish(msg1)
         self.cmd_vis_pub.publish(msg2)
+        #self.cmd_vel_pub.publish(msg3)
 
     
     def get_front_axle_position(self,cam_pos,car_yaw):

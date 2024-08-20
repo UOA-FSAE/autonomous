@@ -1,11 +1,11 @@
 {
-	"name": "Autonomous Devcontainer",
+	"name": "Autonomous Dev",
 	
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "autonomous_ros2",
 	"shutdownAction": "none",
 
-	"postCreateCommand": "rosdep install --from-paths src -y --ignore-src && colcon build --symlink-install",
+	"postCreateCommand": "rosdep install --from-paths src -y --ignore-src && colcon build",
 	
 	"workspaceFolder": "/ws",
 	"customizations": {
@@ -28,7 +28,8 @@
 				"redhat.vscode-xml",
 				"twxs.cmake",
 				"VisualStudioExptTeam.intellicode-api-usage-examples",
-				"VisualStudioExptTeam.vscodeintellicode"
+				"VisualStudioExptTeam.vscodeintellicode",
+				"redhat.vscode-yaml"
 			]
 		}
 	}
