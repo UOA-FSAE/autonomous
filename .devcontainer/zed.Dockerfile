@@ -57,7 +57,11 @@ RUN cd /ws/src/ && \
 
 RUN cd /usr/local/zed && \
     pip install requests && \
-    python3 get_python_api.py
+    python3 get_python_api.py \
+    pip3 install ultralytics \
+    pip3 install torch \
+    pip3 install pyopengl \ 
+    pip3 install pyzed 
 
 RUN source /opt/ros/humble/setup.bash && \ 
     colcon build --parallel-workers $(nproc) --symlink-install \
@@ -67,9 +71,5 @@ RUN source /opt/ros/humble/setup.bash && \
         ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
 
 RUN echo "source /ws/install/setup.bash" >> ~/.bashrc
-
-RUN . ~/.bashrc
-
-COPY ./.devcontainer/SN31421864.conf /usr/local/zed/settings/SN31421864.conf
 
 CMD ["bash"]
