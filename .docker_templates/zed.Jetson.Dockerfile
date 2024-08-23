@@ -1,4 +1,4 @@
-FROM stereolabs/zed:4.0-tools-devel-l4t-r35.4
+FROM stereolabs/zed:4.1-tools-devel-l4t-r35.4
 LABEL Name=zed_sdk Version=0.0.1
 
 SHELL [ "/bin/bash", "-c" ]
@@ -56,7 +56,7 @@ RUN mkdir src && \
     source /opt/ros/humble/setup.bash && \ 
     rosdep update && \
     apt-get update && \
-    rosdep install --from-paths src -y -r --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy || true && \
+    rosdep install --from-paths src -y -r --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy --skip-keys="point_cloud_transport_plugins draco_point_cloud_transport" || true && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
@@ -68,12 +68,12 @@ RUN cd /usr/local/zed && \
     # pip3 install pyopengl \ 
     # pip3 install pyzed 
 
-RUN source /opt/ros/humble/setup.bash 
-    # colcon build --parallel-workers $(nproc) --symlink-install \
-    #     --event-handlers console_direct+ --base-paths src \
-    #     --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
-    #     ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-    #     ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' || true
+RUN source /opt/ros/humble/setup.bash && \
+    colcon build --parallel-workers $(nproc) --symlink-install \
+        --event-handlers console_direct+ --base-paths src \
+        --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
+        ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
+        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' || true
 
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \ 
     echo "source /ws/install/setup.bash" >> ~/.bashrc

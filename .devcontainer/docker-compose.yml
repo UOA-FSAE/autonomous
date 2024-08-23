@@ -1,33 +1,33 @@
 version: '3.4'
 
 services:
-  # autonomous_ros2:
-  #   image: autonomous
-  #   build:
-  #     context: ..
-  #     dockerfile: .devcontainer/ros2_ws.Dockerfile
-  #   environment:
-  #     - DISPLAY
-  #     - NVIDIA_VISIBLE_DEVICES=all
-  #     - NVIDIA_DRIVER_CAPABILITIES=all
-  #     - ROS_DOMAIN_ID=47
-  #   volumes:
-  #     - ..:/ws
-  #   network_mode: host
-  #   ipc: host
-  #   stdin_open: true
-  #   tty: true
-  #   runtime: nvidia
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             device_ids: []
-  #             capabilities: [gpu]
-  #   privileged: true
-  #   devices:
-  #     - /dev:/dev
+  autonomous_ros2:
+    image: autonomous
+    build:
+      context: ..
+      dockerfile: .devcontainer/ros2_ws.Dockerfile
+    environment:
+      - DISPLAY=host.docker.internal
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - ROS_DOMAIN_ID=47
+    volumes:
+      - ..:/ws
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: []
+              capabilities: [gpu]
+    privileged: true
+    devices:
+      - /dev:/dev
 
   autonomous_zed:
     image: zed_sdk
@@ -35,7 +35,7 @@ services:
       context: ..
       dockerfile: .devcontainer/zed.Dockerfile
     environment:
-      - DISPLAY
+      - DISPLAY=host.docker.internal
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
       - ROS_DOMAIN_ID=47
@@ -48,13 +48,13 @@ services:
       - ../ros_entrypoint.sh:/ws/ros_entrypoint.sh
       - /tmp/.X11-unix:/tmp/.X11-unix
       - /dev:/dev
-      
-    # command: bash -c ". /ws/ros_entrypoint.sh && ros2 launch zed_wrapper zed_camera.launch.py camera_model:='zed2i'"
+    
+    command: bash -c ". /ws/ros_entrypoint.sh && ros2 launch zed_wrapper zed_camera.launch.py camera_model:='zed2i'"
     network_mode: host
     ipc: host
     stdin_open: true
     tty: true
-    # runtime: nvidia
+    runtime: nvidia
     deploy:
       resources:
         reservations:
