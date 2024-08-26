@@ -76,7 +76,8 @@ class PurePursuitController(Node):
         msg = AckermannDrive(**args)
         self.cmd_vel_pub.publish(msg)
 
-    def lateral_distance()
+    def lateral_distance():
+        pass
         
 
     def arc_radius(self):
