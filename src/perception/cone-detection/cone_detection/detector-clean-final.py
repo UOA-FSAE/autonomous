@@ -146,20 +146,36 @@ class Detection(Node):
         self.zed.retrieve_objects(self.objects, self.obj_runtime_param)
 
         all_cones = ConeMap()
-        single_cone = Cone()
 
         # Commented out the localization cone section
         # all_cones.cones.append(self.get_localization_cone())
 
         for obj in self.objects.object_list:
+            # moved single_cone to inside for obj loop
+            single_cone = Cone()
             single_cone.id = obj.id
             single_cone.confidence = obj.confidence
             single_cone.colour = 1
+
+            # Position
             single_cone.pose.pose.position.x = obj.position[0]
             single_cone.pose.pose.position.y = obj.position[2] * -1
             single_cone.pose.pose.position.z = obj.position[1]
+
+            # Dimensions
             single_cone.radius = obj.dimensions[0] / 2
             single_cone.height = obj.dimensions[1]
+
+            # Bounding Box (Assuming `Cone` message has a bounding box attribute)
+            single_cone.bounding_box = []  # You may need to define the structure of the bounding box
+            for corner in obj.bounding_box:
+                point = geometry_msgs.msg.Point()
+                point.x = corner[0]
+                point.y = corner[2] * -1
+                point.z = corner[1]
+                single_cone.bounding_box.append(point)
+
+            # Append new cone
             all_cones.cones.append(single_cone)
 
         self.publisher.publish(all_cones)
