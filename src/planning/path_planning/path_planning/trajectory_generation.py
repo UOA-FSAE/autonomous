@@ -17,7 +17,7 @@ class trajectory_generator(Node):
     def __init__(self):
         super().__init__("trajectory_generation")
         self.get_logger().info("Trajectory generation Node Started")
-
+        self._car_position: Point
         self.declare_parameters(
             namespace='',
             parameters=[
@@ -36,16 +36,20 @@ class trajectory_generator(Node):
         self.all_states_publisher = self.create_publisher(AllStates, "moa/states", 10)
 
         # subscribers
-        self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed, 10)
-        self.create_subscription(ConeMap, "cone_map", self.set_cone_map, 10)
+        self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed_cb, 10)
+        self.create_subscription(ConeMap, "cone_map", self.set_cone_map_cb, 10)
+        self.create_subscription(Pose, "car_position", self.set_car_pose_cb, 10)
 
         # time in between trajectory generation
         self.create_timer(self._timer, self.generate_trajectories)
 
 
-    def set_current_speed(self, msg:AckermannDrive) -> None: self._current_speed = msg.speed
+    def set_current_speed_cb(self, msg:AckermannDrive) -> None: self._current_speed = msg.speed
     
-    def set_cone_map(self, msg:ConeMap) -> None: self._cone_map = msg
+    def set_cone_map_cb(self, msg:ConeMap) -> None: self._cone_map = msg
+
+    def set_car_pose_cb(self, pose_msg: Pose) -> None: 
+        self._car_position = pose_msg
 
 
     # BEST TRAJECTORY PUBLISHER
@@ -60,7 +64,7 @@ class trajectory_generator(Node):
 
         if hasattr(self,"_current_speed") and hasattr(self,"_cone_map"):
             # generate trajectories
-            paths, states = self.my_trajectory_generator(cone_map=self._cone_map, radius=3, npoints=400)
+            paths, states = self.my_trajectory_generator(car_pose=self._car_position, radius=2, npoints=400)
 
             # publish states and trajectories
             state_list = []
@@ -88,13 +92,12 @@ class trajectory_generator(Node):
 
     # ===========================================================
     # # TRAJECTORY GENERATION
-    def my_trajectory_generator(self, cone_map, radius, npoints):
+    def my_trajectory_generator(self, car_pose, radius, npoints):
         """generate straight trajectory based on given radius from origin (0,0)"""
         trajectories = []
         # 1. initial point
-        first_cone = cone_map.cones[0].pose.pose.position
-        car_position = self.get_position_of_cart(cone_map)
-        car_position, rotation_matrix = self.get_transformation_matrix(car_position)
+        first_point = car_pose.position
+        self._car_pose, rotation_matrix = self.get_transformation_matrix(car_pose)
         # cor = [first_cone.x, first_cone.y]
         cor = [0,0]
         # 2. radius
@@ -104,61 +107,60 @@ class trajectory_generator(Node):
         x = np.linspace(-r, r, n, endpoint=False)[1:]
         n -= 1
         y = np.zeros(n)
-        angs = np.zeros(n)
+        self.angs = np.zeros(n)
 
         for i, val in enumerate(x):
-            tmp_path = PoseArray()
+            self.tmp_path = PoseArray()
             # append starting point
-            tmp_pose = Pose()
-            tmp_pose.position.x = first_cone.x
-            tmp_pose.position.y = first_cone.y
-            tmp_path.poses.append(tmp_pose)
+            self.append_first_point(first_point)
 
             # 4. find y using equation of circle
             y[i] = np.sqrt(np.round(r**2-(val-cor[0])**2, 3)) + cor[1]
+
             # 5. calculate steering angle for each trajectory
-            dy = y[i] - cor[1]
-            dx = val - cor[0]
-            # inverse tan is in radians
-            angle = np.arctan(dx/dy)
-            angs[i] = (angle if dx < 0 else angle)
-            # print(f"passed angle = {angs[i]} for dx = {dx}")
+            self.set_angle(x[i], y[i])
+            
             
             # transform coordinates from fixed to car 
-            post_trans_pose = self.apply_transformation(car_position, rotation_matrix, val, y[i])
+            post_trans_pose = self.apply_transformation(car_pose, rotation_matrix, val, y[i])
             # append new points to pose array
             x[i] = post_trans_pose[0][0]
             y[i] = post_trans_pose[1][0]
             tmp_pose2 = Pose()
             tmp_pose2.position.x = x[i]
             tmp_pose2.position.y = y[i]
-            tmp_path.poses.append(tmp_pose2)
+            self.tmp_path.poses.append(tmp_pose2)
 
-            if x[i] is np.nan or y[i] is np.nan or angs[i] is np.nan:
+            if x[i] is np.nan or y[i] is np.nan or self.angs[i] is np.nan:
                 print("NAN!")
 
             # plotting
             # plt.plot([cor[0],x[i]],[cor[1],y[i]],label=f'trajectories')
 
-            # append trajecotry
-            trajectories.append(tmp_path)
+            # append trajectory
+            trajectories.append(self.tmp_path)
 
         # plt.show()
 
         # list of points as tuples
         points = [(x[i],y[i]) for i in range(n)]
 
-        # self.get_logger().info(f"len of traj = {len(trajectories)}")
+        return trajectories, self.angs
 
-        return trajectories, angs
+    def append_first_point(self, first_point):
+        tmp_pose = Pose()
+        tmp_pose.position.x = first_point.x
+        tmp_pose.position.y = first_point.y
+        self.tmp_path.poses.append(tmp_pose)
 
-    def get_position_of_cart(self, cone_map):
-        # first cone
-        localization_data = cone_map.cones[0]
-        x = localization_data.pose.pose.position.x
-        y = localization_data.pose.pose.position.y
-        theta = localization_data.pose.pose.orientation.w
-        return x, y, theta
+    def set_angle(self):
+        
+        dy = y[i] - cor[1]
+        dx = val - cor[0]
+        # inverse tan is in radians
+        angle = np.arctan(dx/dy)
+        self.self.angs[i] = (-angle if dx < 0 else angle)
+        print(f"passed angle = {self.angs[i]} for dx = {dx}")
 
     def get_transformation_matrix(self, position_and_orientation):
         # theta = position_and_orientation[2] - np.pi/2

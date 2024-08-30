@@ -64,7 +64,11 @@ RUN cd /ws/src/ && \
 
 RUN cd /usr/local/zed && \
     pip install requests && \
-    python3 get_python_api.py
+    python3 get_python_api.py \
+    pip3 install ultralytics \
+    pip3 install torch \
+    pip3 install pyopengl \ 
+    pip3 install pyzed 
 
 RUN source /opt/ros/humble/setup.bash && \
     colcon build --parallel-workers $(nproc) --symlink-install \
