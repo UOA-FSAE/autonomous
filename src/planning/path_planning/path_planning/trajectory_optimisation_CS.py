@@ -34,7 +34,7 @@ class trajectory_optimization(Node):
         )
 
         # attributes
-        self._once = True
+        self._once = False
         self._delete = self.get_parameter("delete").get_parameter_value().bool_value
         self._interpolate = self.get_parameter("interpolate").get_parameter_value().bool_value
 
@@ -42,6 +42,7 @@ class trajectory_optimization(Node):
         self.create_subscription(AllStates, "moa/states", self.set_states, 10)
         self.create_subscription(AllTrajectories, "moa/trajectories", self.set_generated_trajectories, 10)
         self.create_subscription(ConeMap, "cone_map", self.callback, 10)
+        self.create_subscription(Pose, "car_position", self.set_car_position, 10)
         # self.create_subscription(AckermannDrive, "moa/cur_vel", self.set_current_speed, 10)
 
         # publishers
@@ -58,14 +59,15 @@ class trajectory_optimization(Node):
         self._trajectories_msg = msg
         self.get_logger().info(f"traj len = {len(msg.trajectories)}")
 
+    def set_car_position(self, msg:Pose) -> None:
+        self.car_position = [msg.position.x, msg.position.y]
+
     def callback(self, msg:ConeMap) -> None:
         '''retrives cone msg and find trajectory closest to centerline'''
 
+        self.get_logger().info(f"all states: {hasattr(self,'_state_msg')}")   
+        
         if hasattr(self, "_state_msg") and hasattr(self, "_trajectories_msg"):
-            self.get_logger().info(f"all states: {hasattr(self,'_state_msg')}"
-                            f" | current speed: {hasattr(self,'_current_speed')}" \
-                            f" | left boundaries: {hasattr(self,'_leftboundary')}"\
-                            f" | right boundaries: {hasattr(self,'_rightboundary')}")   
             
             # yup = 1
             # xup = -0.5
@@ -74,14 +76,18 @@ class trajectory_optimization(Node):
                 # msg.cones[0].pose.pose.position.x += xup
                 # msg.cones[0].pose.pose.position.y += yup
 
-            leftboundary, rightboundary, car_position = self.get_boundaries(msg.cones)    # get boundaries.
-            if len(leftboundary) < 2:
+            leftboundary, rightboundary = self.get_boundaries(msg)    # get boundaries.
+            car_position = self.car_position
+
+            try:
+                assert len(leftboundary) > 1 and len(rightboundary) > 1 # check if enough boundary points are given
+            except Exception as e:
+                self.get_logger().error(e)
                 return
-            if len(rightboundary) < 2:
-                return
-            position_orientation = self.get_position_of_cart(msg)
-            if self._interpolate:
-                leftboundary, rightboundary = self.get_relative_boundaries(leftboundary, rightboundary, car_position, position_orientation) # get local boundaries
+            
+            # position_orientation = self.get_position_of_cart(msg)
+            # if self._interpolate:
+            #     leftboundary, rightboundary = self.get_relative_boundaries(leftboundary, rightboundary, car_position, position_orientation) # get local boundaries
 
             # get center line
             centerline = self.get_center_line(leftboundary, rightboundary, interpolate=self._interpolate)
@@ -130,7 +136,7 @@ class trajectory_optimization(Node):
                     self.within_boundary_trajectories_publisher.publish(AllTrajectories(**args2)) # within bound pub
                     self.best_steering_angle_pub.publish(Float32(**args3)) # optimal steering angle pub
 
-                    # self.get_logger().info("OPTIMAL TRAJECTORY COMPUTED")
+                    self.get_logger().info("msgs published")
             else:
                 self.get_logger().info(f"Ids state:{self._state_msg.id} and trajectory:{self._trajectories_msg.id} do not match")
                 
@@ -138,20 +144,21 @@ class trajectory_optimization(Node):
 
 
     def get_boundaries(self, cones):
+        lb, rb = cones.left_cones, cones.right_cones
         leftboundary = []
         rightboundary = []
-        for i in range(len(cones)):
-            x = cones[i].pose.pose.position.x   # x point
-            y = cones[i].pose.pose.position.y   # y point
-            if i != 0:
-                if cones[i].colour == 0:    # 0 is blue which is left
-                    leftboundary.append([x,y])
-                elif cones[i].colour == 2:  # 2 is yellow which is right
-                    rightboundary.append([x,y])
-            else:
-                car_position = [x,y]    # first cone is car position
+
+        for i in range(len(lb)):
+            x = lb[i].x   # x point
+            y = lb[i].y   # y point
+            leftboundary.append([x,y])
         
-        return leftboundary, rightboundary, car_position
+        for i in range(len(rb)):
+            x = rb[i].x   # x point
+            y = rb[i].y   # y point
+            rightboundary.append([x,y])
+        
+        return leftboundary, rightboundary
     
     def get_relative_boundaries(self, leftboundary, rightboundary, car_position, position_orientation):
         leftboundary = np.array(leftboundary).copy()
