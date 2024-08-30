@@ -67,7 +67,7 @@ class trajectory_optimization(Node):
 
         self.get_logger().info(f"all states: {hasattr(self,'_state_msg')}")   
         
-        if hasattr(self, "_state_msg") and hasattr(self, "_trajectories_msg"):
+        if hasattr(self, "_state_msg") and hasattr(self, "_trajectories_msg") and hasattr(self,"car_position"):
             
             # yup = 1
             # xup = -0.5

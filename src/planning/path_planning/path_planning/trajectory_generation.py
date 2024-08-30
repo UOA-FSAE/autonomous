@@ -166,10 +166,11 @@ class trajectory_generator(Node):
         return x, y, theta
 
     def get_transformation_matrix(self, position_and_orientation):
-        # theta = position_and_orientation[2] - np.pi/2
+        theta = position_and_orientation[2] - np.deg2rad(90+55)
         cart_x = position_and_orientation[0]
         cart_y = position_and_orientation[1]
-        theta = position_and_orientation[2]
+        # theta = position_and_orientation[2]
+        self.get_logger().info(f"angle = {theta}")
         # 2d trasformation matrix 
         rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]])
         position_vector = np.array([[cart_x], [cart_y]])

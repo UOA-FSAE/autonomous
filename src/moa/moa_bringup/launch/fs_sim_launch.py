@@ -42,6 +42,13 @@ def generate_launch_description():
             name='controller',
         ),
 
+        # simulator controller
+        launch_ros.actions.Node(
+            package='simulator',
+            executable='set_car_controls',
+            name='set_car_controls'
+        ),
+
         # steer torque
         # launch_ros.actions.Node(
         #     package='steer_torque_from_ackermann',
