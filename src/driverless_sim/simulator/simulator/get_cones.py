@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 ## adds the fsds package located the parent directory to the pyhthon path
-path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../..','Formula-Student-Driverless-Simulator','python'))
+path = os.path.abspath(os.path.join('Formula-Student-Driverless-Simulator', 'python'))
 sys.path.insert(0, path)
 # sys.path.append('/home/Formula-Student-Driverless-Simulator/python')
 # print(sys.path)
@@ -51,14 +51,14 @@ class get_cones(Node):
                 x,y,z = self.get_car_position()
 
                 # plot
-                plt.plot([P[0] for P in lb], [P[1] for P in lb], "*b", label="left")
-                plt.plot([P[0] for P in rb], [P[1] for P in rb], "*y", label="right")
+                plt.plot([P[0] for P in lb], [P[1] for P in lb], ".b", label="left")
+                plt.plot([P[0] for P in rb], [P[1] for P in rb], ".y", label="right")
                 plt.plot([P[0] for P in start_end], [P[1] for P in start_end], "*k", label='start/end')
-                plt.plot(x,y,"*r",label="car")
-                for i in range(len(lb)):
-                    plt.annotate(f"{i}",(lb[i][0], lb[i][1]))
-                for i in range(len(rb)):
-                    plt.annotate(f"{i}",(rb[i][0], rb[i][1]))
+                plt.plot(x,y,".r",label="car")
+                # for i in range(len(lb)):
+                #     plt.annotate(f"{i}",(lb[i][0], lb[i][1]))
+                # for i in range(len(rb)):
+                #     plt.annotate(f"{i}",(rb[i][0], rb[i][1]))
 
                 plt.legend()
                 # plt.gca().invert_yaxis()
