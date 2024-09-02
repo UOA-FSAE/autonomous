@@ -61,7 +61,7 @@ class Cone_Mapper(Node):
         # Existing cone map
         self.Cone_map = None
 
-        # KDTrees
+        # KDTrees for searching
         self.left_tree = None
         self.right_tree = None
 
@@ -93,7 +93,7 @@ class Cone_Mapper(Node):
         Args:
             msg (Cones): input cones from the /cone_detection topic
         """
-        # Get the car's position
+        # Get the car's current position
         while len(self.car_positions) == 0:
             pass
         car_position = self.car_positions.pop(0)
