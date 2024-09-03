@@ -7,26 +7,15 @@
   <maintainer email="ych363@aucklanduni.ac.nz">yiyang</maintainer>
   <license>Apache License 2.0</license>
   
-  <buildtool_depend>ament_python</buildtool_depend>
-  <build_depend>rclpy</build_depend>
-  <build_depend>std_msgs</build_depend>
-  <build_depend>moa_msgs</build_depend>
-  <build_depend>sys</build_depend>
-  <build_depend>numpy</build_depend>
-  <build_depend>opencv-python</build_depend>
-  <build_depend>opencv-contrib-python</build_depend>
-  
-  
-  <exec_depend>rclpy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>moa_msgs</exec_depend>
-  <exec_depend>sys</exec_depend>
-  <exec_depend>numpy</exec_depend>
-  <exec_depend>argparse</exec_depend>
-  <exec_depend>torch</exec_depend>
-  <exec_depend>cv2</exec_depend>
-  <exec_depend>pyzed</exec_depend>
-  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python-argparse</exec_depend>
+  <exec_depend>python3-torch</exec_depend>
   
 
   <test_depend>ament_copyright</test_depend>
