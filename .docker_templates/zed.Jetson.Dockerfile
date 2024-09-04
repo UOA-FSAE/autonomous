@@ -1,4 +1,4 @@
-FROM stereolabs/zed:4.0-tools-devel-l4t-r35.4
+FROM stereolabs/zed:4.1-tools-devel-l4t-r35.4
 LABEL Name=zed_sdk Version=0.0.1
 
 SHELL [ "/bin/bash", "-c" ]
@@ -48,32 +48,38 @@ RUN rosdep init && \
       https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
     colcon metadata update
 
-COPY ./src/perception/ /ws/src/perception/
-COPY ./src/moa/moa_description /ws/src/moa/moa_description
-COPY ./src/moa/moa_msgs /ws/src/moa/moa_msgs
-
 # install ros2 packages
-RUN cd /ws/src/ && \
+RUN mkdir src && \
+    cd /ws/src/ && \
     git clone  --recursive https://github.com/stereolabs/zed-ros2-wrapper.git && \
     cd .. && \
     source /opt/ros/humble/setup.bash && \ 
-    rosdep update && apt-get update && \
-    rosdep install --from-paths src -y -r --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy && \
+    rosdep update && \
+    apt-get update && \
+    rosdep install --from-paths src -y -r --ignore-src --rosdistro=$ROS_DISTRO --os=ubuntu:jammy --skip-keys="point_cloud_transport_plugins draco_point_cloud_transport" || true && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
 RUN cd /usr/local/zed && \
-    pip install requests && \
-    python3 get_python_api.py
+    pip install requests 
+    # python3 get_python_api.py \
+    # pip3 install ultralytics \
+    # pip3 install torch \
+    # pip3 install pyopengl \ 
+    # pip3 install pyzed 
 
 RUN source /opt/ros/humble/setup.bash && \
     colcon build --parallel-workers $(nproc) --symlink-install \
         --event-handlers console_direct+ --base-paths src \
         --cmake-args ' -DCMAKE_BUILD_TYPE=Release' \
         ' -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs' \
-        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"'
+        ' -DCMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined"' || true
 
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \ 
     echo "source /ws/install/setup.bash" >> ~/.bashrc
+
+RUN . ~/.bashrc
+
+COPY ./.devcontainer/SN31421864.conf /usr/local/zed/settings/SN31421864.conf
 
 CMD ["bash"]

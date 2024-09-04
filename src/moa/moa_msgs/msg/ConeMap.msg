@@ -1,2 +1,2 @@
-# List of cones detected and where they are
-Cone[]                               cones     
+geometry_msgs/Point[] left_cones 
+geometry_msgs/Point[] right_cones 

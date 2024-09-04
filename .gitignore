@@ -10,3 +10,8 @@ kaggle.json
 .gitignore
 .vscode/c_cpp_properties.json
 **/__pycache__/
+*.msg
+*.srv
+wandb/
+src/perception/aquisition/cone_detection_cpp/resources/cone_detection_model.engine
+src/perception/aquisition/cone_detection_cpp/resources/cone_detection_model.onnx
