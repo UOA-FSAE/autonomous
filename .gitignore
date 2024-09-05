@@ -12,7 +12,6 @@ kaggle.json
 *.msg
 *.srv
 wandb/
-src/perception/aquisition/cone_detection_cpp/zed_wrapper/resources/cone_detection_model.engine
-src/perception/aquisition/cone_detection_cpp/zed_wrapper/resources/cone_detection_model.onnx
-src/perception/aquisition/cone_detection_cpp/zed_wrapper/resources/recording1.svo
-src/perception/aquisition/cone_detection_cpp/zed_wrapper/resources/recording2.svo
+*.engine
+*.onnx
+*.svo2

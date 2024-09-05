@@ -30,8 +30,8 @@ using namespace nvinfer1;
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "zed_components/zed_camera_component.hpp"
 #include "std_msgs/msg/string.hpp"
+#include "moa_msgs/msg/cone.hpp"
 
 std::vector<sl::uint2> cvt(const BBox &bbox_in) {
     std::vector<sl::uint2> bbox_out(4);
@@ -45,7 +45,7 @@ std::vector<sl::uint2> cvt(const BBox &bbox_in) {
 class ConeDetectionNode : public rclcpp::Node
 {
 public:
-  ConeDetectionNode(sl::Camera *zed)
+  ConeDetectionNode(sl::Camera& zed)
   : Node("cone_detection_node")
   {
     publisher_ = this->create_publisher<std_msgs::msg::String>("cone_detection", 10);
@@ -53,11 +53,11 @@ public:
   }
 
 private:
-  void cone_detection_loop(sl::Camera *zed)
+  void cone_detection_loop(sl::Camera& zed)
   {
-    auto camera_config = zed->getCameraInformation().camera_configuration;
+    auto camera_config = zed.getCameraInformation().camera_configuration;
     sl::Resolution pc_resolution(std::min((int) camera_config.resolution.width, 720), std::min((int) camera_config.resolution.height, 404));
-    auto camera_info = zed->getCameraInformation(pc_resolution).camera_configuration;
+    auto camera_info = zed.getCameraInformation(pc_resolution).camera_configuration;
 
     // Creating the inference engine class
     std::string engine_name = "cone_detection_model.engine";
@@ -67,7 +67,7 @@ private:
         return;
     }
 
-    auto display_resolution = zed->getCameraInformation().camera_configuration.resolution;
+    auto display_resolution = zed.getCameraInformation().camera_configuration.resolution;
     sl::Mat left_sl, point_cloud;
     cv::Mat left_cv;
     sl::ObjectDetectionRuntimeParameters objectTracker_parameters_rt;
@@ -75,9 +75,9 @@ private:
     sl::Pose cam_w_pose;
     cam_w_pose.pose_data.setIdentity();
 
-    while (zed->grab() == sl::ERROR_CODE::SUCCESS) {
+    while (zed.grab() == sl::ERROR_CODE::SUCCESS) {
       // Get image for inference
-      zed->retrieveImage(left_sl, sl::VIEW::LEFT);
+      zed.retrieveImage(left_sl, sl::VIEW::LEFT);
 
       // Running inference
       auto detections = detector.run(left_sl, display_resolution.height, display_resolution.width, CONF_THRESH);
@@ -99,10 +99,17 @@ private:
           objects_in.push_back(tmp);
       }
       // Send the custom detected boxes to the ZED
-      zed->ingestCustomBoxObjects(objects_in);
+      zed.ingestCustomBoxObjects(objects_in);
 
       // Retrieve the tracked objects, with 2D and 3D attributes
-      zed->retrieveObjects(objects, objectTracker_parameters_rt);
+      zed.retrieveObjects(objects, objectTracker_parameters_rt);
+
+      int count = 0;
+      // Publish the detected objects
+      for (sl::ObjectData const& obj : objects.object_list) {
+        std::cout << "Object: " << count << " Cone Class: " << obj.raw_label << " Confidence: " << obj.confidence << std::endl;
+        count++;      
+      }
     }
         
   }
@@ -122,7 +129,7 @@ int main(int argc, char * argv[])
   rclcpp::init(argc, argv);
 
   /// Opening the ZED camera before the model deserialization to avoid cuda context issue
-  sl::Camera *zed;
+  sl::Camera zed;
   sl::InitParameters init_parameters;
   init_parameters.sdk_verbose = true;
   init_parameters.depth_mode = sl::DEPTH_MODE::ULTRA;
@@ -135,23 +142,23 @@ int main(int argc, char * argv[])
   }
 
   // Open the camera
-  auto returned_state = zed->open(init_parameters);
+  auto returned_state = zed.open(init_parameters);
     if (returned_state != sl::ERROR_CODE::SUCCESS) {
       std::cerr << "Camera Open " << returned_state << ", exit program." << std::endl;
       return EXIT_FAILURE;
   }
 
-  zed->enablePositionalTracking();
+  zed.enablePositionalTracking();
 
   // Custom OD
   sl::ObjectDetectionParameters detection_parameters;
   detection_parameters.enable_tracking = true;
   detection_parameters.enable_segmentation = false; // designed to give person pixel mask with internal OD
   detection_parameters.detection_model = sl::OBJECT_DETECTION_MODEL::CUSTOM_BOX_OBJECTS;
-  returned_state = zed->enableObjectDetection(detection_parameters);
+  returned_state = zed.enableObjectDetection(detection_parameters);
   if (returned_state != sl::ERROR_CODE::SUCCESS) {
     std::cerr << "enableObjectDetection " << returned_state << ", exit program." << std::endl;
-    zed->close();
+    zed.close();
     return EXIT_FAILURE;
   }
 

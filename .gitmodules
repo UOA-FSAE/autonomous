@@ -11,6 +11,3 @@
 [submodule "Formula-Student-Driverless-Simulator"]
 	path = Formula-Student-Driverless-Simulator
 	url = https://github.com/FS-Driverless/Formula-Student-Driverless-Simulator.git
-[submodule "src/zed-ros2-wrapper"]
-	path = src/zed-ros2-wrapper
-	url = https://github.com/stereolabs/zed-ros2-wrapper.git
