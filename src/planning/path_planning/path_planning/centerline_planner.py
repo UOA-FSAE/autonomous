@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 
 from moa_msgs.msg import ConeMap
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, PoseArray
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,24 +14,47 @@ class centerline_planner(Node):
 
         # parameters
         self._plot = True
+        self.look_forward = 4
+        self.num_points = 50
+        self.smoothing_factor = 1
 
         # subscribers
         self.create_subscription(ConeMap, "cone_map", self.callback, 10)    # track
         self.create_subscription(Pose, "car_position", self.set_car_position, 10)   # car pose
 
         # publishers
+        self.centerline_publisher = self.create_publisher(PoseArray, "moa/selected_trajectory", 10)
     
     def set_car_position(self, msg:Pose) -> None: 
         self.car_pose = msg
     
     def callback(self, msg:ConeMap) -> None:
+        self.get_logger().info(f"car pose recieved = {hasattr(self,'car_pose')}")   
+        
+        if not hasattr(self,'car_pose'):
+            return 
+        
         lb, rb = self.get_boundaries(msg)   # get boundaries (list of [x,y] points)
 
-        centerline = self.compute_centerline(lb,rb) # compute centerline
+        if not len(lb) > 0 or not len(rb) > 0:
+            return
 
-        centerline = self.interpolate_line(centerline) # interpolate/smooth
+        lblocal, _ = self.get_next_points(lb,self.look_forward)  # get local points (list of [x,y] points) close to car
+        rblocal, car_position = self.get_next_points(rb,self.look_forward)
+
+        if not len(lblocal) > 0 or not len(rblocal) > 0:
+            return
+
+        centerline = self.compute_centerline(lblocal,rblocal,car_position) # compute centerline
+
+        if not len(centerline) > 0:
+            return
+
+        centerline = self.interpolate_line(centerline,self.num_points,self.smoothing_factor) # interpolate/smooth
 
         # publish
+        msg = self.get_posearray_msg(centerline)
+        self.centerline_publisher.publish(msg)
 
         self.plot(lb,rb,centerline,self._plot) # plot
     
@@ -42,24 +65,51 @@ class centerline_planner(Node):
         right_cones = [[P.x, P.y] for P in msg.right_cones]
 
         return left_cones, right_cones
+
+    def get_next_points(self,line,look_forward):
+        """Retrieves the points closest to the car
+        *ASSUMES THE points ARE SORTED/ORDERED
+        """
+        car_point = np.array([self.car_pose.position.x,self.car_pose.position.y])
+        car_orientation = np.array([self.car_pose.orientation.x,self.car_pose.orientation.y,
+                                    self.car_pose.orientation.z,self.car_pose.orientation.w])
+        points = np.array(line)
+        
+        min_indx = np.argmin(np.linalg.norm(car_point-points, axis=1))
+        # min_indx += self.is_behind_car(points[min_indx], car_point, car_orientation)
+        points = self.get_local_points(min_indx,points,look_forward)
+
+        return points, car_point
     
-    def compute_centerline(self,lb,rb):
+    def compute_centerline(self,lb,rb,car_position):
         """Computes the centerline using given boundary points based on closest distance
            boundary points do not need to be sorted
+           Also adds car position at the beginning of the centerline
         """
-        centerline = []
+        centerline = np.array([car_position])
 
         for P in lb:    # loop through left boundary
             closest_point = self.get_closest_point(P,rb)    # get the point closest in the right boundary
             centerpoint = (P+closest_point)/2 # midpoint
-            centerline.append(centerpoint)
+            centerline = np.append(centerline,[centerpoint],axis=0)
         
         return centerline
     
-    def interpolate_line(self,line):
-        line = self.univariate_interpolate(line,300,5)
+    def interpolate_line(self,line,num_points=100,smoothing_factor=1):
+        line = self.univariate_interpolate(line,num_points,smoothing_factor)
 
         return line
+    
+    def get_posearray_msg(self, line):
+        pose_array = PoseArray()
+
+        for P in line:
+            pose = Pose()
+            pose.position.x = P[0]  # assing x,y values to position of pose
+            pose.position.y = P[1]
+            pose_array.poses.append(pose)
+        
+        return pose_array
     
     def plot(self,lb,rb,centerline,to_plot=False):
         """Plots the boundary and centerline points"""
@@ -80,7 +130,7 @@ class centerline_planner(Node):
 
             plt.plot(lbx,lby,'*b',label='left')
             plt.plot(rbx,rby,'*y',label='right')
-            plt.plot(centx,centy,'*r',label='centerline')
+            plt.plot(centx,centy,'-r',label='centerline')
             plt.plot(car_x,car_y,'*k',label='car position')
 
             plt.pause(0.1)
@@ -97,6 +147,9 @@ class centerline_planner(Node):
         return points[np.argmin(distances)]
 
     def univariate_interpolate(self,line,num_points,smoothness):
+        if len(line) < 4:
+            return line
+        
         line = np.array(line)
         x,y = line[:,0], line[:,1]
         t = range(len(x))  # t is for defining x and y parametrically
@@ -109,7 +162,32 @@ class centerline_planner(Node):
         x = spline_x(t_new)
         y = spline_y(t_new)
     
-        return list(zip(x,y))
+        return np.array(list(zip(x,y)))
+    
+    def is_behind_car(self, closet_point, car_point, car_orientation):
+        from_car_point_to_closest_point = closet_point-car_point    # vector from car to closest point
+        car_direction_vector = self.get_car_direction(car_orientation)
+        if (from_car_point_to_closest_point @ car_direction_vector) < 0:
+            return True
+        else:
+            return False
+    
+    def get_car_direction(self, orientation):
+        rotation_matrix = self.get_rotation_matrix(orientation[3])
+
+        return rotation_matrix @ np.array([1,0])
+    
+    def get_local_points(self,min_indx,points,look_forward):
+        remaining_points = len(points) - (min_indx+1) # number of points forwards the car has detected
+        if remaining_points < look_forward: look_forward = remaining_points+1
+        points = points[min_indx:min_indx+look_forward] # local points based on closest distance to car
+
+        return points
+    
+    def get_rotation_matrix(self,theta):
+        rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]])
+
+        return rotation_matrix
 
 
 def main(args=None):
