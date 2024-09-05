@@ -49,7 +49,7 @@ class trajectory_generator(Node):
     def set_cone_map_cb(self, msg:ConeMap) -> None: self._cone_map = msg
 
     def set_car_pose_cb(self, pose_msg: Pose) -> None: 
-        self._car_position = pose_msg
+        self._car_pose = pose_msg
 
 
     # BEST TRAJECTORY PUBLISHER
@@ -60,11 +60,12 @@ class trajectory_generator(Node):
 
         self.get_logger().info(f"{self._timer} seconds up - generating trajectories")
         self.get_logger().info(f"current speed: {hasattr(self,'_current_speed')}"\
-                               f" | cone map: {hasattr(self,'_cone_map')}")
+                               f" | cone map: {hasattr(self,'_cone_map')}"\
+                               f" | car position: {hasattr(self,'_car_pose')}")
 
-        if hasattr(self,"_current_speed") and hasattr(self,"_cone_map"):
+        if hasattr(self,"_current_speed") and hasattr(self,"_car_pose"):
             # generate trajectories
-            paths, states = self.my_trajectory_generator(car_pose=self._car_position, radius=2, npoints=400)
+            paths, states = self.my_trajectory_generator(car_pose=self._car_pose, radius=2, npoints=400)
 
             # publish states and trajectories
             state_list = []
@@ -96,8 +97,9 @@ class trajectory_generator(Node):
         """generate straight trajectory based on given radius from origin (0,0)"""
         trajectories = []
         # 1. initial point
-        first_point = car_pose.position
-        self._car_pose, rotation_matrix = self.get_transformation_matrix(car_pose)
+        first_cone = car_pose.position
+        car_position_orientation = self.get_position_of_cart(car_pose)
+        car_position, rotation_matrix = self.get_transformation_matrix(car_position_orientation)
         # cor = [first_cone.x, first_cone.y]
         cor = [0,0]
         # 2. radius
@@ -107,66 +109,68 @@ class trajectory_generator(Node):
         x = np.linspace(-r, r, n, endpoint=False)[1:]
         n -= 1
         y = np.zeros(n)
-        self.angs = np.zeros(n)
+        angs = np.zeros(n)
 
         for i, val in enumerate(x):
-            self.tmp_path = PoseArray()
+            tmp_path = PoseArray()
             # append starting point
-            self.append_first_point(first_point)
+            tmp_pose = Pose()
+            tmp_pose.position.x = first_cone.x
+            tmp_pose.position.y = first_cone.y
+            tmp_path.poses.append(tmp_pose)
 
             # 4. find y using equation of circle
             y[i] = np.sqrt(np.round(r**2-(val-cor[0])**2, 3)) + cor[1]
-
             # 5. calculate steering angle for each trajectory
-            self.set_angle(x[i], y[i])
-            
+            dy = y[i] - cor[1]
+            dx = val - cor[0]
+            # inverse tan is in radians
+            angle = np.arctan(dx/dy)
+            angs[i] = (angle if dx < 0 else angle)
+            # print(f"passed angle = {angs[i]} for dx = {dx}")
             
             # transform coordinates from fixed to car 
-            post_trans_pose = self.apply_transformation(car_pose, rotation_matrix, val, y[i])
+            post_trans_pose = self.apply_transformation(car_position, rotation_matrix, val, y[i])
             # append new points to pose array
             x[i] = post_trans_pose[0][0]
             y[i] = post_trans_pose[1][0]
             tmp_pose2 = Pose()
             tmp_pose2.position.x = x[i]
             tmp_pose2.position.y = y[i]
-            self.tmp_path.poses.append(tmp_pose2)
+            tmp_path.poses.append(tmp_pose2)
 
-            if x[i] is np.nan or y[i] is np.nan or self.angs[i] is np.nan:
+            if x[i] is np.nan or y[i] is np.nan or angs[i] is np.nan:
                 print("NAN!")
 
             # plotting
             # plt.plot([cor[0],x[i]],[cor[1],y[i]],label=f'trajectories')
 
-            # append trajectory
-            trajectories.append(self.tmp_path)
+            # append trajecotry
+            trajectories.append(tmp_path)
 
         # plt.show()
 
         # list of points as tuples
         points = [(x[i],y[i]) for i in range(n)]
 
-        return trajectories, self.angs
+        # self.get_logger().info(f"len of traj = {len(trajectories)}")
 
-    def append_first_point(self, first_point):
-        tmp_pose = Pose()
-        tmp_pose.position.x = first_point.x
-        tmp_pose.position.y = first_point.y
-        self.tmp_path.poses.append(tmp_pose)
+        return trajectories, angs
 
-    def set_angle(self):
-        
-        dy = y[i] - cor[1]
-        dx = val - cor[0]
-        # inverse tan is in radians
-        angle = np.arctan(dx/dy)
-        self.self.angs[i] = (-angle if dx < 0 else angle)
-        print(f"passed angle = {self.angs[i]} for dx = {dx}")
+    def get_position_of_cart(self, car_pose):
+        # first cone
+        localization_data = car_pose
+        x = localization_data.position.x
+        y = localization_data.position.y
+        theta = localization_data.orientation.w
+        return x, y, theta
 
     def get_transformation_matrix(self, position_and_orientation):
-        # theta = position_and_orientation[2] - np.pi/2
+        theta = position_and_orientation[2] - np.deg2rad(90+55)
         cart_x = position_and_orientation[0]
         cart_y = position_and_orientation[1]
-        theta = position_and_orientation[2]
+        # theta = position_and_orientation[2]
+        self.get_logger().info(f"angle = {theta}")
         # 2d trasformation matrix 
         rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]])
         position_vector = np.array([[cart_x], [cart_y]])

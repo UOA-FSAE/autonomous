@@ -22,6 +22,7 @@ setup(
         'console_scripts': [
             'get_cones = simulator.get_cones:main',
             'get_car_position = simulator.get_car_position:main',
+            'set_car_controls = simulator.set_car_controls:main',
         ],
     },
 )
