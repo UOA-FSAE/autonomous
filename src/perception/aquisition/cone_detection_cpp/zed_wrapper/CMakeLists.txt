@@ -55,6 +55,10 @@ endif()
 # Dependencies
 find_package(ZED 4 REQUIRED)
 find_package(CUDA REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(GLUT REQUIRED)
+find_package(GLEW REQUIRED)
+find_package(OpenGL REQUIRED)
 
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
@@ -63,6 +67,8 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(rcutils REQUIRED)
 find_package(zed_components REQUIRED)
+find_package(ament_cmake REQUIRED)
+find_package(std_msgs REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -80,26 +86,95 @@ add_custom_target(all_${PROJECT_NAME}_files SOURCES ${all_files})
 include_directories(
   ${CUDA_INCLUDE_DIRS}
   ${ZED_INCLUDE_DIRS}
-  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${OpenCV_INCLUDE_DIRS}
+  ${GLEW_INCLUDE_DIRS}
+  ${GLUT_INCLUDE_DIRS}
 )
+
+link_directories(
+  ${ZED_LIBRARY_DIR}
+  ${CUDA_LIBRARY_DIRS}
+  ${OpenCV_LIBRARY_DIRS}
+  ${GLEW_LIBRARY_DIRS}
+  ${GLUT_LIBRARY_DIRS}
+  ${OpenGL_LIBRARY_DIRS}
+)
+
+set(ZED_LIBS
+  ${ZED_LIBRARIES}
+  ${CUDA_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  ${GLEW_LIBRARIES}
+  ${GLUT_LIBRARIES}
+  ${OpenGL_LIBRARIES}
+)
+
+# cuda
+include_directories(/usr/local/cuda/include)
+link_directories(/usr/local/cuda/lib64)
+# tensorrt
+include_directories(/usr/include/x86_64-linux-gnu/)
+link_directories(/usr/lib/x86_64-linux-gnu/)
 
 ###############################################################################
 # SOURCES
+set(ZED_WRAPPER_INC
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/cuda_utils.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/utils.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/logging.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/yolo.hpp
+)
+
 set(ZED_WRAPPER_SRC
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/zed_wrapper.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/yolo.cpp
 )
 
 ###############################################################################
 # Bin and Install
 
-add_executable(zed_wrapper
-  ${ZED_WRAPPER_SRC}
+# Assuming 'cone_detection_model.engine' is in the 'resources' directory of your project
+set(SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/resources")
+set(DEST_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+
+# Copy file from source directory to destination directory
+add_custom_command(
+    OUTPUT "${DEST_DIR}/cone_detection_model.engine"
+    COMMAND ${CMAKE_COMMAND} -E copy "${SOURCE_DIR}/cone_detection_model.engine" "${DEST_DIR}/cone_detection_model.engine"
+    DEPENDS "${SOURCE_DIR}/cone_detection_model.engine"
 )
+
+# Ensure the file is copied before the target is built
+add_custom_target(copy_cone_detection_model ALL
+    DEPENDS "${DEST_DIR}/cone_detection_model.engine"
+)
+
+add_executable(zed_wrapper src/zed_wrapper.cpp)
+
+add_library(zed_wrapper_lib ${ZED_WRAPPER_SRC} ${ZED_WRAPPER_INC})
+
+target_include_directories(zed_wrapper PUBLIC
+  ${CUDA_INCLUDE_DIRS}
+  ${ZED_INCLUDE_DIRS}
+  zed_wrapper_lib
+)
+
+target_link_directories(zed_wrapper PUBLIC
+  ${ZED_LIBS}
+  zed_wrapper_lib
+)
+
+target_link_libraries(zed_wrapper
+  ${ZED_LIBS}
+  zed_wrapper_lib
+)
+
 ament_target_dependencies(zed_wrapper
+  std_msgs
   rclcpp
   rclcpp_components
   zed_components
 )
+
 install(TARGETS zed_wrapper
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
