@@ -17,22 +17,14 @@ def generate_launch_description():
             name='get_car_position',
         ),
 
-        # path generation
-        launch_ros.actions.Node(
-            package='path_planning',
-            executable='trajectory_generation',
-            name='trajectory_generation',
-            parameters=[{'debug': True, 
-                        'timer': 1.0}],
-        ),
 
         # path optimization
         launch_ros.actions.Node(
             package='path_planning',
-            executable='trajectory_optimisation',
-            name='trajectory_optimisation',
-            parameters=[{'delete': False,
-                        'interpolate': False}],
+            executable='centerline_planner',
+            name='centerline_planner',
+            # parameters=[{'delete': False,
+            #             'interpolate': False}],
         ),
 
         # controller
@@ -43,11 +35,11 @@ def generate_launch_description():
         ),
 
         # simulator controller
-        launch_ros.actions.Node(
-            package='simulator',
-            executable='set_car_controls',
-            name='set_car_controls'
-        ),
+        # launch_ros.actions.Node(
+        #     package='simulator',
+        #     executable='set_car_controls',
+        #     name='set_car_controls'
+        # ),
 
         # steer torque
         # launch_ros.actions.Node(
