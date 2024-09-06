@@ -23,7 +23,7 @@ class get_cones(Node):
 
         self.plot = False
         # connect to the simulator 
-        self.client = fsds.FSDSClient(ip=os.environ['WSL_HOST_IP'])
+        self.client = fsds.FSDSClient()
         # Check network connection, exit if not connected
         self.client.confirmConnection()
         # After enabling setting trajectory setpoints via the api. 
