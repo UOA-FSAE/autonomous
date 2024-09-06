@@ -15,7 +15,7 @@ class centerline_planner(Node):
         # parameters
         self._plot = True
         self.look_forward = 4
-        self.num_points = 50
+        self.num_points = self.look_forward*2
         self.smoothing_factor = 1
 
         # subscribers
@@ -153,9 +153,11 @@ class centerline_planner(Node):
         line = np.array(line)
         x,y = line[:,0], line[:,1]
         t = range(len(x))  # t is for defining x and y parametrically
+        weights = np.ones(len(x))   # second point should be weighted less (to minimise if its behind)
+        weights[1] = 0.1
 
-        spline_x = UnivariateSpline(t,x,s=smoothness)
-        spline_y = UnivariateSpline(t,y,s=smoothness)
+        spline_x = UnivariateSpline(t,x,w=weights,s=smoothness)
+        spline_y = UnivariateSpline(t,y,w=weights,s=smoothness)
 
         t_new = np.linspace(min(t),max(t),num_points)
 
