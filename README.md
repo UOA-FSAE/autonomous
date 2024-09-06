@@ -16,6 +16,12 @@ For detailed documentation about this project, please visit the **Wiki** tab on 
 
 ### Prerequisites
 
+- C/C++ 14
+
+- Python 3.8.10
+
+- CMake
+
 - GNUmake:
   - Install on Windows using Chocolatey.
   - Install on Mac using Homebrew: `brew install make`.
@@ -26,14 +32,20 @@ For detailed documentation about this project, please visit the **Wiki** tab on 
 
 - Git: [Install Link](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
-- Docker (Compose and Engine): [Install Link](https://docs.docker.com/engine/install/)
+- Docker
+  - [Install Docker Engine](https://docs.docker.com/engine/install/)
+  - [Install Docker Compose](https://docs.docker.com/compose/install/)
 
 ### Local Dev Environment - First Time Setup
 
 1. Clone repo using `git clone https://github.com/UOA-FSAE/autonomous.git`.
-2. `cd` into repo.
-3. Run `make build` (Use Git Bash if on Windows).
-4. In VS Code under the `Ctrl+Shift+P` menu, run `Dev Containers: Rebuild and Reopen in Container` or run `make start`. Or if prompted, click `reopen in container` from popup.
+2. `cd autonomous` to navigate to the repo.
+3. Run `git submodule update --init --recursive`
+4. Compile ROS message from protobuf 
+- On Linux run `./interfaces_run.bash`
+- On Windows run `interfaces_run.bat`
+5. Run `make build` (Use Git Bash if on Windows). (Deprecation Warning a new setup tool is being developed to be used in place of `make build`) 
+6. In VS Code under the `Ctrl+Shift+P` menu, run `Dev Containers: Rebuild and Reopen in Container` or run `make start`. Or if prompted, click `reopen in container` from popup.
 
 ### Local Dev Environment - Normal Usage
 
