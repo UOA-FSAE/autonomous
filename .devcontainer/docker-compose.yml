@@ -54,7 +54,7 @@ services:
     ipc: host
     stdin_open: true
     tty: true
-    runtime: nvidia
+    # runtime: nvidia
     deploy:
       resources:
         reservations:

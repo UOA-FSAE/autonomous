@@ -76,8 +76,12 @@ class PurePursuitController(Node):
         msg = AckermannDrive(**args)
         self.cmd_vel_pub.publish(msg)
 
+<<<<<<< HEAD
+    def lateral_distance()
+=======
     def lateral_distance():
         pass
+>>>>>>> origin/cone_detection_test
         
 
     def arc_radius(self):
