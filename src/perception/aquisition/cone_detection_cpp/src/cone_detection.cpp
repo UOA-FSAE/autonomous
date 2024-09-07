@@ -48,7 +48,7 @@ public:
   ConeDetectionNode(sl::Camera& zed)
   : Node("cone_detection_node")
   {
-    publisher_ = this->create_publisher<std_msgs::msg::String>("cone_detection", 10);
+    publisher_ = this->create_publisher<moa_msgs::msg::Cone>("cone_detection", 10);
     cone_detection_loop(zed);
   }
 
@@ -104,17 +104,23 @@ private:
       // Retrieve the tracked objects, with 2D and 3D attributes
       zed.retrieveObjects(objects, objectTracker_parameters_rt);
 
-      int count = 0;
       // Publish the detected objects
-      for (sl::ObjectData const& obj : objects.object_list) {
-        std::cout << "Object: " << count << " Cone Class: " << obj.raw_label << " Confidence: " << obj.confidence << std::endl;
-        count++;      
+      for (sl::ObjectData& obj : objects.object_list) {
+        moa_msgs::msg::Cone cone;
+        cone.type = obj.raw_label;
+        cone.confidence = obj.confidence;
+        cone.position.x = obj.position[0];
+        cone.position.y = obj.position[2];
+        cone.position.z = -obj.position[1];
+        cone.radius = obj.dimensions[0] / 2; // Assuming the cone is a cylinder
+        cone.height = obj.dimensions[1];
+        publisher_->publish(cone);
       }
     }
         
   }
 
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
+  rclcpp::Publisher<moa_msgs::msg::Cone>::SharedPtr publisher_;
 };
 
 int main(int argc, char * argv[])

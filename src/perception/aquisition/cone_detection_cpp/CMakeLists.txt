@@ -85,7 +85,7 @@ link_directories(/usr/local/cuda/lib64)
 include_directories(/usr/include/x86_64-linux-gnu/)
 link_directories(/usr/lib/x86_64-linux-gnu/)
 
-FILE(GLOB_RECURSE SRC_FILES src/*.c*)
+FILE(GLOB_RECURSE SRC_FILES src/cone_detection.c* src/yolo.c*)
 FILE(GLOB_RECURSE HDR_FILES include/*.h*)
 
 cuda_add_executable(${PROJECT_NAME} ${HDR_FILES} ${SRC_FILES})
@@ -113,6 +113,13 @@ if(INSTALL_SAMPLES)
     SET(SAMPLE_LIST "${SAMPLE_LIST}" PARENT_SCOPE)
 endif()
 
+add_executable(cone_subscriber src/cone_subscriber.cpp)
+ament_target_dependencies(cone_subscriber
+  rclcpp
+  std_msgs
+  moa_msgs
+)
+
 ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   std_msgs
@@ -121,6 +128,7 @@ ament_target_dependencies(${PROJECT_NAME}
 
 install(TARGETS
   ${PROJECT_NAME}
+  cone_subscriber
   DESTINATION lib/${PROJECT_NAME}
 )
 
