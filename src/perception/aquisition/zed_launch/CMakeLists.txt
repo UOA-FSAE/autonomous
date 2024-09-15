@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(cone_detection_cpp)
+project(zed_launch)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,22 +17,6 @@ option(ENABLE_INT8_CALIBRATOR "Enable int8 calibrator class for quantification c
 IF (ENABLE_INT8_CALIBRATOR)
     ADD_DEFINITIONS(-DENABLE_INT8_CALIBRATOR)
 ENDIF()
-
-# Assuming 'cone_detection_model.engine' is in the 'resources' directory of your project
-set(SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/resources")
-set(DEST_DIR "${CMAKE_CURRENT_BINARY_DIR}")
-
-# Copy file from source directory to destination directory
-add_custom_command(
-    OUTPUT "${DEST_DIR}/cone_detection_model.engine"
-    COMMAND ${CMAKE_COMMAND} -E copy "${SOURCE_DIR}/cone_detection_model.engine" "${DEST_DIR}/cone_detection_model.engine"
-    DEPENDS "${SOURCE_DIR}/cone_detection_model.engine"
-)
-
-# Ensure the file is copied before the target is built
-add_custom_target(copy_cone_detection_model ALL
-    DEPENDS "${DEST_DIR}/cone_detection_model.engine"
-)
 
 #############################################
 # Dependencies
@@ -85,8 +69,8 @@ link_directories(/usr/local/cuda/lib64)
 include_directories(/usr/include/x86_64-linux-gnu/)
 link_directories(/usr/lib/x86_64-linux-gnu/)
 
-FILE(GLOB_RECURSE SRC_FILES src/cone_detection.c* src/yolo.c*)
-FILE(GLOB_RECURSE HDR_FILES include/*.h*)
+FILE(GLOB_RECURSE SRC_FILES cone_detection/cone_detection.cpp cone_detection/yolo.cpp zed_launch/zed_launch.cpp localisation/localisation.cpp) 
+FILE(GLOB_RECURSE HDR_FILES cone_detection/*.h* zed_launch/*.h*)
 
 cuda_add_executable(${PROJECT_NAME} ${HDR_FILES} ${SRC_FILES})
 add_definitions(-O3 -D_MWAITXINTRIN_H_INCLUDED -Wno-deprecated-declarations)
@@ -113,22 +97,33 @@ if(INSTALL_SAMPLES)
     SET(SAMPLE_LIST "${SAMPLE_LIST}" PARENT_SCOPE)
 endif()
 
-add_executable(cone_subscriber src/cone_subscriber.cpp)
+add_executable(cone_subscriber cone_detection/cone_subscriber.cpp)
 ament_target_dependencies(cone_subscriber
   rclcpp
   std_msgs
   moa_msgs
+  geometry_msgs
+)
+
+add_executable(localisation_subscriber localisation/localisation_subscriber.cpp)
+ament_target_dependencies(localisation_subscriber
+  rclcpp
+  std_msgs
+  moa_msgs
+  geometry_msgs
 )
 
 ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   std_msgs
   moa_msgs
+  geometry_msgs
 )
 
 install(TARGETS
   ${PROJECT_NAME}
   cone_subscriber
+  localisation_subscriber
   DESTINATION lib/${PROJECT_NAME}
 )
 

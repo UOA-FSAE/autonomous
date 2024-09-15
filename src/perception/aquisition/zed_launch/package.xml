@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-	<name>cone_detection_cpp</name>
+	<name>zed_launch</name>
 <version>4.1.0</version>
-	<description>cone detection node</description>
+	<description>zed launch node</description>
 	<maintainer email="adrianrosioru03@gmail.com">adrian rosioru</maintainer>
 	<license>Apache License 2.0</license>
 	
@@ -17,6 +17,7 @@
 	<exec_depend>rclcpp</exec_depend>
 	<exec_depend>std_msgs</exec_depend>
 	<exec_depend>moa_msgs</exec_depend>
+	<exec_depend>geometry_msgs</exec_depend>
 
 	<export>
 		<build_type>ament_cmake</build_type>
