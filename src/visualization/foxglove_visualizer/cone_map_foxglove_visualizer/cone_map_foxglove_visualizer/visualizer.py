@@ -22,10 +22,10 @@ class ConePublisher(Node):
     def cone_map_callback(self, msg):
         left_cones = msg.left_cones
         right_cones = msg.right_cones
-        all_cones = left_cones.copy()
-        all_cones.append(right_cones.copy())
-        list_of_cones = all_cones
-        self.publish_cones(list_of_cones)
+        # all_cones = left_cones.copy()
+        # all_cones.append(right_cones.copy())
+        # list_of_cones = all_cones
+        self.publish_cones(left_cones, right_cones)
 
     def localization_callback(self, msg):
         self.publish_transform(msg)
@@ -63,22 +63,24 @@ class ConePublisher(Node):
         id_assign = 0
         Markers.markers.append(self.delete_all_cone())
 
-        car_cone = Cone()
-        car_cone.pose.pose = pose_of_car
-        Markers.markers.append(self.convert_to_visualization(car_cone, is_localization, id_assign))
+        Markers.markers.append(self.convert_to_visualization(pose_of_car.position, is_localization, id_assign, colour=3))
         self.localization_marker_publisher.publish(Markers)
 
-    def publish_cones(self, rest_of_cones):
+    def publish_cones(self, left_cones, right_cones):
         Markers = MarkerArray()
         is_localization = False
         id_assign = 1
         Markers.markers.append(self.delete_all_cone())
-        for cone in rest_of_cones:
-            Markers.markers.append(self.convert_to_visualization(cone, is_localization, id_assign))
+        colour = 0
+        for cone in left_cones:
+            Markers.markers.append(self.convert_to_visualization(cone, is_localization, id_assign, colour))
+            id_assign += 1
+        for cone in right_cones:
+            Markers.markers.append(self.convert_to_visualization(cone, is_localization, id_assign, colour+2))
             id_assign += 1
         self.markers_publisher_.publish(Markers)
 
-    def convert_to_visualization(self, cone, is_localization, id_assign):
+    def convert_to_visualization(self, cone_point, is_localization, id_assign, colour):
         marker = Marker()
         marker.header.frame_id = "global_frame"  # Adjust the frame ID as needed
         marker.header.stamp = self.get_clock().now().to_msg()
@@ -88,16 +90,14 @@ class ConePublisher(Node):
         marker.type = Marker.CUBE
         marker.action = Marker.ADD
 
-        marker.pose.position.x = cone.pose.pose.position.x
-        marker.pose.position.y = cone.pose.pose.position.y
-        marker.pose.position.z = cone.pose.pose.position.z
+        marker.pose.position = cone_point
 
         if is_localization:
             # Need to do later
-            marker.pose.orientation.x = self.convert_rotation_to_quaternion(cone.pose.pose.orientation.w)[0]
-            marker.pose.orientation.y = self.convert_rotation_to_quaternion(cone.pose.pose.orientation.w)[1]
-            marker.pose.orientation.z = self.convert_rotation_to_quaternion(cone.pose.pose.orientation.w)[2]
-            marker.pose.orientation.w = self.convert_rotation_to_quaternion(cone.pose.pose.orientation.w)[3]
+            # marker.pose.orientation.x = self.convert_rotation_to_quaternion(cone.orientation.w)[0]
+            # marker.pose.orientation.y = self.convert_rotation_to_quaternion(cone.orientation.w)[1]
+            # marker.pose.orientation.z = self.convert_rotation_to_quaternion(cone.orientation.w)[2]
+            # marker.pose.orientation.w = self.convert_rotation_to_quaternion(cone.orientation.w)[3]
 
             marker.scale = Vector3(x=1.0, y=2.0, z=1.0)  # Scale of the cone (x, y, z)
 
@@ -114,19 +114,19 @@ class ConePublisher(Node):
 
             marker.scale = Vector3(x=0.1, y=0.1, z=0.1)  # Scale of the cone (x, y, z)
 
-            if cone.colour == 0:
+            if colour == 0:
                 # Blue
                 marker.color.r = 0.0
                 marker.color.g = 0.0
                 marker.color.b = 1.0
                 marker.color.a = 1.0  # Alpha (opacity)
-            elif cone.colour == 1:
+            elif colour == 1:
                 # Orange
                 marker.color.r = 1.0
                 marker.color.g = 0.5
                 marker.color.b = 0.0
                 marker.color.a = 1.0  # Alpha (opacity)
-            elif cone.colour == 2:
+            elif colour == 2:
                 # Yellow
                 marker.color.r = 1.0
                 marker.color.g = 1.0

@@ -2,7 +2,11 @@
 import rclpy
 from rclpy.node import Node
 
+<<<<<<< HEAD
 from geometry_msgs.msg import Pose, Point
+=======
+from geometry_msgs.msg import Pose, Point, Quaternion
+>>>>>>> origin/feat-new-track-msg-specification
 
 import os
 import sys
@@ -33,10 +37,20 @@ class get_car_position(Node):
 
     def get_car_position(self):
         """publishes current position of the simulator car"""
+<<<<<<< HEAD
         position = self.client.getCarState().kinematics_estimated.position  # car kinetmatics in ENU coordinates
         
         msg = Pose()
         msg.position = Point(x=position.x_val, y=position.y_val, z=0.0) # add position information to Pose msg
+=======
+        state = self.client.getCarState()
+        position = state.kinematics_estimated.position  # car kinetmatics in ENU coordinates
+        orientation = state.kinematics_estimated.orientation
+        
+        msg = Pose()
+        msg.position = Point(x=position.x_val, y=position.y_val, z=0.0) # add position information to Pose msg
+        msg.orientation = Quaternion(x=orientation.x_val,y=orientation.y_val,z=orientation.z_val,w=orientation.w_val,)
+>>>>>>> origin/feat-new-track-msg-specification
 
         self.sim_car_pub.publish(msg)   # publish msg
 

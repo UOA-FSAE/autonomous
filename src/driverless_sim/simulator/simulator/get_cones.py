@@ -21,7 +21,11 @@ class get_cones(Node):
     def __init__(self):
         super().__init__("get_cones")
 
+<<<<<<< HEAD
         self.plot = True
+=======
+        self.plot = False
+>>>>>>> origin/feat-new-track-msg-specification
         # connect to the simulator 
         self.client = fsds.FSDSClient(ip=os.environ['WSL_HOST_IP'])
         # Check network connection, exit if not connected
@@ -31,7 +35,11 @@ class get_cones(Node):
         # create publisher
         self.sim_cone_pub = self.create_publisher(ConeMap, "cone_map", 10)
 
+<<<<<<< HEAD
         self.get_cones_from_simulator()
+=======
+        self.create_timer(1.0, self.get_cones_from_simulator)
+>>>>>>> origin/feat-new-track-msg-specification
 
 
     def get_cones_from_simulator(self):

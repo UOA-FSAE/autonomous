@@ -7,6 +7,17 @@
   <maintainer email="Tanish.Bhatt@fsae.co.nz">tanish</maintainer>
   <license>TODO: License declaration</license>
 
+<<<<<<< HEAD
+=======
+  <depend>ackermann_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>moa_msgs</depend>
+
+  <depend>python3-numpy</depend>
+  <depend>python3-matplotlib</depend>
+
+>>>>>>> origin/feat-new-track-msg-specification
   <depend>rclpy</depend>
 
   <test_depend>ament_copyright</test_depend>
