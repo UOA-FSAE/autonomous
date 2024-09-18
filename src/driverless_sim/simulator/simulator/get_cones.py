@@ -27,7 +27,7 @@ class get_cones(Node):
         # Check network connection, exit if not connected
         self.client.confirmConnection()
         # After enabling setting trajectory setpoints via the api. 
-        self.client.enableApiControl(True)
+        self.client.enableApiControl(False)
         # create publisher
         self.sim_cone_pub = self.create_publisher(ConeMap, "cone_map", 10)
 

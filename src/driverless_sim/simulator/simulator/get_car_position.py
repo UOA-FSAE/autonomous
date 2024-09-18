@@ -25,7 +25,7 @@ class get_car_position(Node):
         # Check network connection, exit if not connected
         self.client.confirmConnection()
         # After enabling setting trajectory setpoints via the api. 
-        self.client.enableApiControl(True)
+        self.client.enableApiControl(False)
         # create publisher
         self.sim_car_pub = self.create_publisher(Pose, 'car_position', 10)
 
