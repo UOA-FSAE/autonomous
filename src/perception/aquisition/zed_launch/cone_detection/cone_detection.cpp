@@ -114,11 +114,21 @@ void ZedLaunchNode::cone_detection_loop()
 
         zed.getPosition(cam_w_pose, sl::REFERENCE_FRAME::WORLD);
         detectionsMsg.car_pose.position.x = cam_w_pose.getTranslation().tx;
-        detectionsMsg.car_pose.position.y = cam_w_pose.getTranslation().ty;
-        detectionsMsg.car_pose.position.z = cam_w_pose.getTranslation().tz;
-        detectionsMsg.car_pose.orientation.x = cam_w_pose.getOrientation().ox;
-        detectionsMsg.car_pose.orientation.y = cam_w_pose.getOrientation().oy;
-        detectionsMsg.car_pose.orientation.z = cam_w_pose.getOrientation().oz;
+        detectionsMsg.car_pose.position.y = cam_w_pose.getTranslation().tz;
+        detectionsMsg.car_pose.position.z = cam_w_pose.getTranslation().ty;
+
+        float ox = cam_w_pose.getOrientation().ox;
+        float oy = cam_w_pose.getOrientation().oy;
+        float oz = cam_w_pose.getOrientation().oz;
+        float ow = cam_w_pose.getOrientation().ow;
+
+        float yaw = atan2(2.0f * (ow * oy + ox * oz), 1.0f - 2.0f * (oy * oy + oz * oz));
+        float yaw_deg = yaw * 180.0f / M_PI;
+
+        std::cout << "Yaw angle: " << yaw_deg << " degrees" << std::endl;
+
+        detectionsMsg.car_pose.orientation.w = yaw_deg;
+
         cone_detection_publisher->publish(detectionsMsg);
 
         mtx.unlock();

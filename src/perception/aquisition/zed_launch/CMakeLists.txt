@@ -72,7 +72,7 @@ link_directories(/usr/lib/x86_64-linux-gnu/)
 FILE(GLOB_RECURSE SRC_FILES cone_detection/cone_detection.cpp cone_detection/yolo.cpp zed_launch/zed_launch.cpp localisation/localisation.cpp) 
 FILE(GLOB_RECURSE HDR_FILES cone_detection/*.h* zed_launch/*.h*)
 
-cuda_add_executable(${PROJECT_NAME} ${HDR_FILES} ${SRC_FILES})
+cuda_add_executable(zed_launch_node ${HDR_FILES} ${SRC_FILES})
 add_definitions(-O3 -D_MWAITXINTRIN_H_INCLUDED -Wno-deprecated-declarations)
 
 if (LINK_SHARED_ZED)
@@ -83,7 +83,7 @@ endif()
 
 SET(TRT_LIBS nvinfer nvonnxparser)
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(zed_launch_node
                         ${TRT_LIBS}
                         ${SPECIAL_OS_LIBS}
                         ${ZED_LIBS}
@@ -93,7 +93,7 @@ target_link_libraries(${PROJECT_NAME}
                         ${OpenCV_LIBRARIES})
 
 if(INSTALL_SAMPLES)
-    LIST(APPEND SAMPLE_LIST ${PROJECT_NAME})
+    LIST(APPEND SAMPLE_LIST zed_launch_node)
     SET(SAMPLE_LIST "${SAMPLE_LIST}" PARENT_SCOPE)
 endif()
 
@@ -113,7 +113,7 @@ ament_target_dependencies(localisation_subscriber
   geometry_msgs
 )
 
-ament_target_dependencies(${PROJECT_NAME}
+ament_target_dependencies(zed_launch_node
   rclcpp
   std_msgs
   moa_msgs
@@ -121,10 +121,10 @@ ament_target_dependencies(${PROJECT_NAME}
 )
 
 install(TARGETS
-  ${PROJECT_NAME}
+  zed_launch_node
   cone_subscriber
   localisation_subscriber
-  DESTINATION lib/${PROJECT_NAME}
+  DESTINATION lib/zed_launch_node
 )
 
 ament_package()

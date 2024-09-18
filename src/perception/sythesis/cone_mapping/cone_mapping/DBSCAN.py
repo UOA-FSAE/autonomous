@@ -17,6 +17,9 @@ import numpy as np
 #import matplotlib.pyplot as plt 
 import time
 
+import threading
+from std_msgs.msg import Float32
+
 class Cone_Mapper(Node):
 
 # Initializer
@@ -51,16 +54,59 @@ class Cone_Mapper(Node):
 
         self.get_logger().info("Cone Map Initialization Completed")
 
-    def car_position_callback(self, msg: Pose):
-        self.car_positions.append(msg)
+################################################################################ (measure duration for each cone map update)
 
-    def cones_callback(self, msg: Cones):
-        pose_in_local_coordinate = msg
-        while len(self.car_positions) == 0:
-            pass
-        car_position = self.car_positions.pop(0)
-        pose_in_global_coordinate = self.transform_raw_input_to_global_coordinate(pose_in_local_coordinate, car_position)
-        self.most_updated_cone_map = self.clustering_update(pose_in_global_coordinate)
+        # Create update duration publisher
+        self.duration_publisher = self.create_publisher(Float32, 'duration', 10)
+
+        # Record the total update duration
+        self.total_time = 0
+
+        # Record the number of updates
+        self.counter = 0
+
+        # Lock for thread safety
+        self.lock = threading.Lock()
+
+        # Create a timer to calculate the average duration for each cone map update
+        self.timer = self.create_timer(10.0, self.average_time_callback)
+
+    def average_time_callback(self):
+        """This function calculates and publishes the average cone map update duration every 10s to the /duration topic and write to a file
+        """
+        # Calculate the average update duration for the most recent 10s
+        with self.lock:
+            try:
+                average_duration = self.total_time / self.counter
+            except ZeroDivisionError:
+                average_duration = 0.0
+            self.total_time = 0
+            self.counter = 0
+
+        # Write the average update duration to a file
+        with open("/home/fsae/Documents/pang/cone_mapping_data/dbscan.txt", "a") as file:
+            file.write(f"{average_duration}\n")
+
+        # Publishes the average update duration to the /duration topic
+        duration_msg = Float32()
+        duration_msg.data = average_duration
+        self.duration_publisher.publish(duration_msg)
+
+
+    def listener_callback(self, msg):
+        # Update the existing cone map with new measurements
+        before = self.get_clock().now()
+        msg_in_local_coordinate = msg
+        msg_in_global_coordinate = self.transform_raw_input_to_global_coordinate(msg_in_local_coordinate)
+        self.most_updated_cone_map = self.clustering_update(msg_in_global_coordinate)
+        after = self.get_clock().now()
+
+        # Calculate the update duration in micro seconds
+        duration = (after - before).nanoseconds / 1000
+        with self.lock:
+            self.total_time += duration
+            self.counter += 1
+
         self.publisher.publish(self.most_updated_cone_map)
         #self.get_logger().info("Cone Map Published")
 
