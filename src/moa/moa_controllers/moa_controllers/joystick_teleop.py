@@ -8,10 +8,20 @@ from std_msgs.msg import Header
 # L3/left joystick goes up,down when fully pushed up is -32767 and positive when down
 # L3/left joystick goes right and down when fully pushed is 32767 when pushed fully right and negative when fully left
 class joystick_teleop(Node):
-    def __init__(self, max_speed):
+    def __init__(self):
         # publisher
         super().__init__("joystick_teleop")
         self.get_logger().info("joystick teleoperation node started")
+
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+            ('max_speed', 2.0)
+            ]
+        )
+
+        # get parameter values
+        max_speed = self.get_parameter("max_speed").get_parameter_value().double_value
         # now make sure the controller is paired over the Bluetooth and turn on the listener        
         joystick = MyController(max_speed = max_speed,
                                 min_speed = 0,
@@ -248,8 +258,7 @@ class MyController(Controller):  # create a custom class for your controller and
 def main(args=None):
     rclpy.init(args=args)
 
-    max_speed = 2
-    node = joystick_teleop(max_speed)
+    node = joystick_teleop()
     rclpy.spin(node)
 
     node.destroy_node()

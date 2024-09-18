@@ -43,13 +43,6 @@ def generate_launch_description():
             executable='as_status_node',
             name='as_status_node',
         ),
-
-        launch_ros.actions.Node(
-            package='foxglove_bridge',
-            executable='foxglove_bridge',
-            name='foxglove_bridge',
-            parameters=[{'port':8765}]
-        ),
         
         launch_ros.actions.Node(
             package='CanTalk',
