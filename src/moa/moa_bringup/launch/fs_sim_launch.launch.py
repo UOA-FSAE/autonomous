@@ -17,27 +17,16 @@ def generate_launch_description():
             name='get_car_position',
         ),
 
-        # path generation
+        # path planning
         launch_ros.actions.Node(
             package='path_planning',
-            executable='trajectory_generation',
-            name='trajectory_generation',
-            parameters=[{'debug': True, 
-                        'timer': 1.0}],
-        ),
-
-        # path optimization
-        launch_ros.actions.Node(
-            package='path_planning',
-            executable='trajectory_optimisation',
-            name='trajectory_optimisation',
-            parameters=[{'delete': False,
-                        'interpolate': False}],
+            executable='centerline_planner',
+            name='centerline_planner',
         ),
 
         # controller
         launch_ros.actions.Node(
-            package='stanley_controller',
+            package='head_to_goal_control',
             executable='controller',
             name='controller',
         ),

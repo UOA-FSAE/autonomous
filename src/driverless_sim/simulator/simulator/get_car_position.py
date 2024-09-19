@@ -21,11 +21,11 @@ class get_car_position(Node):
         super().__init__("get_car_position")
 
         # connect to the simulator 
-        self.client = fsds.FSDSClient(ip=os.environ['WSL_HOST_IP'])
+        self.client = fsds.FSDSClient()
         # Check network connection, exit if not connected
         self.client.confirmConnection()
         # After enabling setting trajectory setpoints via the api. 
-        self.client.enableApiControl(True)
+        self.client.enableApiControl(False)
         # create publisher
         self.sim_car_pub = self.create_publisher(Pose, 'car_position', 10)
 
