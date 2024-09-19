@@ -124,7 +124,7 @@ install(TARGETS
   zed_launch_node
   cone_subscriber
   localisation_subscriber
-  DESTINATION lib/zed_launch_node
+  DESTINATION lib/zed_launch
 )
 
 ament_package()
