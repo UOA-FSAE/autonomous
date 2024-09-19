@@ -129,6 +129,7 @@ class ack_to_can(Node):
         data = self.ackermann_to_can_parser(ack_msg)
 
         if data is not None:
+            self.get_logger().info(f"DATA IS = {data}")
             can_msg.can.data = data
             # publish CAN to topic
             self.can_pub.publish(can_msg)

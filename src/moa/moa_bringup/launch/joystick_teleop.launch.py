@@ -12,8 +12,26 @@ def generate_launch_description():
         # launch file arguments
         DeclareLaunchArgument(
             'max_speed',
-            default_value='2.0',
+            default_value="2.0",
             description='maximum speed of the vehicle when R2 is fully pressed on the joystick'
+        ),
+
+        DeclareLaunchArgument(
+            'max_angle',
+            default_value="25.0",
+            description='maximum angle of the vehicle when L3 is fully pressed to the right/left on the joystick'
+        ),
+
+        DeclareLaunchArgument(
+            'use_ds4drv',
+            default_value="True",
+            description='Its a type of connection, whether to use it or not. Recommended'
+        ),
+
+        DeclareLaunchArgument(
+            'verbose',
+            default_value="False",
+            description='Whether to print output'
         ),
 
         # add base launch file
@@ -28,6 +46,9 @@ def generate_launch_description():
             package='moa_controllers',
             executable='joystick_teleop',
             name='joystick_teleop',
-            parameters=[{'max_speed', LaunchConfiguration("max_speed")}]
+            parameters=[{'max_speed', LaunchConfiguration("max_speed")},
+                        {'max_angle', LaunchConfiguration("max_angle")},
+                        {'use_ds4drv', LaunchConfiguration("use_ds4drv")},
+                        {'verbose', LaunchConfiguration("verbose")}]
         ),
     ])
