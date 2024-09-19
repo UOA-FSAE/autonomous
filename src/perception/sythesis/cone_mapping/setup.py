@@ -21,6 +21,7 @@ setup(
 	entry_points={
 		    'console_scripts': [
                     'cone_mapping_node = cone_mapping.cone_mapping:main',
+                    'dbscan = cone_mapping.dbscan:main',
 		    ],
 	},
 )

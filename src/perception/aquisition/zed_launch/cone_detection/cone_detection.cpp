@@ -125,7 +125,9 @@ void ZedLaunchNode::cone_detection_loop()
         float yaw = atan2(2.0f * (ow * oy + ox * oz), 1.0f - 2.0f * (oy * oy + oz * oz));
         float yaw_deg = yaw * 180.0f / M_PI;
 
-        // std::cout << "Yaw angle: " << yaw_deg << " degrees" << std::endl;
+        if (yaw_deg < 0) {
+            yaw_deg += 360;
+        }
 
         detectionsMsg.car_pose.orientation.w = yaw_deg;
 

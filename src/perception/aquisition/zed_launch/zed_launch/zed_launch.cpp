@@ -36,7 +36,7 @@ int main(int argc, char * argv[])
   sl::InitParameters init_parameters;
   init_parameters.sdk_verbose = true;
   init_parameters.depth_mode = sl::DEPTH_MODE::ULTRA;
-  init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::RIGHT_HANDED_Y_UP; // OpenGL's coordinate system is right_handed   
+  init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::LEFT_HANDED_Y_UP; // OpenGL's coordinate system is right_handed   
 
   if (argc > 1) {
     std::string zed_opt = argv[1];
