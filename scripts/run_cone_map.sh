@@ -1,4 +1,4 @@
 #!/bin/bash
 source install/setup.bash
 #colcon build --packages-select cone_mapping && ros2 run cone_mapping kf
-colcon build --packages-select cone_mapping && ros2 run cone_mapping dbscan
+colcon build --packages-select cone_mapping && ros2 run cone_mapping cone_mapping_node

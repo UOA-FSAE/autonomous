@@ -5,8 +5,7 @@ from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 from geometry_msgs.msg import Vector3, Pose
 from geometry_msgs.msg import TransformStamped
-from moa_msgs.msg import ConeMap
-from moa_msgs.msg import Cone
+from moa_msgs.msg import Track
 import numpy as np
 
 class ConePublisher(Node):
@@ -15,16 +14,19 @@ class ConePublisher(Node):
         self.markers_publisher_ = self.create_publisher(MarkerArray, 'visualization_marker_cones', 10)
         self.localization_marker_publisher = self.create_publisher(MarkerArray, 'visualization_marker_car', 10)
         self.frame_publisher_ = self.create_publisher(TransformStamped, 'base_tf', 10)
-        self.subscription_cone_map = self.create_subscription(ConeMap, 'cone_map',  self.cone_map_callback, 10)
+        self.subscription_left_cone_map = self.create_subscription(Track, 'left_track',  self.left_cone_map_callback, 10)
+        self.subscription_right_cone_map = self.create_subscription(Track, 'right_track',  self.right_cone_map_callback, 10)
         self.subscription_localization = self.create_subscription(Pose, 'car_position', self.localization_callback, 10)
         self.get_logger().info("Cone Map Visualization Initialization Completed")
 
-    def cone_map_callback(self, msg):
-        left_cones = msg.left_cones
-        right_cones = msg.right_cones
-        # all_cones = left_cones.copy()
-        # all_cones.append(right_cones.copy())
-        # list_of_cones = all_cones
+    def left_cone_map_callback(self, msg):
+        left_cones = msg.cones
+        right_cones = []
+        self.publish_cones(left_cones, right_cones)
+
+    def right_cone_map_callback(self, msg):
+        left_cones = []
+        right_cones = msg.cones
         self.publish_cones(left_cones, right_cones)
 
     def localization_callback(self, msg):

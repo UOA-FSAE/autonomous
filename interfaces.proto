@@ -41,10 +41,29 @@ message Detections {
     repeated geometry_msgs.Point small_orange = 4; 
     repeated geometry_msgs.Point big_orange = 5; 
 }
-// ? can this be renamed to Cones?
+
 message Track { 
     repeated geometry_msgs.Point cones = 1;
 }
+
+message Cone {
+
+    float32 confidence = 1; // The confidence that this is the cone, a percentage value from 0 to 100 (defaults to 0.0)
+
+    uint8 type = 6; // The type of the cone: 0 for Blue, 1 for Yellow, 2 for Orange, 4 for Tall Orange, and 3 for Other
+
+    geometry_msgs.Point position = 7;  // Position of cone (x, y, z)
+
+    float32 radius = 4; // Size of cone, radius (should default to 0.0)
+    float32 height = 5; // Size of cone, height (should default to 0.0)
+
+}
+// ? can this be renamed to Cones?
+message ConeMap { 
+    repeated geometry_msgs.Point left_cones = 2; // Ordered list of cones on the left boundary 
+    repeated geometry_msgs.Point right_cones = 3; // Ordered list of cones on the right boundary
+}
+
 message ConeMapStamped {
     std_msgs.Header header = 1;
     ConeMap cone_map = 2;

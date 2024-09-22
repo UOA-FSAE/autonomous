@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 
-from moa_msgs.msg import ConeMap
+from moa_msgs.msg import Track
 from geometry_msgs.msg import Pose, PoseArray
 
 import numpy as np
@@ -17,9 +17,12 @@ class centerline_planner(Node):
         self.look_forward = 4
         self.num_points = self.look_forward*2
         self.smoothing_factor = 1
+        self.left_cones = []
+        self.right_cones = []
 
         # subscribers
-        self.create_subscription(ConeMap, "cone_map", self.callback, 10)    # track
+        self.subscription_left_cone_map = self.create_subscription(Track, 'left_track',  self.left_cone_map_callback, 10)
+        self.subscription_right_cone_map = self.create_subscription(Track, 'right_track',  self.right_cone_map_callback, 10)
         self.create_subscription(Pose, "car_position", self.set_car_position, 10)   # car pose
 
         # publishers
@@ -27,14 +30,21 @@ class centerline_planner(Node):
     
     def set_car_position(self, msg:Pose) -> None: 
         self.car_pose = msg
+        self.loop()
+
+    def left_cone_map_callback(self, msg:Track) -> None:
+        self.left_cones = msg.cones
+
+    def right_cone_map_callback(self, msg:Track) -> None:
+        self.right_cones = msg.cones
     
-    def callback(self, msg:ConeMap) -> None:
+    def loop(self) -> None:
         self.get_logger().info(f"car pose recieved = {hasattr(self,'car_pose')}")   
         
         if not hasattr(self,'car_pose'):
             return 
         
-        lb, rb = self.get_boundaries(msg)   # get boundaries (list of [x,y] points)
+        lb, rb = self.get_boundaries()   # get boundaries (list of [x,y] points)
 
         if not len(lb) > 0 or not len(rb) > 0:
             return
@@ -59,10 +69,10 @@ class centerline_planner(Node):
         self.plot(lb,rb,centerline,self._plot) # plot
     
     # MAIN FUNCTIONS
-    def get_boundaries(self,msg:ConeMap):
+    def get_boundaries(self):
         """Retrieves the left and right boundary from msg and returns as a [x,y] list"""
-        left_cones = [[P.x, P.y] for P in msg.left_cones]
-        right_cones = [[P.x, P.y] for P in msg.right_cones]
+        left_cones = [[P.x, P.y] for P in self.left_cones]
+        right_cones = [[P.x, P.y] for P in self.right_cones]
 
         return left_cones, right_cones
 
