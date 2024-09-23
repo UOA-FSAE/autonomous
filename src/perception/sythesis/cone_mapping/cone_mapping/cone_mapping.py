@@ -58,13 +58,13 @@ class Cone_Mapper(Node):
 ################################################################################ (parameters to tune)
 
         # Initial error in the estimate
-        self.default_error_in_estimate = 5.0
+        self.default_error_in_estimate = 4.0
 
         # Error in measurement
         self.error_in_measurement = 2.5
 
         # Cone match radius
-        self.match_radius = 0.5
+        self.match_radius = 1.0
 
 ################################################################################ (parameters to tune)
 
@@ -117,7 +117,7 @@ class Cone_Mapper(Node):
             # If the left track is not empty, find the closest cone for each newly measured cone and update its coordinates or add it to the track
             for coord in points:
                 point, distance = self.left_tree.search_nn(coord)
-                print(self.left_tree.search_nn(coord))
+                # print(self.left_tree.search_nn(coord))
                 # kdtree.visualize(self.left_tree)
                 # If the newly measured cone is in the match radius, this cone already exists in the left track, update its coordinates
                 if distance <= self.match_radius:
@@ -151,7 +151,7 @@ class Cone_Mapper(Node):
             # If the right track is not empty, find the closest cone for each newly measured cone and update its coordinates or add it to the track
             for coord in points:
                 point, distance = self.right_tree.search_nn(coord)
-                # print(self.right_tree.search_nn(coord))
+                print(self.right_tree.search_nn(coord))
                 # If the newly measured cone is in the match radius, this cone already exists in the right track, update its coordinates
                 # check if distance is nan
                 # kdtree.visualize(self.right_tree)

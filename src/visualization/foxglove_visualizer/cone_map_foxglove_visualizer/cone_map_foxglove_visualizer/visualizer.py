@@ -6,6 +6,7 @@ from visualization_msgs.msg import MarkerArray
 from geometry_msgs.msg import Vector3, Pose
 from geometry_msgs.msg import TransformStamped
 from moa_msgs.msg import Track
+from moa_msgs.msg import Detections
 import numpy as np
 
 class ConePublisher(Node):
@@ -17,6 +18,10 @@ class ConePublisher(Node):
         self.markers_publisher_ = self.create_publisher(MarkerArray, 'visualization_marker_cones', 10)
         self.localization_marker_publisher = self.create_publisher(MarkerArray, 'visualization_marker_car', 10)
         self.frame_publisher_ = self.create_publisher(TransformStamped, 'base_tf', 10)
+        self.detections_publisher = self.create_publisher(MarkerArray, 'visualization_marker_detections', 10)
+
+
+        self.detections_subscriber = self.create_subscription(Detections, 'cone_detection', self.detections_callback, 10)
         self.subscription_left_cone_map = self.create_subscription(Track, 'left_track',  self.left_cone_map_callback, 10)
         self.subscription_right_cone_map = self.create_subscription(Track, 'right_track',  self.right_cone_map_callback, 10)
         self.subscription_localization = self.create_subscription(Pose, 'car_position', self.localization_callback, 10)
@@ -32,6 +37,21 @@ class ConePublisher(Node):
         self.publish_cones()
         self.publish_transform(msg)
         self.publish_car(msg)
+    
+    def detections_callback(self, msg):
+        Markers = MarkerArray()
+        is_localization = False
+        id_assign = 1
+        Markers.markers.append(self.delete_all_cone())
+        colour = 0
+        for cone in msg.yellow:
+            Markers.markers.append(self.convert_to_visualization(cone, is_localization, id_assign, colour))
+            id_assign += 1
+        for cone in msg.blue:
+            Markers.markers.append(self.convert_to_visualization(cone, is_localization, id_assign, colour+2))
+            id_assign += 1
+
+        self.detections_publisher.publish(Markers)
 
     def convert_rotation_to_quaternion(self, angle):
         qw = np.cos(angle / 2)
@@ -84,7 +104,7 @@ class ConePublisher(Node):
             Markers.markers.append(self.convert_to_visualization(cone, is_localization, id_assign, colour+2))
             id_assign += 1
 
-        print("COunt: ", len(Markers.markers))
+        # print("COunt: ", len(Markers.markers))
         self.markers_publisher_.publish(Markers)
 
     def convert_to_visualization(self, cone_point, is_localization, id_assign, colour):

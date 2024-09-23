@@ -14,7 +14,7 @@
 
 using namespace nvinfer1;
 #define NMS_THRESH 0.4
-#define CONF_THRESH 0.3
+#define CONF_THRESH 0.8
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -90,20 +90,29 @@ void ZedLaunchNode::cone_detection_loop()
                 case 0:
                     p.x = obj.position[0] / 1000.0;
                     p.y = obj.position[1] / 1000.0;
-                    
-                    detectionsMsg.blue.push_back(p);
+
+                    if (sqrt(p.x * p.x + p.y * p.y) < 6.0) {
+                        detectionsMsg.blue.push_back(p);
+                    }
+
                     break;
                 case 4:
                     p.x = obj.position[0] / 1000.0;
                     p.y = obj.position[1] / 1000.0;
 
-                    detectionsMsg.yellow.push_back(p);
+                    if (sqrt(p.x * p.x + p.y * p.y) < 6.0) {
+                        detectionsMsg.yellow.push_back(p);
+                    }
+                    
                     break;
                 default:
                     p.x = obj.position[0] / 1000.0;
                     p.y = obj.position[1] / 1000.0;
 
-                    detectionsMsg.big_orange.push_back(p);
+                    if (sqrt(p.x * p.x + p.y * p.y) < 6.0) {
+                        detectionsMsg.big_orange.push_back(p);
+                    }
+
                     break;
             }
         }
