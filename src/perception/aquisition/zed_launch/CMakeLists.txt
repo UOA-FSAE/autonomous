@@ -26,12 +26,14 @@ find_package(GLUT REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(CUDA REQUIRED)
+find_package(cv_bridge REQUIRED)
 
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(moa_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 if(BUILD_TESTING)
@@ -46,6 +48,7 @@ include_directories(${ZED_INCLUDE_DIRS})
 include_directories(${GLEW_INCLUDE_DIRS})
 include_directories(${GLUT_INCLUDE_DIR})
 include_directories(${CUDA_INCLUDE_DIRS})
+include_directories(${cv_bridge_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 link_directories(${ZED_LIBRARY_DIR})
@@ -116,10 +119,13 @@ ament_target_dependencies(localisation_subscriber
 
 ament_target_dependencies(zed_launch_node
   rclcpp
+  cv_bridge
+  OpenCV
   std_msgs
   moa_msgs
   geometry_msgs
   visualization_msgs
+  sensor_msgs
 )
 
 install(TARGETS

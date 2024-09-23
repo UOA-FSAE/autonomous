@@ -97,8 +97,8 @@ class Cone_Mapper(Node):
         global_yellow_cone_positions = self.cones_local_to_global(msg.yellow, car_position)
 
         # Update the left track and the right track
-        self.update_left_track(global_yellow_cone_positions)
-        self.update_right_track(global_blue_cone_positions)
+        self.update_left_track(global_blue_cone_positions)
+        self.update_right_track(global_yellow_cone_positions)
 
 
     def update_left_track(self, points: list) -> None:
@@ -151,7 +151,7 @@ class Cone_Mapper(Node):
             # If the right track is not empty, find the closest cone for each newly measured cone and update its coordinates or add it to the track
             for coord in points:
                 point, distance = self.right_tree.search_nn(coord)
-                print(self.right_tree.search_nn(coord))
+                # print(self.right_tree.search_nn(coord))
                 # If the newly measured cone is in the match radius, this cone already exists in the right track, update its coordinates
                 # check if distance is nan
                 # kdtree.visualize(self.right_tree)

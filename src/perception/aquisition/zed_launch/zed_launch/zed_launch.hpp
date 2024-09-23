@@ -10,8 +10,7 @@
 #include "std_msgs/msg/string.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "moa_msgs/msg/detections.hpp"
-#include "visualization_msgs/msg/marker_array.hpp"
-#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "sensor_msgs/msg/image.hpp"
 
 using namespace std::chrono_literals;
 
@@ -27,8 +26,7 @@ public:
     // Create the publishers
     cone_detection_publisher = this->create_publisher<moa_msgs::msg::Detections>("cone_detection", 10);
     car_position_publisher = this->create_publisher<geometry_msgs::msg::Pose>("car_position", 10);
-    car_marker_publisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("car_marker", 10);
-    tf_broadcaster = this->create_publisher<geometry_msgs::msg::TransformStamped>("tf_broadcaster", 10);
+    image_publisher = this->create_publisher<sensor_msgs::msg::Image>("image", 10);
 
     // Start the threads
     std::thread t1(&ZedLaunchNode::cone_detection_loop, this);
@@ -43,12 +41,12 @@ private:
     sl::Camera& zed;
     sl::Pose cam_w_pose;
     bool camera_running = true;
+    bool visualisation = false;
 
     // Publishers
     rclcpp::Publisher<moa_msgs::msg::Detections>::SharedPtr cone_detection_publisher;
     rclcpp::Publisher<geometry_msgs::msg::Pose>::SharedPtr car_position_publisher;
-    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr car_marker_publisher;
-    rclcpp::Publisher<geometry_msgs::msg::TransformStamped>::SharedPtr tf_broadcaster;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_publisher;
         
     void cone_detection_loop();
     void car_position();

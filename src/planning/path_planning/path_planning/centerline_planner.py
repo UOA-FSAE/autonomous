@@ -138,8 +138,8 @@ class centerline_planner(Node):
             plt.ion()
             plt.clf()
 
-            plt.plot(lbx,lby,'*y',label='left')
-            plt.plot(rbx,rby,'*b',label='right')
+            plt.plot(lbx,lby,'*b',label='left')
+            plt.plot(rbx,rby,'*y',label='right')
             plt.plot(centx,centy,'-r',label='centerline')
             plt.plot(car_x,car_y,'*k',label='car position')
 
