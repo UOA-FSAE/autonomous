@@ -64,7 +64,7 @@ class Cone_Mapper(Node):
         self.error_in_measurement = 2.5
 
         # Cone match radius
-        self.match_radius = 0.1
+        self.match_radius = 0.5
 
 ################################################################################ (parameters to tune)
 
@@ -79,24 +79,26 @@ class Cone_Mapper(Node):
         self.update_existing_cone_map(msg)
 
         # Publishes left-track cones to the /left_track topic and right-track cones to the /right_track topic
+        # print("Left track length: ", len(self.left_track.cones))
+        # print("Right track length: ", len(self.right_track.cones))                                                                                                                                                                          
         self.left_track_publisher.publish(self.left_track)
         self.right_track_publisher.publish(self.right_track)
 
 
     def update_existing_cone_map(self, msg: Detections) -> None:
-        """This function updates the existing cone map using new cone measurements
+        """This function updates the existing cone map using new cone measurementsf
 
         Args:
             msg (Detections): Contains the car's position and lists of detected cones
         """
         # Get all cones' global positions
         car_position = msg.car_pose
-        global_blue_cone_positions = self.cones_local_to_global(msg.yellow, car_position)
-        global_yellow_cone_positions = self.cones_local_to_global(msg.blue, car_position)
+        global_blue_cone_positions = self.cones_local_to_global(msg.blue, car_position)
+        global_yellow_cone_positions = self.cones_local_to_global(msg.yellow, car_position)
 
         # Update the left track and the right track
-        self.update_left_track(global_blue_cone_positions)
-        self.update_right_track(global_yellow_cone_positions)
+        self.update_left_track(global_yellow_cone_positions)
+        self.update_right_track(global_blue_cone_positions)
 
 
     def update_left_track(self, points: list) -> None:
@@ -108,11 +110,15 @@ class Cone_Mapper(Node):
         if self.left_track == None:
             # If the left track is empty, pack all cone measurements and update the left track
             self.left_track = self.produce_track_message(points)
-            self.left_tree = kdtree.create([Item(coord[0], coord[1], (index, self.default_error_in_estimate)) for index, coord in enumerate(points)])
+            # self.left_tree = kdtree.create([Item(coord[0], coord[1], (index, self.default_error_in_estimate)) for index, coord in enumerate(points)])
+            self.left_tree = kdtree.create(
+                 [Item(coord[0], coord[1], (index, self.default_error_in_estimate)) for index, coord in enumerate(points)], dimensions=2)  # For 2D points
         else:
             # If the left track is not empty, find the closest cone for each newly measured cone and update its coordinates or add it to the track
             for coord in points:
                 point, distance = self.left_tree.search_nn(coord)
+                print(self.left_tree.search_nn(coord))
+                # kdtree.visualize(self.left_tree)
                 # If the newly measured cone is in the match radius, this cone already exists in the left track, update its coordinates
                 if distance <= self.match_radius:
                     index = point.data.data[0]
@@ -120,7 +126,7 @@ class Cone_Mapper(Node):
                     error_in_estimate = point.data.data[1]
                     new_estimate_x, new_estimate_y, new_error_in_estimate = self.kalman_filtering(cone, coord, error_in_estimate)
                     point.data.coords = (new_estimate_x, new_estimate_y)
-                    point.data.data[1] = new_error_in_estimate
+                    point.data.data = (index, new_error_in_estimate)
                 else:
                     # If the newly measured cone is not in the match radius, this cone does not exist in the existing cone map, add it to the existing cone map
                     cone = Point()
@@ -140,19 +146,22 @@ class Cone_Mapper(Node):
         if self.right_track == None:
             # If the right track is empty, pack all cone measurements and update the right track
             self.right_track = self.produce_track_message(points)
-            self.right_tree = kdtree.create([Item(coord[0], coord[1], (index, self.default_error_in_estimate)) for index, coord in enumerate(points)])
+            self.right_tree = kdtree.create([Item(coord[0], coord[1], (index, self.default_error_in_estimate)) for index, coord in enumerate(points)], dimensions=2)
         else:
             # If the right track is not empty, find the closest cone for each newly measured cone and update its coordinates or add it to the track
             for coord in points:
                 point, distance = self.right_tree.search_nn(coord)
+                # print(self.right_tree.search_nn(coord))
                 # If the newly measured cone is in the match radius, this cone already exists in the right track, update its coordinates
+                # check if distance is nan
+                # kdtree.visualize(self.right_tree)
                 if distance <= self.match_radius:
                     index = point.data.data[0]
                     cone = self.right_track.cones[index]
                     error_in_estimate = point.data.data[1]
                     new_estimate_x, new_estimate_y, new_error_in_estimate = self.kalman_filtering(cone, coord, error_in_estimate)
                     point.data.coords = (new_estimate_x, new_estimate_y)
-                    point.data.data[1] = new_error_in_estimate
+                    point.data.data = (index, new_error_in_estimate)
                 else:
                     # If the newly measured cone is not in the match radius, this cone does not exist in the existing cone map, add it to the existing cone map
                     cone = Point()

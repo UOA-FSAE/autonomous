@@ -1,3 +1,3 @@
 #!/bin/bash
 source install/setup.bash
-ros2 launch zed_launch zed_launch_node recording1.svo2
+colcon build --packages-select zed_launch && ros2 run zed_launch zed_launch_node recording1.svo2
