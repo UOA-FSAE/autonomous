@@ -1,1 +1,0 @@
-python %~dp0ROS2-protobuff-compiler\protobuf2rosmsg.py -f %~dp0interfaces.proto -m %~dp0src\moa\moa_msgs\msg -s %~dp0src\moa\moa_msgs\srv -c

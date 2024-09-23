@@ -15,3 +15,4 @@ wandb/
 *.engine
 *.onnx
 *.svo2
+*.pt

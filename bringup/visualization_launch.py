@@ -34,3 +34,5 @@ def generate_launch_description():
         ),
 
   ])
+
+# TO DO: Add the visualization nodes to the launch file
