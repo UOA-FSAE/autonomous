@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+message AllStates {
+    uint16 id = 1; 
+    repeated ackermann_msgs.AckermannDrive states = 2;
+}
+
+message AllTrajectories {
+    uint16 id = 1;
+    repeated geometry_msgs.PoseArray trajectories = 2;
+}
+message BoundaryStamped {
+    std_msgs.Header header = 1;
+    repeated float32 coords = 2;
+}
+
+message CAN {
+    uint16 id = 1;
+    bool is_rtr = 2;
+    repeated uint8 data = 3;
+}
+
+message CandidateState {
+    Ackermann ackermann = 1;
+    float32 lateralVel = 2;
+}
+
+message CandidateStates {
+    repeated CandidateState candidateState = 1;
+}
+
+message CANStamped {
+    std_msgs.Header header = 1;
+    CAN can = 2;
+}
+
+message Detections {
+    geometry_msgs.Pose car_pose = 1;
+    repeated geometry_msgs.Point yellow = 2; 
+    repeated geometry_msgs.Point blue = 3; 
+    repeated geometry_msgs.Point small_orange = 4; 
+    repeated geometry_msgs.Point big_orange = 5; 
+}
+
+message Track { 
+    repeated geometry_msgs.Point cones = 1;
+}
+
+message HardwareStates {
+    uint8 ebs_active = 1;
+    uint8 ts_active = 2;
+    uint8 in_gear = 3;
+    uint8 master_switch_on = 4;
+    uint8 asb_ready = 5;
+    uint8 brakes_engaged = 6;
+}
+message HardwareStatesStamped {
+    std_msgs.Header header = 1;
+    HardwareStates hardware_states = 2;
+}
+message MissionStates {
+    uint8 mission_selected = 1;
+    uint8 mission_finished = 2;
+}
+message MissionStatesStamped {
+    std_msgs.Header header = 1;
+    MissionStates mission_states = 2;
+}
+
+message OccupancyGrid{
+    std_msgs.Header header = 1;
+    repeated Rptuint8 occupancyGrid = 2;
+    float32 resolution = 3;
+}
+
+message Pulse{
+    bool value = 0;
+    string event_type = 1;
+}
+
+service Services {
+    rpc CANSendReq (CANSendReqRequest) returns (CANSendReqResponce); 
+}
+message CANSendReqRequest {   
+    CAN can = 1;
+}
+message CANSendReqResponce {
+    bool sent =1;
+}

@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'cone_mapping'
+package_name = 'cone_detection_python'
 
 setup(
     name=package_name,
@@ -13,15 +13,14 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='dyu056',
-    maintainer_email='daniel.yu@fsae.co.nz',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    maintainer='yiyang',
+    maintainer_email='ych363@aucklanduni.ac.nz',
+    description='THis package connect to ZED and implement cone detection',
+    license='Apache License 2.0',
     tests_require=['pytest'],
-	entry_points={
-		    'console_scripts': [
-                    'kalman_filter = cone_mapping.kalman_filter:main',
-                    'db_scan = cone_mapping.db_scan:main',
-		    ],
-	},
+    entry_points={
+        'console_scripts': [
+            'cone_detection = cone_detection_python.detection_final:main',
+        ],
+    },
 )

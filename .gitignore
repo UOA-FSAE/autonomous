@@ -7,8 +7,12 @@ kaggle.json
 .devcontainer/zed.Dockerfile
 .devcontainer/ros2_ws.Dockerfile
 .vscode/settings.json
-.gitignore
 .vscode/c_cpp_properties.json
 **/__pycache__/
 *.msg
 *.srv
+wandb/
+*.engine
+*.onnx
+*.svo2
+*.pt

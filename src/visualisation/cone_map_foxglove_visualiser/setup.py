@@ -1,11 +1,11 @@
-from setuptools import setup
+from setuptools import find_packages, setup
 
-package_name = 'cone_mapping'
+package_name = 'cone_map_foxglove_visualiser'
 
 setup(
     name=package_name,
     version='0.0.0',
-    packages=[package_name],
+    packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -14,14 +14,13 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='dyu056',
-    maintainer_email='daniel.yu@fsae.co.nz',
+    maintainer_email='yudaniel888@hotmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
-	entry_points={
-		    'console_scripts': [
-                    'kalman_filter = cone_mapping.kalman_filter:main',
-                    'db_scan = cone_mapping.db_scan:main',
-		    ],
-	},
+    entry_points={
+        'console_scripts': [
+                'visualiser = cone_map_foxglove_visualiser.visualise_cone_map:main',
+        ],
+    },
 )
