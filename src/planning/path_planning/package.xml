@@ -11,6 +11,11 @@
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>moa_msgs</exec_depend>
 
+  <depend>python3-numpy</depend>
+  <depend>python3-matplotlib</depend>
+  <depend>python3-scipy</depend>
+  <depend>python3-shapely</depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>

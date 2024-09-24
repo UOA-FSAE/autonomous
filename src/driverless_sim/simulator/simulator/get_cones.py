@@ -21,17 +21,17 @@ class get_cones(Node):
     def __init__(self):
         super().__init__("get_cones")
 
-        self.plot = True
+        self.plot = False
         # connect to the simulator 
-        self.client = fsds.FSDSClient(ip=os.environ['WSL_HOST_IP'])
+        self.client = fsds.FSDSClient()
         # Check network connection, exit if not connected
         self.client.confirmConnection()
         # After enabling setting trajectory setpoints via the api. 
-        self.client.enableApiControl(True)
+        self.client.enableApiControl(False)
         # create publisher
         self.sim_cone_pub = self.create_publisher(ConeMap, "cone_map", 10)
 
-        self.get_cones_from_simulator()
+        self.create_timer(1.0, self.get_cones_from_simulator)
 
 
     def get_cones_from_simulator(self):

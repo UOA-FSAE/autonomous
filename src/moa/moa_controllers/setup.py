@@ -26,7 +26,8 @@ setup(
         'console_scripts': [
             'ack_to_can_node = moa_controllers.ack_to_can:main',
             'as_status_node = moa_controllers.sys_status:main',
-            'trajectory_follower = moa_controllers.trajectory_follower_p_controller:main'
+            'trajectory_follower = moa_controllers.trajectory_follower_p_controller:main',
+            'joystick_teleop = moa_controllers.joystick_teleop:main'
         ],
     },
 )

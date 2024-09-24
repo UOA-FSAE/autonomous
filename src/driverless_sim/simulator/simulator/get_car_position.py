@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 
-from geometry_msgs.msg import Pose, Point
+from geometry_msgs.msg import Pose, Point, Quaternion
 
 import os
 import sys
@@ -21,11 +21,11 @@ class get_car_position(Node):
         super().__init__("get_car_position")
 
         # connect to the simulator 
-        self.client = fsds.FSDSClient(ip=os.environ['WSL_HOST_IP'])
+        self.client = fsds.FSDSClient()
         # Check network connection, exit if not connected
         self.client.confirmConnection()
         # After enabling setting trajectory setpoints via the api. 
-        self.client.enableApiControl(True)
+        self.client.enableApiControl(False)
         # create publisher
         self.sim_car_pub = self.create_publisher(Pose, 'car_position', 10)
 
@@ -33,10 +33,13 @@ class get_car_position(Node):
 
     def get_car_position(self):
         """publishes current position of the simulator car"""
-        position = self.client.getCarState().kinematics_estimated.position  # car kinetmatics in ENU coordinates
+        state = self.client.getCarState()
+        position = state.kinematics_estimated.position  # car kinetmatics in ENU coordinates
+        orientation = state.kinematics_estimated.orientation
         
         msg = Pose()
         msg.position = Point(x=position.x_val, y=position.y_val, z=0.0) # add position information to Pose msg
+        msg.orientation = Quaternion(x=orientation.x_val,y=orientation.y_val,z=orientation.z_val,w=orientation.w_val,)
 
         self.sim_car_pub.publish(msg)   # publish msg
 
