@@ -20,8 +20,8 @@ setup(
     tests_require=['pytest'],
 	entry_points={
 		    'console_scripts': [
-                    'cone_mapping_node = cone_mapping.cone_mapping:main',
-                    'dbscan = cone_mapping.dbscan:main',
+                    'kalman_filter = cone_mapping.kalman_filter:main',
+                    'db_scan = cone_mapping.db_scan:main',
 		    ],
 	},
 )
