@@ -41,7 +41,7 @@ private:
     sl::Camera& zed;
     sl::Pose cam_w_pose;
     bool camera_running = true;
-    bool visualisation = false;
+    bool visualisation = true;
 
     // Publishers
     rclcpp::Publisher<moa_msgs::msg::Detections>::SharedPtr cone_detection_publisher;

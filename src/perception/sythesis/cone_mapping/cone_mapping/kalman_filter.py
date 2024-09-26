@@ -7,6 +7,8 @@ from geometry_msgs.msg import Point, Quaternion, Pose, PoseWithCovariance
 
 import math
 import numpy as np
+import time
+import threading
 
 import kdtree
 
@@ -54,6 +56,12 @@ class Cone_Mapper(Node):
         # KDTrees for searching
         self.left_tree = None
         self.right_tree = None
+
+        self.mtx = threading.Lock()
+
+        # Thread to remove points
+        # self.remove_point_thread = threading.Thread(target=self.remove_point_thread)
+        # self.remove_point_thread.start()
 
 ################################################################################ (parameters to tune)
 
@@ -111,8 +119,9 @@ class Cone_Mapper(Node):
             # If the left track is empty, pack all cone measurements and update the left track
             self.left_track = self.produce_track_message(points)
             # self.left_tree = kdtree.create([Item(coord[0], coord[1], (index, self.default_error_in_estimate)) for index, coord in enumerate(points)])
+            times_modified = 0
             self.left_tree = kdtree.create(
-                 [Item(coord[0], coord[1], (index, self.default_error_in_estimate)) for index, coord in enumerate(points)], dimensions=2)  # For 2D points
+                 [Item(coord[0], coord[1], [self.left_track.cones[index], self.default_error_in_estimate, times_modified]) for index, coord in enumerate(points)], dimensions=2)  # For 2D points
         else:
             # If the left track is not empty, find the closest cone for each newly measured cone and update its coordinates or add it to the track
             for coord in points:
@@ -121,19 +130,20 @@ class Cone_Mapper(Node):
                 # kdtree.visualize(self.left_tree)
                 # If the newly measured cone is in the match radius, this cone already exists in the left track, update its coordinates
                 if distance <= self.match_radius:
-                    index = point.data.data[0]
-                    cone = self.left_track.cones[index]
+                    cone = point.data.data[0]
                     error_in_estimate = point.data.data[1]
+                    times_modified = point.data.data[2] + 1
                     new_estimate_x, new_estimate_y, new_error_in_estimate = self.kalman_filtering(cone, coord, error_in_estimate)
                     point.data.coords = (new_estimate_x, new_estimate_y)
-                    point.data.data = (index, new_error_in_estimate)
+                    point.data.data = (cone, new_error_in_estimate, times_modified)
                 else:
                     # If the newly measured cone is not in the match radius, this cone does not exist in the existing cone map, add it to the existing cone map
                     cone = Point()
                     cone.x = coord[0]
                     cone.y = coord[1]
                     self.left_track.cones.append(cone)
-                    self.left_tree.add(Item(coord[0], coord[1], (len(self.left_track.cones) - 1, self.default_error_in_estimate)))
+                    times_modified = 0
+                    self.left_tree.add(Item(coord[0], coord[1], (cone, self.default_error_in_estimate, times_modified)))
 
     
 
@@ -146,7 +156,8 @@ class Cone_Mapper(Node):
         if self.right_track == None:
             # If the right track is empty, pack all cone measurements and update the right track
             self.right_track = self.produce_track_message(points)
-            self.right_tree = kdtree.create([Item(coord[0], coord[1], (index, self.default_error_in_estimate)) for index, coord in enumerate(points)], dimensions=2)
+            times_modified = 0
+            self.right_tree = kdtree.create([Item(coord[0], coord[1], [self.right_track.cones[index], self.default_error_in_estimate, times_modified]) for index, coord in enumerate(points)], dimensions=2)
         else:
             # If the right track is not empty, find the closest cone for each newly measured cone and update its coordinates or add it to the track
             for coord in points:
@@ -156,19 +167,20 @@ class Cone_Mapper(Node):
                 # check if distance is nan
                 # kdtree.visualize(self.right_tree)
                 if distance <= self.match_radius:
-                    index = point.data.data[0]
-                    cone = self.right_track.cones[index]
+                    cone = point.data.data[0]
                     error_in_estimate = point.data.data[1]
+                    times_modified = point.data.data[2] + 1
                     new_estimate_x, new_estimate_y, new_error_in_estimate = self.kalman_filtering(cone, coord, error_in_estimate)
                     point.data.coords = (new_estimate_x, new_estimate_y)
-                    point.data.data = (index, new_error_in_estimate)
+                    point.data.data = (cone, new_error_in_estimate, times_modified)
                 else:
                     # If the newly measured cone is not in the match radius, this cone does not exist in the existing cone map, add it to the existing cone map
                     cone = Point()
                     cone.x = coord[0]
                     cone.y = coord[1]
                     self.right_track.cones.append(cone)
-                    self.right_tree.add(Item(coord[0], coord[1], (len(self.right_track.cones) - 1, self.default_error_in_estimate)))
+                    times_modified = 0
+                    self.right_tree.add(Item(coord[0], coord[1], (cone, self.default_error_in_estimate, times_modified)))
 
     
     def kalman_filtering(self, cone: Point, coord: tuple, error_in_estimate: float) -> tuple:
@@ -320,6 +332,19 @@ class Cone_Mapper(Node):
             output_track.cones.append(point)
         return output_track
 
+    def remove_point_thread(self):
+        while(self.left_tree == None):
+            time.sleep(1)
+        
+        while True:
+            for point in self.left_tree:
+                if point.data.data[2] < 100:
+                    self.mtx.acquire
+                    self.left_track.remove(point.data.data[0])
+                    self.left_tree.remove(point)
+                    self.mtx.release
+            time.sleep(5)
+        
 
 def main(args=None):
     rclpy.init(args=args)
