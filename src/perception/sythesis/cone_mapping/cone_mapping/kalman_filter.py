@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
+from std_msgs.msg import Float32MultiArray
 from moa_msgs.msg import Detections, Track
 from geometry_msgs.msg import Point, Quaternion, Pose, PoseWithCovariance
 
@@ -49,6 +50,9 @@ class Cone_Mapper(Node):
         # Create right track publisher
         self.right_track_publisher = self.create_publisher(Track, 'right_track', 10)
 
+        # times_modified publisher
+        self.times_modified_publisher = self.create_publisher(Float32MultiArray, 'times_modified', 10)
+
         # Existing cone map
         self.left_track = None
         self.right_track = None
@@ -57,11 +61,10 @@ class Cone_Mapper(Node):
         self.left_tree = None
         self.right_tree = None
 
-        self.mtx = threading.Lock()
+        self.times_modified_counter = 0
 
-        # Thread to remove points
-        # self.remove_point_thread = threading.Thread(target=self.remove_point_thread)
-        # self.remove_point_thread.start()
+        # For two recordings because its glitchy at begginning
+        time.sleep(10)
 
 ################################################################################ (parameters to tune)
 
@@ -73,6 +76,15 @@ class Cone_Mapper(Node):
 
         # Cone match radius
         self.match_radius = 1.0
+
+        # Counter to remove points
+        self.remove_point_counter = 200
+
+        # value for the times_modified
+        self.times_modified_limit = 300000
+
+        # Modify rate
+        self.modify_rate = 1.08
 
 ################################################################################ (parameters to tune)
 
@@ -88,7 +100,12 @@ class Cone_Mapper(Node):
 
         # Publishes left-track cones to the /left_track topic and right-track cones to the /right_track topic
         # print("Left track length: ", len(self.left_track.cones))
-        # print("Right track length: ", len(self.right_track.cones))                                                                                                                                                                          
+        # print("Right track length: ", len(self.right_track.cones))
+        self.times_modified_counter = self.times_modified_counter + 1
+        if self.times_modified_counter > self.remove_point_counter:
+            self.times_modified_counter = 0
+            self.remove_points()
+
         self.left_track_publisher.publish(self.left_track)
         self.right_track_publisher.publish(self.right_track)
 
@@ -119,7 +136,7 @@ class Cone_Mapper(Node):
             # If the left track is empty, pack all cone measurements and update the left track
             self.left_track = self.produce_track_message(points)
             # self.left_tree = kdtree.create([Item(coord[0], coord[1], (index, self.default_error_in_estimate)) for index, coord in enumerate(points)])
-            times_modified = 0
+            times_modified = 1
             self.left_tree = kdtree.create(
                  [Item(coord[0], coord[1], [self.left_track.cones[index], self.default_error_in_estimate, times_modified]) for index, coord in enumerate(points)], dimensions=2)  # For 2D points
         else:
@@ -132,17 +149,16 @@ class Cone_Mapper(Node):
                 if distance <= self.match_radius:
                     cone = point.data.data[0]
                     error_in_estimate = point.data.data[1]
-                    times_modified = point.data.data[2] + 1
+                    times_modified = point.data.data[2] * self.modify_rate
                     new_estimate_x, new_estimate_y, new_error_in_estimate = self.kalman_filtering(cone, coord, error_in_estimate)
                     point.data.coords = (new_estimate_x, new_estimate_y)
                     point.data.data = (cone, new_error_in_estimate, times_modified)
-                else:
-                    # If the newly measured cone is not in the match radius, this cone does not exist in the existing cone map, add it to the existing cone map
+                else:                    # If the newly measured cone is not in the match radius, this cone does not exist in the existing cone map, add it to the existing cone map
                     cone = Point()
                     cone.x = coord[0]
                     cone.y = coord[1]
                     self.left_track.cones.append(cone)
-                    times_modified = 0
+                    times_modified = 1
                     self.left_tree.add(Item(coord[0], coord[1], (cone, self.default_error_in_estimate, times_modified)))
 
     
@@ -156,7 +172,7 @@ class Cone_Mapper(Node):
         if self.right_track == None:
             # If the right track is empty, pack all cone measurements and update the right track
             self.right_track = self.produce_track_message(points)
-            times_modified = 0
+            times_modified = 1
             self.right_tree = kdtree.create([Item(coord[0], coord[1], [self.right_track.cones[index], self.default_error_in_estimate, times_modified]) for index, coord in enumerate(points)], dimensions=2)
         else:
             # If the right track is not empty, find the closest cone for each newly measured cone and update its coordinates or add it to the track
@@ -169,7 +185,7 @@ class Cone_Mapper(Node):
                 if distance <= self.match_radius:
                     cone = point.data.data[0]
                     error_in_estimate = point.data.data[1]
-                    times_modified = point.data.data[2] + 1
+                    times_modified = point.data.data[2] * self.modify_rate
                     new_estimate_x, new_estimate_y, new_error_in_estimate = self.kalman_filtering(cone, coord, error_in_estimate)
                     point.data.coords = (new_estimate_x, new_estimate_y)
                     point.data.data = (cone, new_error_in_estimate, times_modified)
@@ -179,7 +195,7 @@ class Cone_Mapper(Node):
                     cone.x = coord[0]
                     cone.y = coord[1]
                     self.right_track.cones.append(cone)
-                    times_modified = 0
+                    times_modified = 1
                     self.right_tree.add(Item(coord[0], coord[1], (cone, self.default_error_in_estimate, times_modified)))
 
     
@@ -332,18 +348,31 @@ class Cone_Mapper(Node):
             output_track.cones.append(point)
         return output_track
 
-    def remove_point_thread(self):
-        while(self.left_tree == None):
-            time.sleep(1)
+    def remove_points(self):
+        if self.left_track is None or self.right_track is None:
+            return
         
-        while True:
-            for point in self.left_tree:
-                if point.data.data[2] < 100:
-                    self.mtx.acquire
-                    self.left_track.remove(point.data.data[0])
-                    self.left_tree.remove(point)
-                    self.mtx.release
-            time.sleep(5)
+        times_modified_list = Float32MultiArray()
+        
+        left_tree = self.left_tree
+        right_tree = self.right_tree
+        for point in kdtree.level_order(left_tree):
+            # print(point)
+            times_modified_list.data.append(point.data.data[2])
+            if point.data.data[2] < self.times_modified_limit:
+                self.left_track.cones.remove(point.data.data[0])
+                self.left_tree.remove(point.data)
+        for point in kdtree.level_order(right_tree):
+            times_modified_list.data.append(point.data.data[2])
+            # print(point)
+            if point.data.data[2] < self.times_modified_limit:
+                self.right_track.cones.remove(point.data.data[0])
+                self.right_tree.remove(point.data)
+        
+        self.times_modified_publisher.publish(times_modified_list)
+
+        # kdtree.visualize(self.left_tree)
+        # kdtree.visualize(self.right_tree)
         
 
 def main(args=None):
