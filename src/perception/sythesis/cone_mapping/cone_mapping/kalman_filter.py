@@ -58,13 +58,13 @@ class Cone_Mapper(Node):
         self.right_track = None
 
         # KDTrees for searching
-        self.left_tree = None
-        self.right_tree = None
+        self.left_tree = kdtree.create(None, dimensions=2)
+        self.right_tree = kdtree.create(None, dimensions=2)
 
         self.times_modified_counter = 0
 
         # For two recordings because its glitchy at begginning
-        time.sleep(10)
+        time.sleep(5)
 
 ################################################################################ (parameters to tune)
 
@@ -81,7 +81,7 @@ class Cone_Mapper(Node):
         self.remove_point_counter = 200
 
         # value for the times_modified
-        self.times_modified_limit = 300000
+        self.times_modified_limit = 500000
 
         # Modify rate
         self.modify_rate = 1.08
@@ -132,7 +132,7 @@ class Cone_Mapper(Node):
         Args:
             points (list): A list of blue cones' global (x, y) coordinates
         """
-        if self.left_track == None:
+        if self.left_tree == kdtree.create(None, dimensions=2):
             # If the left track is empty, pack all cone measurements and update the left track
             self.left_track = self.produce_track_message(points)
             # self.left_tree = kdtree.create([Item(coord[0], coord[1], (index, self.default_error_in_estimate)) for index, coord in enumerate(points)])
@@ -169,7 +169,7 @@ class Cone_Mapper(Node):
         Args:
             points (list): A list of yellow cones' (x, y) coordinates
         """
-        if self.right_track == None:
+        if self.right_tree == kdtree.create(None, dimensions=2):
             # If the right track is empty, pack all cone measurements and update the right track
             self.right_track = self.produce_track_message(points)
             times_modified = 1
