@@ -73,7 +73,7 @@ link_directories(/usr/local/cuda/lib64)
 include_directories(/usr/include/x86_64-linux-gnu/)
 link_directories(/usr/lib/x86_64-linux-gnu/)
 
-FILE(GLOB_RECURSE SRC_FILES cone_detection/cone_detection.cpp cone_detection/yolo.cpp zed_launch/zed_launch.cpp localisation/localisation.cpp) 
+FILE(GLOB_RECURSE SRC_FILES cone_detection/cone_detection.cpp cone_detection/yolo.cpp zed_launch/zed_launch.cpp localisation/localisation.cpp velocity/velocity.cpp) 
 FILE(GLOB_RECURSE HDR_FILES cone_detection/*.h* zed_launch/*.h*)
 
 cuda_add_executable(zed_launch_node ${HDR_FILES} ${SRC_FILES})

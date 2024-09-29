@@ -35,7 +35,11 @@ public:
 private:
   void cone_detection_callback(const moa_msgs::msg::Detections & msg) const
   {
-    std::cout << "detections: " << msg.car_pose.position.x << " " << msg.car_pose.position.y << " " << msg.car_pose.position.z << " " << std::endl;
+    for (auto i = 0u; i < msg.blue.size(); i++)
+    {
+      float distance = sqrt(pow(msg.blue[i].x, 2) + pow(msg.blue[i].y, 2));
+      std::cout << "blue: " << i << " " << msg.blue[i].x << " " << msg.blue[i].y << " " << distance << std::endl;
+    }
   }
   rclcpp::Subscription<moa_msgs::msg::Detections>::SharedPtr subscription_;
 };
