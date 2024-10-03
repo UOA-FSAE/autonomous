@@ -80,7 +80,7 @@ class Cone_Mapper(Node):
         self.remove_point_counter = 200
 
         # value for the times_modified
-        self.times_modified_limit = 500000
+        self.times_modified_limit = 100
 
         # Modify rate
         self.modify_rate = 1.08
