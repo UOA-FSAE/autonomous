@@ -1,6 +1,7 @@
 import os
 
 from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import PackageNotFoundError
 
 
 from launch import LaunchDescription
@@ -62,14 +63,20 @@ def generate_launch_description():
             '/base_launch.py']),
     )
     
-    planning_nodes = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory('moa_bringup'), 'launch'),
-            planning + '_launch.py']),
-        launch_arguments={'': 'carrot1'}.items(),
+
+    #TODO 
+    try:
+        planning_nodes = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([os.path.join(
+                get_package_share_directory('moa_bringup'), 'launch'),
+                planning + '_launch.py']),
+            launch_arguments={'': 'carrot1'}.items(),
     )
+    except PackageNotFoundError as e:
+        raise 
     # sythesis nodes are 
     
+    #TODO
     synthesis_nodes = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('moa_bringup'), 'launch'),
@@ -77,6 +84,7 @@ def generate_launch_description():
         launch_arguments={'': 'carrot1'}.items(),
     )
     
+    #TODO
     control_nodes = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('moa_bringup'), 'launch'),

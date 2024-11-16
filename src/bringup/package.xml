@@ -12,6 +12,17 @@
   <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
 
+  <depend>zed_wrapper</depend>
+  <depend>localization</depend>
+  <depend>moa_bringup</depend>
+  <depend></depend>
+  <depend></depend>
+  <depend></depend>
+  <depend></depend>
+  <depend></depend>
+
+  <exec_depend>ros2launch</exec_depend>
+
   <export>
     <build_type>ament_python</build_type>
   </export>
