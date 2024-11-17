@@ -135,4 +135,9 @@ install(TARGETS
   DESTINATION lib/zed_launch
 )
 
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 ament_package()
