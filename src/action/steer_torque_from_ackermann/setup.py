@@ -10,11 +10,13 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        # launch files
+        (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*.py')))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='Daniel Yu',
-    maintainer_email='daniel.yu@fsae.co.nz',
+    maintainer='Jonty Clark',
+    maintainer_email='jonty.clark@fsae.co.nz',
     description='Controller node for simulation car to control its speed and steering angle',
     license='TODO: License declaration',
     tests_require=['pytest'],
