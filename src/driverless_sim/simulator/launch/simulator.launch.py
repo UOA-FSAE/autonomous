@@ -6,6 +6,7 @@ from ament_index_python import get_package_prefix
 from launch.actions import OpaqueFunction
 import os
 
+# Launches nodes within simulator package where get_cones, get_car_position and set_car_controls nodes are ran by default
 def generate_launch_description() -> LaunchDescription:
     package_name = 'simulator'
     package_dir = os.path.join(get_package_prefix(package_name), 'lib', package_name)   # directory of installed node names
@@ -15,7 +16,7 @@ def generate_launch_description() -> LaunchDescription:
         # launch arguments
         DeclareLaunchArgument(
             'node_name',
-            default_value='get_cones',
+            default_value='get_cones get_car_position set_car_controls',
             description='which node(s) from this package to launch'
         ),
         DeclareLaunchArgument(
