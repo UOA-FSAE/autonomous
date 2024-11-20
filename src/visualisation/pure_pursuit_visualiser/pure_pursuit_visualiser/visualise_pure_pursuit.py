@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from foxglove_msgs.msg import LinePrimitive, Color, SceneEntity, SceneUpdate, ArrowPrimitive, SpherePrimitive, PoseInFrame, PosesInFrame
 from geometry_msgs.msg import Point, Quaternion, Pose, Vector3, Quaternion, PoseArray
-from moa_msgs.msg import ConeMap
+# from moa_msgs.msg import ConeMap
 from ackermann_msgs.msg import AckermannDrive
 import math
 

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+
+# no parameters, run ros2 launch head_to_goal_control head_to_goal_launch.py 
+
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
