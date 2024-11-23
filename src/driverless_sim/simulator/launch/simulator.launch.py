@@ -1,0 +1,53 @@
+from launch import LaunchDescription
+from launch_ros.actions import Node
+from launch.actions.declare_launch_argument import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from ament_index_python import get_package_prefix
+from launch.actions import OpaqueFunction
+import os
+
+# Launches nodes within simulator package where get_cones, get_car_position and set_car_controls nodes are ran by default
+def generate_launch_description() -> LaunchDescription:
+    package_name = 'simulator'
+    package_dir = os.path.join(get_package_prefix(package_name), 'lib', package_name)   # directory of installed node names
+    installed_nodes = os.listdir(package_dir)  # retrieves installed node names 
+
+    launch_descriptions = [        
+        # launch arguments
+        DeclareLaunchArgument(
+            'node_name',
+            default_value='get_cones get_car_position set_car_controls',
+            description='which node(s) from this package to launch'
+        ),
+        DeclareLaunchArgument(
+            'viz',
+            default_value='True',
+            description='visualise node output?'
+        )
+    ]
+
+    nodes = OpaqueFunction(function=get_nodes, args=[package_name, installed_nodes])    # get a list of actions
+    launch_descriptions.append(nodes)
+
+    return LaunchDescription(launch_descriptions)
+
+def get_nodes(context, package_name, installed_nodes):
+    NODES = []
+    nodes_2_run = LaunchConfiguration('node_name').perform(context)  # get runtime value of argument
+
+    for node_name in installed_nodes:
+        if node_name in nodes_2_run:
+            _ = Node(
+                package=package_name,
+                executable=node_name,
+                name=node_name,
+                parameters=[{'viz': LaunchConfiguration('viz')}]
+            )
+
+            NODES.append(_)
+
+    if len(NODES) == 0:
+        raise Exception(f"selected node(s) {nodes_2_run} does not exist!")
+    
+    return NODES
+    
