@@ -1,3 +1,5 @@
+#Command to launch: ros2 launch steer_torque_from_ackermann steer_torque_from_ackermann.launch.py
+
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
