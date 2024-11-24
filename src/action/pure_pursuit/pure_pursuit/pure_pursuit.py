@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # Python imports
-from typing import Optional
 import rclpy
 from rclpy.node import Node
 import numpy as np
 import math
-from geometry_msgs.msg import PoseArray
-from geometry_msgs.msg import Pose
-from moa_msgs.msg import ConeMap
+from geometry_msgs.msg import PoseArray, Pose, Point, Quaternion, Vector3
 from ackermann_msgs.msg import AckermannDrive
+from foxglove_msgs.msg import SceneUpdate, SceneEntity, LinePrimitive, Color
+from builtin_interfaces.msg import Time, Duration
+from moa_msgs.msg import Track
 
 
 
@@ -27,17 +27,28 @@ class pure_pursuit_algorithm(Node):
 
         # Initializer (normally don't touch)
         self.steering_angle = 0
-        self.pos = (0,0)
+        self.pos = (0,0)      
+
+        # visualisation parameters
+        self.declare_parameter('vis', False)  # Enable/Disable visualization
+        self.visualization_enabled = self.get_parameter('vis').get_parameter_value().bool_value
 
         # subscribe to best trajectory
         self.best_trajectory_sub = self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
-        self.cone_map_sub = self.create_subscription(ConeMap, "cone_map", self.main_hearback, 5)
+        
+        self.cone_map_sub = self.create_subscription(Track, "cone_map", self.main_hearback, 5)
+
         self.create_subscription(Pose, "car_position", self.get_car_position, 5)
         self.cmd_vel_pub = self.create_publisher(AckermannDrive, "/drive", 5)
         self.cmd_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
         self.track_point_pub = self.create_publisher(Pose, "moa/track_point", 5)
 
-    def main_hearback(self, msg: ConeMap):
+        if self.visualization_enabled:
+            self.viz_pub = self.create_publisher(SceneUpdate, 'control_visualization', 5)
+
+        self.get_logger().info("Pure Pursuit Node with Visualization Started")
+
+    def main_hearback(self, msg: Track):
         # Update car's current location and update transformation matrix
         self.car_pose = self.car_position_pose
         self.position_vector, self.rotation_matrix_l2g, self.rotation_matrix_g2l = self.convert_to_transformation_matrix(self.car_pose.position.x, self.car_pose.position.y, self.car_pose.orientation.w)
@@ -209,6 +220,22 @@ class pure_pursuit_algorithm(Node):
         self.cmd_vis_pub.publish(msg2)
     
     def get_car_position(self, msg:Pose): self.car_position_pose = msg
+
+
+    def visualize_trajectory(self):
+        tcols = Color(r=0.0, g=255.0, b=0.0, a=1.0)  # Green trajectory
+        if hasattr(self, "trajectory_in_global_frame"):
+            pts = [pose.position for pose in self.trajectory_in_global_frame.poses]
+            line = LinePrimitive(type=LinePrimitive.LINE_STRIP, points=pts, color=tcols, thickness=0.2)
+            scene_msg = SceneUpdate(
+                entities=[SceneEntity(
+                    id=f'trajectory_{self.id_counter}',
+                    lines=[line],
+                    timestamp=Time()
+                )]
+            )
+            self.viz_pub.publish(scene_msg)
+            self.id_counter += 1
 
 def main(args=None):
     rclpy.init(args=args)
