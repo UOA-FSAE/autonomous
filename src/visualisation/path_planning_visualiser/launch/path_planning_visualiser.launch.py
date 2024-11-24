@@ -3,20 +3,14 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     return LaunchDescription([
-        package_name = 'path_planning_visualiser'
         Node(
-            package=package_name,
-            executable='visualise_action_demo',
-            name='visualise_action_demo'
-        ),
-        Node(
-            package=package_name,
-            executable='visualise_trajectories_demo',
+            package='path_planning_visualiser',
+            executable='visualiser2',
             name='visualise_trajectories_demo'
         ),
         Node(
-            package=package_name,
-            executable='visualise_trajectories',
+            package='path_planning_visualiser',
+            executable='visualiser',
             name='visualise_trajectories'
         )
     ])
