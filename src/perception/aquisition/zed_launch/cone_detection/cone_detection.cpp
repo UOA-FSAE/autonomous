@@ -15,6 +15,8 @@
 #include <NvInfer.h>
 
 using namespace nvinfer1;
+#define CONF_THRESH 0.8
+#define NMS_THRESH 0.4
 
 #include <rclcpp/rclcpp.hpp>
 

@@ -47,8 +47,6 @@ private:
     bool camera_running = true;
     bool visualisation = true;
     std::string model_name = "cone_detection_model.engine";
-    float CONF_THRESH = 0.8;
-    float NMS_THRESH = 0.5;
 
     // Publishers
     rclcpp::Publisher<moa_msgs::msg::Detections>::SharedPtr cone_detection_publisher;
