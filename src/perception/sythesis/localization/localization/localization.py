@@ -5,7 +5,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from std_msgs.msg import String
 from geometry_msgs.msg import Pose, PoseArray
-from moa_msgs.msg import ConeMap, Cone
+from moa_msgs.msg import Track
 
 
 class Localization(Node):
@@ -17,19 +17,34 @@ class Localization(Node):
             history=QoSHistoryPolicy.KEEP_LAST,
             depth=10
         )
+        self.left_cones = []
+        self.right_cones = []
         self.localization_publisher = self.create_publisher(Pose, 'car_position', 5)
-        self.cone_detection_subscription = self.create_subscription(
-            ConeMap,
-            'cone_detection',
-            self.listener_callback,
+        self.cone_detection_subscription_left_track = self.create_subscription(
+            Track,
+            'left_track',
+            self.left_cone_map_callback,
             qos_profile)
+        
+        self.subscription_right_cone_map = self.create_subscription(
+            Track, 
+            'right_track',  
+            self.right_cone_map_callback, 
+            qos_profile)
+        
         self.get_logger().info('Localization node started')
 
-    def listener_callback(self, msg: ConeMap):
-        car_cone = msg.cones[0]
-        car_pose = car_cone.pose.pose
-        self.localization_publisher.publish(car_pose)
-        self.get_logger().info("Car localization data published")
+    # def listener_callback(self, msg: Track):
+    #     car_cone = msg.cones[0]
+    #     car_pose = car_cone.pose.pose
+    #     self.localization_publisher.publish(car_pose)
+    #     self.get_logger().info("Car localization data published")
+
+    def left_cone_map_callback(self, msg:Track) -> None:
+        self.left_cones = msg.cones
+
+    def right_cone_map_callback(self, msg:Track) -> None:
+        self.right_cones = msg.cones
 
 
 def main(args=None):

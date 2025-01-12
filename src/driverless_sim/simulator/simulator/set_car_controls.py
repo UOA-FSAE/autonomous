@@ -22,7 +22,7 @@ class set_car_controls(Node):
         self.max_throttle = 21  # m/s
         self.max_steering = 25  # degrees
         # connect to the simulator 
-        self.client = fsds.FSDSClient(ip=os.environ['WSL_HOST_IP'])
+        self.client = fsds.FSDSClient()
         # Check network connection, exit if not connected
         self.client.confirmConnection()
         # After enabling setting trajectory setpoints via the api. 

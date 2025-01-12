@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'can_interface_jnano = moa_driver.can_interface_jnano:main'
+            'can_decoder_jnano = moa_driver.can_decoder_jnano:main',
+            'can_interface_jnano = moa_driver.can_interface_jnano:main',
         ]
     },
 )

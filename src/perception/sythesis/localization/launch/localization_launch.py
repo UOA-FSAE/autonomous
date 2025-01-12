@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+
+# no parameters, run ros2 launch localization localization_launch.py 
+
+
+from launch import LaunchDescription
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    return LaunchDescription([
+        Node(
+            package='localization', 
+            executable='localization',  
+            name='localization',  
+            output='screen'
+        ),
+    ])
