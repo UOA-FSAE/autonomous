@@ -7,7 +7,6 @@ def generate_launch_description():
  
     controller_type = LaunchConfiguration('controller_type', default='stanley')
 
-
     return LaunchDescription([
         DeclareLaunchArgument('controller_type', default_value='stanley', description='Controller type to launch'),
 
