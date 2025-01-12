@@ -12,3 +12,4 @@ kaggle.json
 **/__pycache__/
 *.msg
 *.srv
+.venv/*
