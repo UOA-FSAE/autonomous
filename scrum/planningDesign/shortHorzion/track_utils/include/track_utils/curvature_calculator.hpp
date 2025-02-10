@@ -8,7 +8,7 @@
 
 namespace track_utils {
 
-constexpr double CURVATURE_THRESHOLD = 0.5;
+constexpr double CURVATURE_THRESHOLD = 0.4;
 
 std::optional<double> calculateCurvature(const geometry_msgs::msg::Point& p1,
                                          const geometry_msgs::msg::Point& p2,
@@ -23,7 +23,7 @@ std::optional<double> calculateBearingDifference(const geometry_msgs::msg::Point
 std::optional<geometry_msgs::msg::Point> detectCornerStart(
     const std::vector<geometry_msgs::msg::Point>& upcoming_points);
 
-
+double calculateArcLength(double time, double speed);
 
 }// namespace track_utils
 #endif  // TRACK_UTILS_CURVATURE_CALCULATOR_HPP_
