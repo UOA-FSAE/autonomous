@@ -14,8 +14,6 @@
 
 #include <cmath> 
 
-using namespace planning;
-
 // tested
 // implemented
 // wip
@@ -27,7 +25,6 @@ namespace planning {
     constexpr double PI = M_PI;
     constexpr double TWO_PI = 2.0 * M_PI;
     
-        
 class Track{
 
     protected:
@@ -35,45 +32,48 @@ class Track{
         std::vector<InertialPose> centerPoints;
         Point newCenterPoint;
         Point initialCenterPoint;
+        bool closedLoop = false;
 
     public:
         Track() = default;
         virtual ~Track() = 0;
 
-        virtual std::pair<InertialPose, InertialPose> getEnd() = 0;
-        virtual std::pair<InertialPose, InertialPose> getStart() = 0;
+        virtual std::pair<Cone, Cone> getEnd() const = 0;
+        virtual std::pair<Cone, Cone> getStart() const = 0;
 
-        std::vector<std::shared_ptr<Cone>> getLocalCones(const Point& position, const uint8_t range) const; // declared
-        std::vector<InertialPose> getLocalCenterPoints(const Point& point, const double range) const; // declared
-        std::pair<std::optional<InertialPose>, std::optional<InertialPose>> getNearestCenterPoints(const Point point) const; // declared
+        void setClosedLoop();
+                                    
+        std::vector<std::shared_ptr<Cone>> getLocalCones(const Point& position, const uint8_t range) const; // implemented and tested
+        std::vector<InertialPose> getLocalCenterPoints(const Point& point, const double range) const; // implemented and tested
+        std::pair<std::optional<InertialPose>, std::optional<InertialPose>> getNearestCenterPoints(const Point& point) const; //implemented and tested
 
-        // double getLocalCurvature(Point position, uint8_t range) const;
-        double getCurvature(const std::tuple<Point, Point, Point>& centerPoints) const; // implemented
-        std::optional<double> getCurvature(const Point& position) const ; // declared
-        std::optional<double> getCurvature(const Point& position, const std::pair<InertialPose, InertialPose>& nearestCenterPoints) const; // declared
-        double getCurvature(const Point& position, const std::vector<InertialPose>& nearestCenterPoints) const; // declared
-        std::optional<double> getLocalCurvature(const Point& position, const uint8_t range) const; // declared
+        double getCurvature(const std::tuple<Point, Point, Point>& centerPoints) const; // implemented and tested
+        std::optional<double> getCurvature(const Point& position) const ; // implemented
+        double getCurvature(const Point& position, const std::pair<InertialPose, InertialPose>& nearestCenterPoints) const; // implemented
+        double getCurvature(const Point& position, const std::vector<InertialPose>& localCenterPoints) const; // implemented
+        std::optional<double> getLocalCurvature(const Point& position, const uint8_t range) const; //implemented
 
-        Angle getBearing(const Point& position) const; // declared
-        Angle getBearing(const Point& position, const std::pair<InertialPose, InertialPose>& nearestCenterPoints) const;  // declared
-        std::optional<Angle> Track::getLocalBearing(const Point& position, const uint8_t radius) const; // declared
+        Angle getBearing(const std::tuple<Point, Point, Point>& points) const;
+        std::optional<Angle> getBearing(const Point& position) const; // implemented
+        Angle getBearing(const Point& position, const std::pair<InertialPose, InertialPose>& nearestCenterPoints) const;  // implemented
+        std::optional<Angle> getLocalBearing(const Point& position, const uint8_t radius) const; // implemented
 
-        Angle getDifferenceInBearing(const Vehicle& vehicle) const; 
+        std::optional<Angle> getDifferenceInBearing(const Vehicle& vehicle) const; //implemented
 
-        double getROCofCurvature(const std::pair<InertialPose, InertialPose>&) const;
-        double getROCofCurvature(const Point&) const;
-        double getROCofCurvature(const InertialPose&) const;
+        double getROCofCurvature(const std::pair<InertialPose, InertialPose>&) const;       //implemented
+        double getROCofCurvature(const Point&) const;                                       //implemented
 
         void insertCone(const std::shared_ptr<Cone> cone);                                  //implemented
-        void insertCenterPoint(const Point& point);                                         //implemented
-        std::vector<Point> triangulateCenterPoints() const;                                 //TODO
-        std::vector<Point> matchCenterPoints(std::vector<Point>&& points) const;            //TODO
+        void initialiseCenterPoint(std::vector<Point>&& points, bool is_closed);             //implemented 
+        std::vector<Point> triangulateCenterPoints() const;                                 // TODO: Done - Winola to transfer 
+        std::vector<Point> matchCenterPoints(std::vector<Point>&& points) const;            //implemented
         void nearestNeighbourSort(std::vector<Point>& points);                              //implemented
-        void nearestNeighbourInsert(Point& point);                                          //implemented
-        size_t getNearestNeighbourInsertionPoint(const Point& point) const;                 //TODO    
+        void nearestNeighbourInsert(const Point& point);                                          //implemented
+        size_t getNearestNeighbourInsertionPoint(const Point& point) const;                 //implemented    
 
-        double getProgression(const Vehicle vehicle) const;     //TODO NOT declared and implemented
-        double getProgression(const Point position) const;      //TODO NOT declared and implemented
+        double calculateProgression(const Point& position) const;                           //implemented
+        double getProgression(const Vehicle vehicle);                                       //implemented
+        double getProgression(const Point position);                                        //implemented
 
         /* 
 

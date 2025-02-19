@@ -6,6 +6,7 @@
 //includes 
 #include <iostream>
 #include <cmath>
+#include <complex>
 
 // Done
 namespace planning {
@@ -51,7 +52,7 @@ public:
         }
     }
 
-    Angle difference(Angle &other) {
+    Angle difference(Angle other) {
         double angle = getDegrees();
         angle -= other.getDegrees();
         return Angle(angle);
@@ -76,20 +77,48 @@ struct Point {
     double x;
     double y;
 
+    template <typename T>
+    Point(std::complex<T> z) : x(z.r), y(z.i) {};
     Point(double x = 0, double y = 0) : x(x), y(y) {};
 
     double distanceTo(const Point& other) const {
-        return std::sqrt(std::pow(x - other.x, 2) + std::pow(y - other.y, 2));
+        return std::sqrt(std::pow(other.x - x, 2) + std::pow(other.y - y, 2));
     }
+
+    Point operator-(const Point& other) const {
+        return {x - other.x, y - other.y};
+    }
+
+    Point operator+(const Point& other) const {
+        return {x + other.x, y + other.y};
+    }
+
+    Point operator/(int divisor) {
+        return {x/divisor, y/divisor};
+    }
+
+    Point center(const Point& other) const {
+        return (*this + other)/2;
+    }
+    
+    double dot(const Point& other) const {
+        return x * other.x + y * other.y;
+    }
+
+    double mag() const {
+        return std::sqrt(x * x + y * y);
+    }
+
 };
+
 
 struct InertialPose {
     Point pos;
     double curvature = 0;
     Angle bearing = 0;
 public:
-    InertialPose(Point& point) : pos(point) {};
-    InertialPose(Point& point, double curvature, Angle bearing) : pos(point), curvature(curvature), bearing(bearing) {};
+    InertialPose(const Point& point) : pos(point) {};
+    InertialPose(const Point& point, double curvature, Angle bearing) : pos(point), curvature(curvature), bearing(bearing) {};
 };
 
 

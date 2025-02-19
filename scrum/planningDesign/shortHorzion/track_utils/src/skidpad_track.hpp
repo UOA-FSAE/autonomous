@@ -10,5 +10,5 @@ public:
     ~SkidpadTrack() = default;
     
     std::pair<InertialPose, InertialPose> getEnd() override;
-    std::pair<IntertialPose, InertialPose> getStart() override;
-}
+    std::pair<InertialPose, InertialPose> getStart() override;
+};
