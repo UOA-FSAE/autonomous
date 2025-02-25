@@ -9,7 +9,8 @@
 #include <memory>
 #include "DataTypes.hpp"
 
-using namespace planning;
+
+namespace planning {
 
 /**
  * @brief Enum for cone types
@@ -71,6 +72,11 @@ public:
     static int getNextId() {
         return nextId;
     }
+
+    int getConeType() const {
+        return coneType;
+    }
 };
+}
 
 #endif // CONE_HPP

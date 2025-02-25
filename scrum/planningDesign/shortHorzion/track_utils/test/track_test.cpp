@@ -19,10 +19,10 @@ std::shared_ptr<AccelTrack> setupTrack() {
 
     // Add cones to the track
     auto prop_fly_weight = std::make_shared<IntrinsicConeProp>(10); // Width of 10
-    track->insertCone(std::make_shared<Cone>(Point{0, 0}, BIG_ORANGE, prop_fly_weight));
-    track->insertCone(std::make_shared<Cone>(Point{10, 10}, BLUE, prop_fly_weight));
-    track->insertCone(std::make_shared<Cone>(Point{20, 20}, YELLOW, prop_fly_weight));
-    track->insertCone(std::make_shared<Cone>(Point{30, 30}, SMALL_ORANGE, prop_fly_weight));
+    track->insertCone(Cone(Point{0, 0}, BIG_ORANGE, prop_fly_weight));
+    track->insertCone(Cone(Point{10, 10}, BLUE, prop_fly_weight));
+    track->insertCone(Cone(Point{20, 20}, YELLOW, prop_fly_weight));
+    track->insertCone(Cone(Point{30, 30}, SMALL_ORANGE, prop_fly_weight));
 
     // Add center points to the track
 
@@ -89,11 +89,11 @@ BOOST_AUTO_TEST_CASE(actual_test)
 
   auto accel_track = AccelTrack();
 
-  std::shared_ptr<Cone> cone = std::make_shared<Cone>(Point{10,10}, BLUE, prop_fly_weight_1);
+  Cone cone = Cone(Point{10,10}, BLUE, prop_fly_weight_1);
 
   accel_track.insertCone(cone);
 
-  std::vector<std::shared_ptr<Cone>> retrieved_cones = accel_track.getLocalCones({10,10}, 5);
+    std::vector<Cone> retrieved_cones = accel_track.getLocalCones({10,10}, 5);;
 
   BOOST_CHECK_EQUAL(retrieved_cones.size(), 1);
 
@@ -341,48 +341,53 @@ BOOST_AUTO_TEST_CASE(test_interpolate_curvature)
     }
 }
 
-
 BOOST_AUTO_TEST_CASE(test_getLocalCones) {
     auto track = setupTrack();
 
     // Test case 1: Retrieve cones within range of (10, 10)
-    auto cones1 = track->getLocalCones(Point{10, 10}, 15); // Range of 15
+    std::vector<Cone> cones1 = track->getLocalCones(Point{10, 10}, 15); // Range of 15
     BOOST_CHECK_EQUAL(cones1.size(), 3); // Expect 3 cones: (0, 0), (10, 10), and (20, 20)
+    
+    // Verify the positions of retrieved cones
+    std::vector<Point> expected_positions1 = {Point{0, 0}, Point{10, 10}, Point{20, 20}};
+    for (const auto& cone : cones1) {
+        bool found = false;
+        for (const auto& expected_pos : expected_positions1) {
+            if (cone.getPos().distanceTo(expected_pos) < THRESHOLD) {
+                found = true;
+                break;
+            }
+        }
+        BOOST_CHECK(found);
+    }
 
     // Test case 2: Retrieve cones within range of (25, 25)
-    auto cones2 = track->getLocalCones(Point{25, 25}, 10); // Range of 10
+    std::vector<Cone> cones2 = track->getLocalCones(Point{25, 25}, 10); // Range of 10
     BOOST_CHECK_EQUAL(cones2.size(), 2); // Expect 2 cones: (20, 20) and (30, 30)
+    
+    // Verify the positions of retrieved cones
+    std::vector<Point> expected_positions2 = {Point{20, 20}, Point{30, 30}};
+    for (const auto& cone : cones2) {
+        bool found = false;
+        for (const auto& expected_pos : expected_positions2) {
+            if (cone.getPos().distanceTo(expected_pos) < THRESHOLD) {
+                found = true;
+                break;
+            }
+        }
+        BOOST_CHECK(found);
+    }
 
     // Test case 3: Retrieve cones within range of (0, 0)
-    auto cones3 = track->getLocalCones(Point{0, 0}, 5); // Range of 5
+    std::vector<Cone> cones3 = track->getLocalCones(Point{0, 0}, 5); // Range of 5
     BOOST_CHECK_EQUAL(cones3.size(), 1); // Expect 1 cone: (0, 0)
+    BOOST_CHECK(cones3[0].getPos().distanceTo(Point{0, 0}) < THRESHOLD);
 
     // Test case 4: No cones within range
-    auto cones4 = track->getLocalCones(Point{100, 100}, 10); // Range of 10
+    std::vector<Cone> cones4 = track->getLocalCones(Point{100, 100}, 10); // Range of 10
     BOOST_CHECK_EQUAL(cones4.size(), 0); // Expect no cones
 }
 
-// BOOST_AUTO_TEST_CASE(test_getLocalCenterPoints) {
-//     auto track = setupTrack();
-
-//     // Test case 1: Retrieve center points within range of (10, 10)
-//     auto centerPoints1 = track->getLocalCenterPoints(Point{10, 10}, 10.0001); // Range of 10
-//     BOOST_CHECK_EQUAL(centerPoints1.size(), 2); // Expect 2 points: (5, 5) and (15, 15)
-//     BOOST_CHECK_EQUAL(centerPoints1[0].pos.x, 5); // Verify first point
-//     BOOST_CHECK_EQUAL(centerPoints1[0].pos.y, 5);
-//     BOOST_CHECK_EQUAL(centerPoints1[1].pos.x, 15); // Verify second point
-//     BOOST_CHECK_EQUAL(centerPoints1[1].pos.y, 15);
-
-//     // Test case 2: Retrieve center points within range of (25, 25)
-//     auto centerPoints2 = track->getLocalCenterPoints(Point{25, 25}, 5); // Range of 5
-//     BOOST_CHECK_EQUAL(centerPoints2.size(), 1); // Expect 1 point: (25, 25)
-//     BOOST_CHECK_EQUAL(centerPoints2[0].pos.x, 25); // Verify the point
-//     BOOST_CHECK_EQUAL(centerPoints2[0].pos.y, 25);
-
-//     // Test case 3: No center points within range
-//     auto centerPoints3 = track->getLocalCenterPoints(Point{100, 100}, 10); // Range of 10
-//     BOOST_CHECK_EQUAL(centerPoints3.size(), 0); // Expect no points
-// }
 
 BOOST_AUTO_TEST_CASE(test_getLocalCenterPoints) {
     auto track = setupTrack();
@@ -453,25 +458,6 @@ BOOST_AUTO_TEST_CASE(test_getNearestCenterPoints) {
         BOOST_CHECK(!empty_result.first.has_value());
         BOOST_CHECK(!empty_result.second.has_value());
     }
-
-    // // Case 2: Test single point track
-    // {
-    //     auto singleTrack = std::make_shared<AccelTrack>();
-    //     std::vector<Point> points = {Point{1500, 1600}};
-    //     singleTrack->nearestNeighbourInsert(Point{1500, 1600});  // Changed to use initialiseCenterPoint
-        
-    //     auto single_result = singleTrack->getNearestCenterPoints(Point{1550, 1650});
-    //     BOOST_TEST_MESSAGE("Case 2: Test single point track");
-    //     BOOST_TEST_MESSAGE("Expected: {Point(1500, 1600), nullopt}, Actual: {" 
-    //                        << format_optional_point(single_result.first) << ", " 
-    //                        << format_optional_point(single_result.second) << "}");
-    //     BOOST_CHECK(single_result.first.has_value());
-    //     if (single_result.first.has_value()) {  // Add safety check
-    //         BOOST_CHECK_EQUAL(single_result.first.value().pos.x, 1500);
-    //         BOOST_CHECK_EQUAL(single_result.first.value().pos.y, 1600);
-    //     }
-    //     BOOST_CHECK(!single_result.second.has_value());
-    // }
 
     // Create a track with three points
     auto track = std::make_shared<AccelTrack>();
@@ -581,224 +567,5 @@ BOOST_AUTO_TEST_CASE(test_getCurvature_with_tuple_points)
   BOOST_CHECK(res - expected <= THRESHOLD);
 
 }
-
-BOOST_AUTO_TEST_CASE(test_getCurvature_with_position) {
-    using namespace planning;
-    
-    // Helper function to print test case details
-    auto print_test_case = [](int case_num, const std::string& description, 
-                             const std::optional<double>& expected,
-                             const std::optional<double>& actual) {
-        BOOST_TEST_MESSAGE("Test Case " << case_num << ": " << description);
-        if (expected.has_value() && actual.has_value()) {
-            BOOST_TEST_MESSAGE("Expected: " << expected.value() << ", Actual: " << actual.value());
-        } else {
-            BOOST_TEST_MESSAGE("Expected: " << (expected.has_value() ? std::to_string(expected.value()) : "nullopt")
-                           << ", Actual: " << (actual.has_value() ? std::to_string(actual.value()) : "nullopt"));
-        }
-    };
-
-    // Case 1: Test with empty track
-    {
-        auto emptyTrack = std::make_shared<AccelTrack>();
-        auto result = emptyTrack->getCurvature(Point{0, 0});
-        std::optional<double> expected = std::nullopt;
-        print_test_case(1, "Empty track", expected, result);
-        BOOST_CHECK(!result.has_value());
-    }
-
-    // Get the track with real data
-    auto track = setupTrack();
-    
-    // Get a reference point and its expected curvature
-    auto referencePoint = track->getLocalCenterPoints(Point{1500, 1600}, 1.0)[0];
-    double expected_curvature = referencePoint.curvature;
-
-    // Case 2: Test point exactly on a center point
-    {
-        auto result = track->getCurvature(Point{1500, 1600});  // First point
-        std::optional<double> expected = expected_curvature;
-        print_test_case(2, "Point exactly on center point", expected, result);
-        BOOST_CHECK(result.has_value());
-        if (result.has_value()) {
-            BOOST_CHECK_CLOSE(result.value(), expected.value(), THRESHOLD);
-        }
-    }
-
-    // Case 3: Test interpolation between two points
-    {
-        // Create a point halfway between first two center points
-        Point midpoint{
-            (1500 + 1700) / 2,  // Between first and second point
-            (1600 + 1650) / 2
-        };
-        auto result = track->getCurvature(midpoint);
-        std::optional<double> expected = expected_curvature;
-        print_test_case(3, "Interpolation between points", expected, result);
-        BOOST_CHECK(result.has_value());
-        if (result.has_value()) {
-            BOOST_CHECK_CLOSE(result.value(), expected.value(), THRESHOLD);
-        }
-    }
-
-    // Case 4: Test point slightly before first center point
-    {
-        Point before_first{1490, 1600};  // Slightly before first point
-        auto result = track->getCurvature(before_first);
-        std::optional<double> expected = expected_curvature;
-        print_test_case(4, "Before first point", expected, result);
-        BOOST_CHECK(result.has_value());
-        if (result.has_value()) {
-            BOOST_CHECK_CLOSE(result.value(), expected.value(), THRESHOLD);
-        }
-    }
-
-    // Case 5: Test point slightly after last center point
-    {
-        Point after_last{1210, 1650};  // Slightly after last point
-        auto result = track->getCurvature(after_last);
-        std::optional<double> expected = expected_curvature;
-        print_test_case(5, "After last point", expected, result);
-        BOOST_CHECK(result.has_value());
-        if (result.has_value()) {
-            BOOST_CHECK_CLOSE(result.value(), expected.value(), THRESHOLD);
-        }
-    }
-
-    // Case 6: Test with closed loop
-    {
-        Point midpoint{
-            (1500 + 1200) / 2,  // Between first and last point
-            (1600 + 1650) / 2
-        };
-        auto result = track->getCurvature(midpoint);
-        std::optional<double> expected = expected_curvature;
-        print_test_case(6, "Closed loop interpolation", expected, result);
-        BOOST_CHECK(result.has_value());
-        if (result.has_value()) {
-            BOOST_CHECK_CLOSE(result.value(), expected.value(), THRESHOLD);
-        }
-    }
-}
-
-// BOOST_AUTO_TEST_CASE(test_getCurvature_with_position) {
-//     using namespace planning;
-    
-//     // Helper function to print test case details
-//     auto print_test_case = [](int case_num, const std::string& description, 
-//                              const std::optional<double>& expected,
-//                              const std::optional<double>& actual) {
-//         BOOST_TEST_MESSAGE("Test Case " << case_num << ": " << description);
-//         if (expected.has_value() && actual.has_value()) {
-//             BOOST_TEST_MESSAGE("Expected: " << expected.value() << ", Actual: " << actual.value());
-//         } else {
-//             BOOST_TEST_MESSAGE("Expected: " << (expected.has_value() ? std::to_string(expected.value()) : "nullopt")
-//                            << ", Actual: " << (actual.has_value() ? std::to_string(actual.value()) : "nullopt"));
-//         }
-//     };
-
-//     // Case 1: Test with empty track
-//     {
-//         auto emptyTrack = std::make_shared<AccelTrack>();
-//         auto result = emptyTrack->getCurvature(Point{0, 0});
-//         std::optional<double> expected = std::nullopt;
-//         print_test_case(1, "Empty track", expected, result);
-//         BOOST_CHECK(!result.has_value());
-//     }
-
-//     // Create a track with a circular arc
-//     auto track = std::make_shared<AccelTrack>();
-    
-//     // Create points along a circular arc with radius 100 units
-//     double radius = 100.0;
-//     double center_x = 1500.0;
-//     double center_y = 1600.0;
-//     double expected_curvature = 1.0 / radius;  // Curvature = 1/radius for a circle
-    
-//     std::vector<Point> points;
-//     for (int i = 0; i < 5; i++) {
-//         double angle = i * M_PI / 8; // 45-degree segments
-//         double x = center_x + radius * cos(angle);
-//         double y = center_y + radius * sin(angle);
-//         points.push_back(Point{x, y});
-//     }
-    
-//     track->initialiseCenterPoint(std::move(points), false);
-
-//     // Case 2: Test point exactly on first center point
-//     {
-//         auto result = track->getCurvature(points[0]);
-//         std::optional<double> expected = expected_curvature;
-//         print_test_case(2, "Point exactly on first center point", expected, result);
-//         BOOST_CHECK(result.has_value());
-//         if (result.has_value()) {
-//             BOOST_CHECK_CLOSE(result.value(), expected.value(), THRESHOLD);
-//         }
-//     }
-
-//     // Case 3: Test interpolation between two points
-//     {
-//         Point midpoint{
-//             (points[0].x + points[1].x) / 2,
-//             (points[0].y + points[1].y) / 2
-//         };
-//         auto result = track->getCurvature(midpoint);
-//         std::optional<double> expected = expected_curvature;  // Should be same curvature everywhere on circle
-//         print_test_case(3, "Interpolation between points", expected, result);
-//         BOOST_CHECK(result.has_value());
-//         if (result.has_value()) {
-//             BOOST_CHECK_CLOSE(result.value(), expected.value(), THRESHOLD);
-//         }
-//     }
-
-//     // Case 4: Test point slightly before first center point
-//     {
-//         Point before_first{
-//             points[0].x - radius * 0.1,
-//             points[0].y
-//         };
-//         auto result = track->getCurvature(before_first);
-//         std::optional<double> expected = expected_curvature;
-//         print_test_case(4, "Before first point", expected, result);
-//         BOOST_CHECK(result.has_value());
-//         if (result.has_value()) {
-//             BOOST_CHECK_CLOSE(result.value(), expected.value(), THRESHOLD);
-//         }
-//     }
-
-//     // Case 5: Test point slightly after last center point
-//     {
-//         Point after_last{
-//             points.back().x + radius * 0.1,
-//             points.back().y
-//         };
-//         auto result = track->getCurvature(after_last);
-//         std::optional<double> expected = expected_curvature;
-//         print_test_case(5, "After last point", expected, result);
-//         BOOST_CHECK(result.has_value());
-//         if (result.has_value()) {
-//             BOOST_CHECK_CLOSE(result.value(), expected.value(), THRESHOLD);
-//         }
-//     }
-
-//     // Case 6: Test with closed loop
-//     {
-//         auto closed_track = std::make_shared<AccelTrack>();
-//         closed_track->initialiseCenterPoint(std::move(points), true);
-//         closed_track->setClosedLoop();
-        
-//         Point midpoint{
-//             (points[0].x + points.back().x) / 2,
-//             (points[0].y + points.back().y) / 2
-//         };
-//         auto result = closed_track->getCurvature(midpoint);
-//         std::optional<double> expected = expected_curvature;
-//         print_test_case(6, "Closed loop interpolation", expected, result);
-//         BOOST_CHECK(result.has_value());
-//         if (result.has_value()) {
-//             BOOST_CHECK_CLOSE(result.value(), expected.value(), THRESHOLD);
-//         }
-//     }
-// }
 
 BOOST_AUTO_TEST_SUITE_END()

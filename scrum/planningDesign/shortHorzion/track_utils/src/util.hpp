@@ -2,6 +2,9 @@
 #define UTIL_HPP
 
 #include <complex>
+#include <set>
+#include <vector>
+#include <map>
 #include "DataTypes.hpp"
 
 
@@ -12,7 +15,25 @@ namespace planning {
     double distance(const Point& p1, const Point& p2); //implemented and tested
     double interpolate_curvature(const Point& p1, double curvature1, const Point& p2, double curvature2, const Point& p3); //implemented and tested
     
+    template <typename T>
+    std::vector<T> set_to_vector(const std::set<T>& set) {
+        std::vector<T> vector;
+        vector.reserve(set.size());
 
+        std::copy(set.begin(), set.end(), std::back_inserter(vector));
+        return vector;
+    }
+
+    template <typename K, typename T>
+    std::vector<T> map_to_vector(const std::map<K, T>& map) {
+        std::vector<T> vector;
+        vector.reserve(map.size());
+
+        for (const auto& pair : map) {
+            vector.push_back(pair.second);
+        }
+        return vector;
+    }
     
     template<typename T>
     std::pair<std::complex<T>, T> circle_from_3_points(std::complex<T> z1, std::complex<T> z2, std::complex<T> z3) {

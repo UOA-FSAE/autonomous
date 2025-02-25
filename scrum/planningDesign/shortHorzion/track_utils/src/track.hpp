@@ -28,7 +28,7 @@ namespace planning {
 class Track{
 
     protected:
-        std::map<uint16_t, std::shared_ptr<Cone>> coneMap;
+        std::map<uint16_t, Cone> coneMap;
         std::vector<InertialPose> centerPoints;
         Point newCenterPoint;
         Point initialCenterPoint;
@@ -42,8 +42,10 @@ class Track{
         virtual std::pair<Cone, Cone> getStart() const = 0;
 
         void setClosedLoop();
-                                    
-        std::vector<std::shared_ptr<Cone>> getLocalCones(const Point& position, const uint8_t range) const; // implemented and tested
+        
+        std::vector<Cone> getConeVector() const;
+        //std::vector<Cone> getConeVector() const;
+        std::vector<Cone> getLocalCones(const Point& position, const uint8_t range) const; // implemented and tested
         std::vector<InertialPose> getLocalCenterPoints(const Point& point, const double range) const; // implemented and tested
         std::pair<std::optional<InertialPose>, std::optional<InertialPose>> getNearestCenterPoints(const Point& point) const; //implemented and tested
 
@@ -63,10 +65,10 @@ class Track{
         double getROCofCurvature(const std::pair<InertialPose, InertialPose>&) const;       //implemented
         double getROCofCurvature(const Point&) const;                                       //implemented
 
-        void insertCone(const std::shared_ptr<Cone> cone);                                  //implemented
+        void insertCone(const Cone cone);                                  //implemented
         void initialiseCenterPoint(std::vector<Point>&& points, bool is_closed);             //implemented 
-        std::vector<Point> triangulateCenterPoints() const;                                 // TODO: Done - Winola to transfer 
-        std::vector<Point> matchCenterPoints(std::vector<Point>&& points) const;            //implemented
+        std::vector<Point> triangulateCenterPoints(std::vector<planning::Cone> &cones) const;                                 // TODO: Done - Winola to transfer 
+        std::vector<Point> matchCenterPoints(const std::vector<Point>& points, double threshold) const;            //implemented
         void nearestNeighbourSort(std::vector<Point>& points);                              //implemented
         void nearestNeighbourInsert(const Point& point);                                          //implemented
         size_t getNearestNeighbourInsertionPoint(const Point& point) const;                 //implemented    

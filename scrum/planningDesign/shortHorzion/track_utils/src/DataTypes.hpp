@@ -7,6 +7,7 @@
 #include <iostream>
 #include <cmath>
 #include <complex>
+#include <tuple>
 
 // Done
 namespace planning {
@@ -109,6 +110,11 @@ struct Point {
         return std::sqrt(x * x + y * y);
     }
 
+    friend bool operator<(const Point& l, const Point& r)
+    {
+        return std::tie(l.x, l.y) < std::tie(r.x, r.y); // keep the same order
+    }
+
 };
 
 
@@ -119,6 +125,12 @@ struct InertialPose {
 public:
     InertialPose(const Point& point) : pos(point) {};
     InertialPose(const Point& point, double curvature, Angle bearing) : pos(point), curvature(curvature), bearing(bearing) {};
+
+    friend bool operator<(const InertialPose& l, const InertialPose& r)
+    {
+        return std::tie(l.pos, l.pos)
+             < std::tie(r.pos, r.pos); // keep the same order
+    }
 };
 
 

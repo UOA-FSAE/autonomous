@@ -1,11 +1,10 @@
 cmake_minimum_required(VERSION 3.8)
 project(track_utils)
 
-find_package(ament_cmake REQUIRED)
-find_package(geometry_msgs REQUIRED)
+# find_package(ament_cmake REQUIRED)
+# find_package(geometry_msgs REQUIRED)
+find_package(CGAL REQUIRED)
 
-add_subdirectory(corrade EXCLUDE_FROM_ALL) # so only things you use are built
-add_subdirectory(magnum EXCLUDE_FROM_ALL)
 add_subdirectory(test)
 
 # Path where FindCorrade.cmake & FindMagnum.cmake can be found, adapt as needed
@@ -13,10 +12,9 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/modules/" ${CMAKE_MODULE_PATH})
 set(CMAKE_PREFIX_PATH "" ${CMAKE_PREFIX_PATH})
 set(CMAKE_BUILD_RPATH "${PROJECT_SOURCE_DIR}/cmake_build_scrum")
 
-find_package(Magnum REQUIRED ...) # see below
-
 file(GLOB SRC_FILES  
     src/*.cpp
+    EXCLUDE src/TriangulateCenterPoints.cpp
 )
 
 file(GLOB INCLUDE_FILES 
@@ -25,15 +23,16 @@ file(GLOB INCLUDE_FILES
 
 # Add the library
 add_library(track_utils_lib
-    SRC_FILES
+    ${SRC_FILES}
 )
-
+target_link_libraries(track_utils_lib 
+    CGAL::CGAL
+    mpfr
+    gmp
+)
 target_include_directories(track_utils_lib PUBLIC INCLUDE_FILES)
-ament_target_dependencies(track_utils_lib geometry_msgs)
+# ament_target_dependencies(track_utils_lib geometry_msgs)
 
-
-add_dependencies(track_utils_lib
-    Magnum::Math)
 
 
 # Add the test executable

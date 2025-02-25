@@ -45,6 +45,7 @@ target_link_libraries(planning_unit_tests
     ${Boost_INCLUDE_DIRS}
     # Boost::UnitTestFramework
     ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+    track_utils_lib
 )
 
 # Add a CTest command

@@ -7,6 +7,19 @@
 #include <cstring>
 #include <complex>
 
+
+
+
+// ------------ Begin CGAL Includes ------------
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Delaunay_triangulation_2.h>
+// ---------------------------------------------
+
+// Define a CGAL Kernel
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Delaunay_triangulation_2<K> Delaunay;
+
+
 namespace planning {
     
 class InvalidVectorLengthException : public std::exception {
@@ -23,6 +36,11 @@ private:
 Track::~Track() {
     // No special cleanup required
 };
+
+
+std::vector<Cone> Track::getConeVector() const{
+    return map_to_vector(coneMap);
+}
 
 /**
  * @brief Sets the track as a closed loop (i.e., track forms a complete circuit)
@@ -43,15 +61,15 @@ void Track::setClosedLoop() {
  * 
  * @param position 
  * @param range 
- * @return std::vector<std::shared_ptr<Cone>> 
+ * @return std::vector<Cone> 
  */
 [[nodiscard]]
-std::vector<std::shared_ptr<Cone>> Track::getLocalCones(const Point& position, const uint8_t range) const
+std::vector<Cone> Track::getLocalCones(const Point& position, const uint8_t range) const
 {
-    std::vector<std::shared_ptr<Cone>> localCones;
-    for (auto& [id, cone_p] : coneMap) {
-        if (position.distanceTo(cone_p->getPos()) <= range) {
-            localCones.push_back(cone_p);
+    std::vector<Cone> localCones;
+    for (auto& [id, cone] : coneMap) {
+        if (position.distanceTo(cone.getPos()) <= range) {
+            localCones.push_back(cone);
         }
     }
     return localCones;
@@ -316,16 +334,12 @@ std::optional<double> Track::getLocalCurvature(const Point& position, const uint
  * @param cone Inserts a new cone into the track's cone map
  * @throws Prints error message if cone is null or if cone ID already exists
  */
-void Track::insertCone(const std::shared_ptr<Cone> cone)
+void Track::insertCone(const Cone cone)
 {
-    if (cone) {
-        int coneID = cone->getId();
-        auto result = coneMap.emplace(coneID, cone);
-        if (!result.second) {
-            std::cerr << "Error: Cone with ID " << coneID << " already exists." << std::endl;
-        }
-    } else {
-       std::cerr << "Error: Trying to insert a null cone." << std::endl; 
+    int coneID = cone.getId();
+    auto result = coneMap.emplace(coneID, cone);
+    if (!result.second) {
+        std::cerr << "Error: Cone with ID " << coneID << " already exists." << std::endl;
     }
 }
 
@@ -372,20 +386,66 @@ void Track::initialiseCenterPoint(std::vector<Point>&& points, bool is_closed) {
 //  * 
 //  * @return std::vector<Point> vector of triangulated center points
 //  */
-std::vector<Point> Track::triangulateCenterPoints() const
-{
-    return {};
+
+std::vector<planning::InertialPose> triangulateCenterPoints(std::vector<planning::Cone> &cones) {
+    // 1) Build the Delaunay triangulation
+    Delaunay dt;
+    // Map each CGAL Vertex_handle to the cone's colour
+    std::map<Delaunay::Vertex_handle, int> color_map;
+
+    for (auto &cone : cones) {
+        Delaunay::Vertex_handle vh = dt.insert(K::Point_2(cone.getPos().x, cone.getPos().y));
+        color_map[vh] = cone.getConeType();
+    }
+
+    // 2) Identify valid faces (triangles) that have more than one color among their vertices
+    std::vector<Delaunay::Face_handle> valid_faces;
+    for (auto f = dt.finite_faces_begin(); f != dt.finite_faces_end(); ++f) {
+        // Collect the colours of the triangle's vertices
+        std::set<int> face_colors;
+        for (int i = 0; i < 3; ++i) {
+            face_colors.insert(color_map[f->vertex(i)]);
+        }
+        // If more than one colour is present, keep it
+        if (face_colors.size() > 1) {
+            valid_faces.push_back(f);
+        }
+    }
+
+    // 3) Collect unique midpoints of edges that connect differently-colored cones
+    // duplicates are due to same edges being shared between two triangles
+    std::set<planning::InertialPose> midpoint_set;
+
+    for (auto &face : valid_faces) {
+        // Each face has 3 edges: (v0,v1), (v1,v2), (v2,v0)
+        for (int i = 0; i < 3; ++i) {
+            Delaunay::Vertex_handle vh1 = face->vertex(i);
+            Delaunay::Vertex_handle vh2 = face->vertex((i+1) % 3);
+
+            if (color_map[vh1] != color_map[vh2]) {
+                K::Point_2  p1 = vh1->point();
+                K::Point_2  p2 = vh2->point();
+                double mx = (p1.x() + p2.x()) / 2.0;
+                double my = (p1.y() + p2.y()) / 2.0;
+                midpoint_set.insert(planning::InertialPose(planning::Point(mx, my)));
+            }
+        }
+    }
+    auto center_points_vector = planning::set_to_vector<planning::InertialPose>(midpoint_set);
+
+    return center_points_vector;
 }
 
 
+
 /**
- * @brief returns a vector points that didn't match 
- * with any currently stored center points. Ie the difference of the two sets of points. 
+ * @brief returns a vector points that didn't match any pre-existing points
+ * with any currently stored center points. Ie the difference of the two vector of points. 
  * 
  * @param points Vector of points to be matched with the track
  * @return std::vector<Point> : Vector of matched and aligned center points
  */
-std::vector<Point> Track::matchCenterPoints(std::vector<Point>&& points) const
+std::vector<Point> Track::matchCenterPoints(const std::vector<Point>& points, double threshold) const
 {
     // If there are no existing center points, return input points
     if (centerPoints.empty()){
@@ -398,14 +458,13 @@ std::vector<Point> Track::matchCenterPoints(std::vector<Point>&& points) const
     }
 
     std::vector<Point> unmatchedPoints;
-    const double MATCHING_THRESHOLD = 2.0;
 
     //for each input point check if it matches with existing centerpoint
     for (const auto& point : points) {
         bool matched = false;
         
         for (const auto& centerPoint : centerPoints){
-            if (point.distanceTo(centerPoint.pos) <= MATCHING_THRESHOLD){
+            if (point.distanceTo(centerPoint.pos) <= threshold){
                 matched = true;
                 break;
             }
@@ -419,6 +478,28 @@ std::vector<Point> Track::matchCenterPoints(std::vector<Point>&& points) const
     return unmatchedPoints;
 
 }
+
+
+// planning::Point matchCenterPoints(
+//     std::set<planning::Point>& center_points,
+//     const planning::Point& candidate,
+//     double threshold)
+// {
+//     for (auto &pt : center_points) {
+//         // Euclidean distance
+//         double dx = pt.x  - candidate.x;
+//         double dy = pt.y - candidate.y;
+//         double dist = std::sqrt(dx * dx + dy * dy);
+
+//         if (dist < threshold) {
+//             // Found a point close enough => return it immediately
+//             return pt;
+//         }
+//     }
+//     // If we get here, no point was within threshold => insert candidate
+//     center_points.insert(candidate);
+//     return candidate;
+// }
 
 
 //DONE
