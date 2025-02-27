@@ -60,6 +60,8 @@ public:
     Cone(Point pos, ConeType coneType, std::shared_ptr<IntrinsicConeProp> intrinsicProps): id(nextId++), pos(pos), coneType(coneType), intrinsicProps_p(intrinsicProps)  {};
     
     Cone(planning::Point point, ConeType type, IntrinsicConeProp& props) : id(nextId++), pos(point), coneType(type), intrinsicProps_p(std::make_shared<IntrinsicConeProp>(props)) {};
+
+    Cone(planning::Point point, ConeType type) : id(nextId++), pos(point), coneType(type) {};
     
     Point getPos() const {
         return pos;
