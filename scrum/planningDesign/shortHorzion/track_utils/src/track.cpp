@@ -309,7 +309,7 @@ double Track::getCurvature(const Point& position, const std::vector<InertialPose
  * @brief gets the curvature 
  * 
  * @param position 
- * @param range 
+ * @param range (metres)
  * @return std::optional<double> 
  */
  [[nodiscard]]
@@ -932,6 +932,10 @@ double Track::getProgression(const Vehicle vehicle) {
  */
 double Track::getProgression(const Point position) {
     return calculateProgression(position);  
+}
+
+std::vector<InertialPose> Track::getCenterPoints(){
+    return this->centerPoints;
 }
 
 

@@ -20,6 +20,9 @@
 // declared
 // todo
 
+// ****************** IMPORTANT ******************
+//  Length units are in metres, angles in degrees
+
 namespace planning {
 
     constexpr double PI = M_PI;
@@ -75,7 +78,9 @@ class Track{
 
         double calculateProgression(const Point& position) const;                           //implemented
         double getProgression(const Vehicle vehicle);                                       //implemented
-        double getProgression(const Point position);                                        //implemented
+        double getProgression(const Point position);  
+        
+        std::vector<InertialPose> getCenterPoints();                                      //implemented
 
         /* 
 

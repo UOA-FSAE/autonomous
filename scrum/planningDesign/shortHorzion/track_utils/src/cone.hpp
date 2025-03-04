@@ -5,10 +5,13 @@
 
 #include <memory>
 #include <tuple>
+#include <map>
 
 #include <memory>
 #include "DataTypes.hpp"
 
+// ****************** IMPORTANT ******************
+//  Length units are in metres
 
 namespace planning {
 
@@ -33,15 +36,20 @@ class IntrinsicConeProp {
     
 private:
     double width;
+    double height;
 
 public:
     
-    IntrinsicConeProp(double width) : width(width) {}
+    IntrinsicConeProp(double width, double height) : width(width), height(height) {}
     
     virtual ~IntrinsicConeProp() {}
     
     inline double getWidth() {
         return width;
+    }
+
+    inline double getHeight() {
+        return height;
     }
     
 };
@@ -54,14 +62,11 @@ private:
     int id;
     Point pos; // Position of the cone
     ConeType coneType; // Type of the cone
-    std::shared_ptr<IntrinsicConeProp> intrinsicProps_p; // Intrinsic properties of the cone
    
 public:
-    Cone(Point pos, ConeType coneType, std::shared_ptr<IntrinsicConeProp> intrinsicProps): id(nextId++), pos(pos), coneType(coneType), intrinsicProps_p(intrinsicProps)  {};
+    Cone(const Point pos, const ConeType coneType): id(nextId++), pos(pos), coneType(coneType)  {};
     
-    Cone(planning::Point point, ConeType type, IntrinsicConeProp& props) : id(nextId++), pos(point), coneType(type), intrinsicProps_p(std::make_shared<IntrinsicConeProp>(props)) {};
-
-    Cone(planning::Point point, ConeType type) : id(nextId++), pos(point), coneType(type) {};
+    Cone(const Cone cone) : id(nextId++), pos(cone.pos), coneType(cone.conetype) {};
     
     Point getPos() const {
         return pos;
@@ -77,6 +82,10 @@ public:
 
     int getConeType() const {
         return coneType;
+    }
+
+    void setPos(Point newPos) {
+        pos = newpos;
     }
 };
 }

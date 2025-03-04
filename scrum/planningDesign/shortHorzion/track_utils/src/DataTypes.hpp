@@ -124,7 +124,7 @@ struct InertialPose {
     Angle bearing = 0;
 public:
     InertialPose(const Point& point) : pos(point) {};
-    InertialPose(const Point& point, double curvature, Angle bearing) : pos(point), curvature(curvature), bearing(bearing) {};
+    InertialPose(const Point& point, const double curvature, const Angle bearing) : pos(point), curvature(curvature), bearing(bearing) {};
 
     friend bool operator<(const InertialPose& l, const InertialPose& r)
     {

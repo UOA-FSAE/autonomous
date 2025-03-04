@@ -7,7 +7,7 @@ Point Corner::getStartLeft() const{
     } else{
         throw std::runtime_error("Left Boundary is empty");
     }
-} 
+}
 
 Point Corner::getStartRight() const{
     if(!rightBoundary.empty()){
@@ -15,7 +15,4 @@ Point Corner::getStartRight() const{
     } else{
         throw std::runtime_error("Right Boundary is empty");
     }
-} 
-
-
-
+}
