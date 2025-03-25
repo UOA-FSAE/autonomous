@@ -130,19 +130,66 @@ private:
 
 	// TODO: publisher  binding for the trajectory
 	//  state machine based on track conditions
-	void updateCarHeuristics() {
-		//check racecar exists, warn if not
-		if (!raceTrack){
-			RCLCPP_WARN(this->get_logger(), "racetrack is not initialised!");
-			return;
-		}
-		//get nearest centerpoint
-		auto nearestPoints = raceTrack->getNearestCenterPoints(vehicle.pos);
-
-		
-
-		//
-	}
+	/**
+ * @brief Updates car heuristics based on current vehicle state and track
+ */
+void updateCarHeuristics() {
+    if (!raceTrack) {
+        RCLCPP_WARN(this->get_logger(), "Cannot update car heuristics: race track not initialized");
+        return;
+    }
+    
+    // Get nearest center points
+    auto nearestPoints = raceTrack->getNearestCenterPoints(vehicle.pos);
+    
+    if (nearestPoints.first && nearestPoints.second) {
+        // Calculate lateral position (distance from centerline)
+        const Point& p1 = nearestPoints.first.value().pos;
+        const Point& p2 = nearestPoints.second.value().pos;
+        
+        // Vector from p1 to p2 (track direction)
+        double track_dx = p2.x - p1.x;
+        double track_dy = p2.y - p1.y;
+        double track_length = std::sqrt(track_dx * track_dx + track_dy * track_dy);
+        
+        if (track_length > 0) {
+            // Normalize track direction vector
+            double norm_track_dx = track_dx / track_length;
+            double norm_track_dy = track_dy / track_length;
+            
+            // Vector from p1 to vehicle
+            double vehicle_dx = vehicle.pos.x - p1.x;
+            double vehicle_dy = vehicle.pos.y - p1.y;
+            
+            // Project vehicle vector onto track direction
+            double proj = vehicle_dx * norm_track_dx + vehicle_dy * norm_track_dy;
+            
+            // Vector from track to vehicle (perpendicular component)
+            double perp_x = vehicle_dx - proj * norm_track_dx;
+            double perp_y = vehicle_dy - proj * norm_track_dy;
+            
+            // Lateral position is the length of the perpendicular vector
+            car_heuristics.lateral_position = std::sqrt(perp_x * perp_x + perp_y * perp_y);
+            
+            // Determine if vehicle is to the left or right of track
+            // Cross product sign determines which side
+            double cross = norm_track_dx * vehicle_dy - norm_track_dy * vehicle_dx;
+            if (cross < 0) {
+                car_heuristics.lateral_position = -car_heuristics.lateral_position;
+            }
+        }
+        
+        // Update bearing difference
+        auto bearingDiff = raceTrack->getDifferenceInBearing(vehicle);
+        if (bearingDiff) {
+            car_heuristics.car_position_bearing_difference = bearingDiff.value().getDegrees();
+        }
+    } else {
+        RCLCPP_WARN(this->get_logger(), "Unable to find nearest center points for vehicle position");
+    }
+    
+    // Velocity is already updated in carVelocityCallback
+}
 	// center line following in straight areas of the track.
 
 	// identifying a corner which needs special handling
