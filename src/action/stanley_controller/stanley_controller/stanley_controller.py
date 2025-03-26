@@ -4,7 +4,6 @@ import numpy as np
 import math
 from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import Pose
-from moa_msgs.msg import ConeMap
 from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
 from std_msgs.msg import Header
 
