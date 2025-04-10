@@ -27,7 +27,7 @@ class centerline_planner(Node):
         self.create_subscription(Pose, "car_position", self.set_car_position, 10)   # car pose
 
         # publishers
-        self.centerline_publisher = self.create_publisher(PoseArray, "moa/selected_trajectory", 10)
+        self.centerline_publisher = self.create_publisher(PoseArray, "selected_trajectory", 10)
     
     def set_car_position(self, msg:Pose) -> None: 
         self.car_pose = msg

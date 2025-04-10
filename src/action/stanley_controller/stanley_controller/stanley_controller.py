@@ -4,7 +4,6 @@ import numpy as np
 import math
 from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import Pose
-from moa_msgs.msg import ConeMap
 from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
 from std_msgs.msg import Header
 
@@ -81,13 +80,13 @@ class StanleyControl(Node):
         self.target_speed = 3.6/3.6 #[m/s]
 
         #Subscribe for car pose and track
-        self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
+        self.create_subscription(PoseArray, "selected_trajectory", self.selected_trajectory_handler, 5)
         self.create_subscription(Pose, "car_position", self.main_hearback, 5)
         #Publish result
-        self.cmd_drive_pub = self.create_publisher(AckermannDrive, "/drive", 5)
-        self.cmd_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
-        self.cmd_vel_pub = self.create_publisher(AckermannDriveStamped, "/cmd_vel", 5)
-        self.create_publisher(Pose, "moa/track_point", 5)
+        self.cmd_drive_pub = self.create_publisher(AckermannDrive, "drive", 5)
+        self.cmd_vis_pub = self.create_publisher(AckermannDrive, "drive_vis", 5)
+        self.cmd_vel_pub = self.create_publisher(AckermannDriveStamped, "cmd_vel", 5)
+        self.create_publisher(Pose, "track_point", 5)
     
     def main_hearback(self, msg):
         car_pose = msg
