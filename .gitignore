@@ -20,3 +20,5 @@ wandb/
 ./scrum/planningDesign/shortHorzion/build
 ./scrum/planningDesign/shortHorzion/install
 ./scrum/planningDesign/shortHorzion/log
+**/CMakeFiles*
+**/cmake_build*
