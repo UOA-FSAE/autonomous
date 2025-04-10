@@ -1,2 +1,0 @@
-/usr/bin/ar qc libtrack_utils_lib.a CMakeFiles/track_utils_lib.dir/src/TriangulateCenterPoints.cpp.o CMakeFiles/track_utils_lib.dir/src/cone.cpp.o CMakeFiles/track_utils_lib.dir/src/corner.cpp.o CMakeFiles/track_utils_lib.dir/src/curvature_calculator.cpp.o CMakeFiles/track_utils_lib.dir/src/track.cpp.o CMakeFiles/track_utils_lib.dir/src/tutorial.cpp.o CMakeFiles/track_utils_lib.dir/src/util.cpp.o
-/usr/bin/ranlib libtrack_utils_lib.a
