@@ -15,8 +15,8 @@
 #include <NvInfer.h>
 
 using namespace nvinfer1;
-#define NMS_THRESH 0.4
 #define CONF_THRESH 0.8
+#define NMS_THRESH 0.4
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -84,7 +84,7 @@ void ZedLaunchNode::cone_detection_loop()
     auto camera_info = zed.getCameraInformation(pc_resolution).camera_configuration;
 
     // Creating the inference engine class
-    std::string engine_name = "cone_detection_model.engine";
+    std::string engine_name = model_name;
     Yolo detector;
     if (detector.init(engine_name)) {
         std::cerr << "Detector init failed!" << std::endl;
