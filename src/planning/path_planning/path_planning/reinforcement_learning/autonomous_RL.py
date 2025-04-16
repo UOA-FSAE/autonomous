@@ -18,7 +18,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 
 class ReinforcementLearningEnv(Node, Env):
     """reinforcement learning uses a policy to find out what action would be best for this state
-    The action is defined as the highest probability of it happening given this state and parameters - I THINK SO"""
+    The action is defined as the highest probability of it happening given this state and parameters - I THINK SO lol"""
     def __init__ (self):
         super().__init__("RL")
         # ROS NODE CODE

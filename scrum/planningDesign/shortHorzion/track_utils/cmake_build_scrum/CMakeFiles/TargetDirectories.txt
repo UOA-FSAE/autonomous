@@ -1,0 +1,15 @@
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/CMakeFiles/track_utils_lib.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/CMakeFiles/test_curvature_calculator.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/CMakeFiles/edit_cache.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/CMakeFiles/rebuild_cache.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/CMakeFiles/list_install_components.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/CMakeFiles/install.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/CMakeFiles/install/local.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/CMakeFiles/install/strip.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/test/CMakeFiles/planning_unit_tests.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/test/CMakeFiles/edit_cache.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/test/CMakeFiles/rebuild_cache.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/test/CMakeFiles/list_install_components.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/test/CMakeFiles/install.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/test/CMakeFiles/install/local.dir
+/mnt/c/Users/sivas/Desktop/FSAE/autonomous_nighly_clone/autonomous/scrum/planningDesign/shortHorzion/track_utils/cmake_build_scrum/test/CMakeFiles/install/strip.dir
