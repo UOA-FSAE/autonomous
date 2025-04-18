@@ -11,3 +11,7 @@
 [submodule "Formula-Student-Driverless-Simulator"]
 	path = Formula-Student-Driverless-Simulator
 	url = https://github.com/FS-Driverless/Formula-Student-Driverless-Simulator.git
+[submodule "ackermann_msgs"]
+	path = ackermann_msgs
+	url = https://github.com/ros-drivers/ackermann_msgs
+	branch = ros2
