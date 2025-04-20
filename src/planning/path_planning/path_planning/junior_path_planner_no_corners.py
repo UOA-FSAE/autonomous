@@ -16,12 +16,18 @@ from scipy.interpolate import splprep, splev
 straights_rad_threshold = 10 *math.pi/180 #10 degrees
 minimum_straight_length = 3 #number of centre_points that a straight should have as a minimum
 
+#lets try min fraction:
+min_rank_fraction = 0.1
+
 
 class Straight():
     def __init__(self, length=0, index=0):
         self.length = length
         self.index = index
     
+
+#path planning
+
 def tectonic_track(centre_points):
     # Breaks up the track into what can be considered a straight based on the straights threshold. This effectively
     # breaks up corners a lot, while actual straights remain one piece. This is kinda like tectonic plates so I used
@@ -65,24 +71,44 @@ def tectonic_track(centre_points):
 def rank_straights(straights):
     # Ranks straights based on their lengths
 
+    length = len(straights)
+
     straightened_straights = []
-    for i in range(len(straights)):
+    for i in range(length):
         if len(straights[i]) > 1:
             straightened_straights.append(Straight(np.linalg.norm(straights[i][-1] - straights[i][0]), i))
         else:
             straightened_straights.append(Straight(0, i))
-    straightened_straights = sorted(straightened_straights, key=lambda straight: straight.length, reverse=True)
 
-    ranked_straights = [straights[straightened_straight.index] for straightened_straight in straightened_straights] # remove this
+    max_index = int(min_rank_fraction*length) + 1
+    sorted_straightened_straights = sorted(straightened_straights, key=lambda straight: straight.length, reverse=True)[:max_index]
+    corners = []
+    min_straight_length = sorted_straightened_straights[-1].length
     
-    return ranked_straights # remove this straights
-        
+
+    ranked_straights = [straights[straightened_straight.index] for straightened_straight in sorted_straightened_straights]
+    
+    #-------------------------------------------------------------------------------------------------
+
+    for i in range(length):
+        if straightened_straights[i].length < min_straight_length:
+            corners.append(straights[i].copy())
+            i += 1
+            while (i < length) and (straightened_straights[i].length < min_straight_length):
+                corners[-1].extend(straights[i])
+                i += 1
+            
+
+
+    return ranked_straights, corners
+
+
 def classify_corners(ranked_corners):
     #TODO?
     pass
 
 #plots for visualisation
-def example_plot(ranked_straights, centre_points):
+def example_plot(ranked_straights, corners):
     plt.figure(figsize=(10, 6))
 
     # Color gradients for heatmap-like ranking
@@ -96,6 +122,13 @@ def example_plot(ranked_straights, centre_points):
         pts = np.array(straight)
         if (len(straight) > 1):
             plt.plot(pts[:, 0], pts[:, 1], '-', c=color, linewidth=3, label=f"Straight {i}" if i == 0 else "")
+
+    for i, corner in enumerate(corners):
+        color = corner_cmap(i / max(len(corners)-1, 1))
+        pts = np.array(corner)
+        if (len(corner) > 1):
+            plt.plot(pts[:, 0], pts[:, 1], '-', c=color, linewidth=3, linestyle='--', label=f"Corner {i}" if i == 0 else "")
+
 
     # Add all points for reference
     # plt.scatter(centre_points[:, 0], centre_points[:, 1], color='black', zorder=5)
@@ -216,12 +249,13 @@ def generate_smooth_closed_track(num_points=1000, num_control_points=10, radius=
     return centre_points
 
 def main(args=None):
-    centre_points = generate_smooth_closed_track(seed=340295) # change seed to try a different circle-ish track
+    centre_points = generate_oval_track()#generate_smooth_closed_track(seed=981437391) # change seed to try a different circle-ish track
 
     straights = tectonic_track(centre_points)
-    ranked_straights = rank_straights(straights)
+    ranked_straights, corners = rank_straights(straights)
 
-    example_plot(ranked_straights, centre_points)
+
+    example_plot(ranked_straights, corners)
 
 
 
