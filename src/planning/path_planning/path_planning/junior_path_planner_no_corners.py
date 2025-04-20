@@ -13,11 +13,11 @@ from scipy.interpolate import splprep, splev
 
 
 
-straights_rad_threshold = 10 *math.pi/180 #10 degrees
+straights_rad_threshold = 17 *math.pi/180 #10 degrees
 minimum_straight_length = 3 #number of centre_points that a straight should have as a minimum
 
-#lets try min fraction:
 min_rank_fraction = 0.1
+min_straight_length = 75 #in metres based on VERY approximate calculation outlined in my workbook
 
 
 class Straight():
@@ -70,33 +70,35 @@ def tectonic_track(centre_points):
     
 def rank_straights(straights):
     # Ranks straights based on their lengths
+    # COMBINE BOTH LOOPS FOR BETTER PERFORMNACE 
 
     length = len(straights)
 
     straightened_straights = []
+    sorted_straightened_straights = []
     for i in range(length):
         if len(straights[i]) > 1:
             straightened_straights.append(Straight(np.linalg.norm(straights[i][-1] - straights[i][0]), i))
+            if straightened_straights[-1].length >= min_straight_length:
+                sorted_straightened_straights.append(straightened_straights[-1])
         else:
             straightened_straights.append(Straight(0, i))
 
-    max_index = int(min_rank_fraction*length) + 1
-    sorted_straightened_straights = sorted(straightened_straights, key=lambda straight: straight.length, reverse=True)[:max_index]
-    corners = []
-    min_straight_length = sorted_straightened_straights[-1].length
-    
-
+    sorted_straightened_straights = sorted(sorted_straightened_straights, key=lambda straight: straight.length, reverse=True)
     ranked_straights = [straights[straightened_straight.index] for straightened_straight in sorted_straightened_straights]
     
     #-------------------------------------------------------------------------------------------------
-
-    for i in range(length):
+    corners = []
+    i = 0
+    while i < length:
         if straightened_straights[i].length < min_straight_length:
             corners.append(straights[i].copy())
             i += 1
             while (i < length) and (straightened_straights[i].length < min_straight_length):
                 corners[-1].extend(straights[i])
                 i += 1
+        else:
+            i += 1
             
 
 
@@ -108,7 +110,7 @@ def classify_corners(ranked_corners):
     pass
 
 #plots for visualisation
-def example_plot(ranked_straights, corners):
+def example_plot(ranked_straights, corners, centre_points):
     plt.figure(figsize=(10, 6))
 
     # Color gradients for heatmap-like ranking
@@ -116,22 +118,32 @@ def example_plot(ranked_straights, corners):
     corner_cmap = get_cmap("cool")   # blue to red for corners
     straight_cmap = get_cmap("RdYlGn")  # red to green for straights
 
+    # Add all points for reference
+    plt.scatter(centre_points[:, 0], centre_points[:, 1], color='black', zorder=5, s=1)
+
     # Plot straights
     for i, straight in enumerate(ranked_straights):
         color = straight_cmap(i / max(len(ranked_straights)-1, 1))
         pts = np.array(straight)
         if (len(straight) > 1):
-            plt.plot(pts[:, 0], pts[:, 1], '-', c=color, linewidth=3, label=f"Straight {i}" if i == 0 else "")
+            plt.plot(pts[:, 0], pts[:, 1], '-', c=color, linewidth=10, label=f"Straight {i}" if i == 0 else "")
+            # plt.title("Ranked Straights (Red→Green) and Corners (Blue→Red)")
+            # plt.axis("equal")
+            # plt.grid(True)
+            # plt.legend()
+            # plt.show()
 
     for i, corner in enumerate(corners):
         color = corner_cmap(i / max(len(corners)-1, 1))
         pts = np.array(corner)
         if (len(corner) > 1):
-            plt.plot(pts[:, 0], pts[:, 1], '-', c=color, linewidth=3, linestyle='--', label=f"Corner {i}" if i == 0 else "")
+            plt.plot(pts[:, 0], pts[:, 1], '-', c=color, linewidth=10, linestyle='-', label=f"Corner {i}" if i == 0 else "")
+            # plt.title("Ranked Straights (Red→Green) and Corners (Blue→Red)")
+            # plt.axis("equal")
+            # plt.grid(True)
+            # plt.legend()
+            # plt.show()
 
-
-    # Add all points for reference
-    # plt.scatter(centre_points[:, 0], centre_points[:, 1], color='black', zorder=5)
 
     plt.title("Ranked Straights (Red→Green) and Corners (Blue→Red)")
     plt.axis("equal")
@@ -226,7 +238,7 @@ def generate_treyarch_track(num_points=1000, seed=42):
 
     return np.stack((x, y), axis=1)
 
-def generate_smooth_closed_track(num_points=1000, num_control_points=10, radius=100, seed=42):
+def generate_smooth_closed_track(num_points=1000, num_control_points=10, radius=200, seed=42):
     np.random.seed(seed)
 
     # Create random control points around a circle
@@ -248,14 +260,57 @@ def generate_smooth_closed_track(num_points=1000, num_control_points=10, radius=
     centre_points = np.stack((x_fine, y_fine), axis=1)
     return centre_points
 
+def generate_long_straight_track(num_points=1000, seed=42):
+    np.random.seed(seed)
+
+    # Define control points for long straights and smooth corners (scaled)
+    track_outline = []
+
+    # All distances scaled to 100m+ per straight segment
+    segments = [
+        ((0, 0), (200, 0)),       # 200m straight
+        ((200, 0), (250, 100)),   # ~111m corner segment
+        ((250, 100), (100, 250)), # ~212m straight diagonal
+        ((100, 250), (-20, 300)), # ~134m curve
+        ((-20, 300), (-200, 150)),# ~250m straight
+        ((-200, 150), (-220, 50)),# ~104m curve
+        ((-220, 50), (0, 0))      # Closing back (about 250m)
+    ]
+
+    for start, end in segments:
+        # Add intermediate points between start and end
+        p0 = np.array(start)
+        p1 = np.array(end)
+        for i in range(5):
+            t = i / 4
+            point = (1 - t) * p0 + t * p1
+            point += np.random.normal(scale=2, size=2)  # light noise
+            track_outline.append(point)
+
+    track_outline = np.array(track_outline)
+
+    # Close the loop
+    track_outline = np.vstack([track_outline, track_outline[0]])
+
+    # B-spline interpolation for smooth loop
+    tck, _ = splprep(track_outline.T, s=0, per=True)
+    u_fine = np.linspace(0, 1, num_points)
+    x_fine, y_fine = splev(u_fine, tck)
+
+    centre_points = np.stack((x_fine, y_fine), axis=1)
+    return centre_points
+
 def main(args=None):
-    centre_points = generate_oval_track()#generate_smooth_closed_track(seed=981437391) # change seed to try a different circle-ish track
+    # centre_points = generate_oval_track()
+    # centre_points = generate_smooth_closed_track(seed=512) # change seed to try a different circle-ish track
+    centre_points = generate_long_straight_track(seed=41214) # change seed to try a different circle-ish track
 
     straights = tectonic_track(centre_points)
+    # ranked_straights, corners = rank_straights(straights)
     ranked_straights, corners = rank_straights(straights)
+    # corners = []
 
-
-    example_plot(ranked_straights, corners)
+    example_plot(ranked_straights, corners, centre_points)
 
 
 
