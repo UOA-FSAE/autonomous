@@ -8,8 +8,13 @@ from scipy.interpolate import splprep, splev
 # Purely straight based approach
 
 # NEXT STEPS:
-# 1. Join broken straights into one corner. <<<<<<<
-# 2. Classify corners based on their curvature direction, then the type of corner it is.
+# - Classify corners based on their curvature direction, then the type of corner it is.
+
+
+# COOL THINGS TO THINK ABOUT:
+# - https://github.com/CommonRoad/commonroad-raceline-planner this is good we could just use this lol | link provided by fitz
+# - Does ranking even matter? We've gotta optimise the entire track anyways like who cares about ranking bruh. Just a thought... | tofu
+
 
 
 
@@ -24,11 +29,15 @@ class Straight():
     def __init__(self, length=0, index=0):
         self.length = length
         self.index = index
-    
 
-#path planning
+class Corner():
+    def __init__(self, rank=-1, index=0):
+        self.rank = rank
+        self.index = index
 
-def tectonic_track(centre_points):
+#path feature identification
+
+def tectonicate_track(centre_points):
     # Breaks up the track into what can be considered a straight based on the straights threshold. This effectively
     # breaks up corners a lot, while actual straights remain one piece. This is kinda like tectonic plates so I used
     # it as an excuse to give this function a cooler name :)
@@ -78,9 +87,12 @@ def rank_straights(straights):
     sorted_straightened_straights = []
     for i in range(length):
         if len(straights[i]) > 1:
-            straightened_straights.append(Straight(np.linalg.norm(straights[i][-1] - straights[i][0]), i))
-            if straightened_straights[-1].length >= min_straight_length:
-                sorted_straightened_straights.append(straightened_straights[-1])
+            new_straight = Straight(np.linalg.norm(straights[i][-1] - straights[i][0]), i)
+            straightened_straights.append(new_straight)  
+
+            if new_straight.length >= min_straight_length:
+                sorted_straightened_straights.append(new_straight)
+                                                             
         else:
             straightened_straights.append(Straight(0, i))
 
@@ -97,6 +109,7 @@ def rank_straights(straights):
             while (i < length) and (straightened_straights[i].length < min_straight_length):
                 corners[-1].extend(straights[i])
                 i += 1
+
         else:
             i += 1
             
@@ -104,6 +117,31 @@ def rank_straights(straights):
 
     return ranked_straights, corners
 
+def identify_straights_and_corners(tectonic_tracks):
+    # Keeps it simple and does away with rank entirely, just identifies.
+
+    list_length = len(tectonic_tracks)
+    straights = []
+    corners = []
+    i = 0
+    while i < list_length:
+        straight_length = np.linalg.norm(tectonic_tracks[i][-1] - tectonic_tracks[i][0])
+
+        if straight_length < min_straight_length:
+            corners.append(tectonic_tracks[i].copy())
+            i += 1
+
+            while (i < list_length) and (np.linalg.norm(tectonic_tracks[i][-1] - tectonic_tracks[i][0]) < min_straight_length):
+                corners[-1].extend(tectonic_tracks[i])
+                i += 1
+
+
+        else:
+            straights.append(tectonic_tracks[i])
+            i += 1
+
+    return straights, corners
+                                                             
 
 def classify_corners(ranked_corners):
     #TODO?
@@ -303,14 +341,12 @@ def generate_long_straight_track(num_points=1000, seed=42):
 def main(args=None):
     # centre_points = generate_oval_track()
     # centre_points = generate_smooth_closed_track(seed=512) # change seed to try a different circle-ish track
-    centre_points = generate_long_straight_track(seed=41214) # change seed to try a different circle-ish track
+    centre_points = generate_long_straight_track(seed=252) # change seed to try a different circle-ish track
+    
+    tectonic_tracks = tectonicate_track(centre_points)
+    straights, corners = identify_straights_and_corners(tectonic_tracks)
 
-    straights = tectonic_track(centre_points)
-    # ranked_straights, corners = rank_straights(straights)
-    ranked_straights, corners = rank_straights(straights)
-    # corners = []
-
-    example_plot(ranked_straights, corners, centre_points)
+    example_plot(straights, corners, centre_points)
 
 
 
