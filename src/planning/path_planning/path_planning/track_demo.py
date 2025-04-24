@@ -366,7 +366,7 @@ if __name__ == "__main__":
     centre_pts = list(zip(x_vals, y_vals))
 
     # --- Run the segmentation pipeline ---
-    fits = segment_centerline_and_fit_arcs(centre_pts, window_length=4, step_size=5)
+    fits = segment_centerline_and_fit_arcs(centre_pts, window_length=20, step_size=1)
     fits = classify_arcs_vs_straights(fits,
                                       max_rms_err=1.0,
                                       min_arc_angle=0.15,

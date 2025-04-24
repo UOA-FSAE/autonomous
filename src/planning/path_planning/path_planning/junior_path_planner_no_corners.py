@@ -22,7 +22,7 @@ straights_rad_threshold = 17 *math.pi/180 #10 degrees
 minimum_straight_length = 3 #number of centre_points that a straight should have as a minimum
 
 min_rank_fraction = 0.1
-min_straight_length = 75 #in metres based on VERY approximate calculation outlined in my workbook
+min_tectonic_length = 75 #in metres based on VERY approximate calculation outlined in my workbook
 
 
 class Straight():
@@ -90,7 +90,7 @@ def rank_straights(straights):
             new_straight = Straight(np.linalg.norm(straights[i][-1] - straights[i][0]), i)
             straightened_straights.append(new_straight)  
 
-            if new_straight.length >= min_straight_length:
+            if new_straight.length >= min_tectonic_length:
                 sorted_straightened_straights.append(new_straight)
                                                              
         else:
@@ -103,10 +103,10 @@ def rank_straights(straights):
     corners = []
     i = 0
     while i < length:
-        if straightened_straights[i].length < min_straight_length:
+        if straightened_straights[i].length < min_tectonic_length:
             corners.append(straights[i].copy())
             i += 1
-            while (i < length) and (straightened_straights[i].length < min_straight_length):
+            while (i < length) and (straightened_straights[i].length < min_tectonic_length):
                 corners[-1].extend(straights[i])
                 i += 1
 
@@ -123,48 +123,54 @@ def identify_straights_and_corners(tectonic_tracks):
     list_length = len(tectonic_tracks)
     straights = []
     corners = []
+    corner_apexes = []
     i = 0
     while i < list_length:
-        straight_length = np.linalg.norm(tectonic_tracks[i][-1] - tectonic_tracks[i][0])
+        tectonic_length = np.linalg.norm(tectonic_tracks[i][-1] - tectonic_tracks[i][0])
 
-        if straight_length < min_straight_length:
+        if tectonic_length < min_tectonic_length:
+            #this tetconic is part of a corner
             corners.append(tectonic_tracks[i].copy())
             i += 1
 
-            while (i < list_length) and (np.linalg.norm(tectonic_tracks[i][-1] - tectonic_tracks[i][0]) < min_straight_length):
+            while (i < list_length) and (np.linalg.norm(tectonic_tracks[i][-1] - tectonic_tracks[i][0]) < min_tectonic_length):
                 corners[-1].extend(tectonic_tracks[i])
                 i += 1
 
+            #corner completed. We can now find the closest centre_point to its apex by assuming the corner only consists of one arc, (the middle of the centre_points in a corner)
+            middle_index = len(corners[-1]) // 2
+            corner_apexes.append(corners[-1][middle_index].copy())
 
         else:
+            #this tetconic is part of a straight
             straights.append(tectonic_tracks[i])
             i += 1
 
-    return straights, corners
-                                                             
+    return straights, corners, corner_apexes
+
 
 def classify_corners(ranked_corners):
     #TODO?
     pass
 
 #plots for visualisation
-def example_plot(ranked_straights, corners, centre_points):
+def example_plot(ranked_straights, corners, centre_points, corner_apexes):
     plt.figure(figsize=(10, 6))
 
     # Color gradients for heatmap-like ranking
     from matplotlib.cm import get_cmap
-    corner_cmap = get_cmap("cool")   # blue to red for corners
-    straight_cmap = get_cmap("RdYlGn")  # red to green for straights
+    # corner_cmap = get_cmap("cool")   # blue to red for corners
+    # straight_cmap = get_cmap("RdYlGn")  # red to green for straights
 
     # Add all points for reference
     plt.scatter(centre_points[:, 0], centre_points[:, 1], color='black', zorder=5, s=1)
 
-    # Plot straights
+    # Plot straights and corners
     for i, straight in enumerate(ranked_straights):
-        color = straight_cmap(i / max(len(ranked_straights)-1, 1))
+        # color = straight_cmap(i / max(len(ranked_straights)-1, 1))
         pts = np.array(straight)
         if (len(straight) > 1):
-            plt.plot(pts[:, 0], pts[:, 1], '-', c=color, linewidth=10, label=f"Straight {i}" if i == 0 else "")
+            plt.plot(pts[:, 0], pts[:, 1], '-', c='red', linewidth=10, label=f"Straight {i}" if i == 0 else "")
             # plt.title("Ranked Straights (Red→Green) and Corners (Blue→Red)")
             # plt.axis("equal")
             # plt.grid(True)
@@ -172,16 +178,19 @@ def example_plot(ranked_straights, corners, centre_points):
             # plt.show()
 
     for i, corner in enumerate(corners):
-        color = corner_cmap(i / max(len(corners)-1, 1))
+        # color = corner_cmap(i / max(len(corners)-1, 1))
         pts = np.array(corner)
         if (len(corner) > 1):
-            plt.plot(pts[:, 0], pts[:, 1], '-', c=color, linewidth=10, linestyle='-', label=f"Corner {i}" if i == 0 else "")
+            plt.plot(pts[:, 0], pts[:, 1], '-', c='blue', linewidth=10, linestyle='-', label=f"Corner {i}" if i == 0 else "")
             # plt.title("Ranked Straights (Red→Green) and Corners (Blue→Red)")
             # plt.axis("equal")
             # plt.grid(True)
             # plt.legend()
             # plt.show()
 
+    #plot apexes
+    corner_apexes = np.array(corner_apexes)  # Convert list of arrays to 2D array
+    plt.scatter(corner_apexes[:, 0], corner_apexes[:, 1], color='yellow', zorder=5, s=70)
 
     plt.title("Ranked Straights (Red→Green) and Corners (Blue→Red)")
     plt.axis("equal")
@@ -298,7 +307,7 @@ def generate_smooth_closed_track(num_points=1000, num_control_points=10, radius=
     centre_points = np.stack((x_fine, y_fine), axis=1)
     return centre_points
 
-def generate_long_straight_track(num_points=1000, seed=42):
+def generate_long_straight_track(num_points=2000, seed=42):
     np.random.seed(seed)
 
     # Define control points for long straights and smooth corners (scaled)
@@ -340,13 +349,13 @@ def generate_long_straight_track(num_points=1000, seed=42):
 
 def main(args=None):
     # centre_points = generate_oval_track()
-    # centre_points = generate_smooth_closed_track(seed=512) # change seed to try a different circle-ish track
-    centre_points = generate_long_straight_track(seed=252) # change seed to try a different circle-ish track
+    # centre_points = generate_smooth_closed_track(seed=1313) # change seed to try a different circle-ish track
+    centre_points = generate_long_straight_track(seed=1) # change seed to try a different circle-ish track
     
     tectonic_tracks = tectonicate_track(centre_points)
-    straights, corners = identify_straights_and_corners(tectonic_tracks)
+    straights, corners, corner_apexes = identify_straights_and_corners(tectonic_tracks)
 
-    example_plot(straights, corners, centre_points)
+    example_plot(straights, corners, centre_points, corner_apexes)
 
 
 

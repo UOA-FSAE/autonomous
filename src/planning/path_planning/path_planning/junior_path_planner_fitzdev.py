@@ -2,6 +2,7 @@ from typing import List, Tuple, Dict, Any, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+from scipy.interpolate import splprep, splev
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------
 def _fit_circle_algebraic(x: np.ndarray, y: np.ndarray) -> Tuple[float, float, float]:
@@ -10,6 +11,27 @@ def _fit_circle_algebraic(x: np.ndarray, y: np.ndarray) -> Tuple[float, float, f
     to points (x, y) via linear least squares.
 
     Returns (cx, cy, R).
+    """
+    """
+    Divide the track centreline into overlapping windows of length `w`, stepping forward by `s`,
+    and fit a circle to each segment using a least-squares method.
+
+    Inputs:
+    - centre_pts: Ordered list of (x, y) tuples representing the track centerline.
+    - w: Integer specifying the number of points in each window for fitting.
+    - s: Integer step size that determines the overlap between windows.
+
+    Output:
+    - fits: A list of dictionaries, each containing:
+        - 'idx_start': Index of the first point in the window.
+        - 'idx_end': Index of the last point in the window.
+        - 'R': Fitted circle radius.
+        - 'centre': (cx, cy) coordinates of the fitted circle's center.
+        - 'arc_angle': Subtended angle of the arc (radians or degrees).
+        - 'rms_err': Root-mean-square error of the fit.
+
+    This function is foundational: it provides the geometric characterization
+    of the road necessary for downstream corner detection.
     """
     # build design matrix
     A_mat = np.column_stack([x, y, np.ones_like(x)])
@@ -328,45 +350,107 @@ def visualize_track_segments(
         color = color_map['straight'] if seg['type']=='straight' else color_map.get(seg.get('turn_dir',''), 'black')
         ax.plot(sx, sy, linewidth=line_width, color=color)
         ax.scatter([sx[0], sx[-1]], [sy[0], sy[-1]], s=marker_size**2, color=color, zorder=3)
+    plt.scatter(centre_pts[0][0], centre_pts[0][1], color='black', zorder=5, s=70)
+    plt.scatter(centre_pts[10][0], centre_pts[10][1], color='yellow', zorder=5, s=70)
     plt.show()
 
 
-if __name__ == "__main__":
-    import numpy as np
+# Generation of tracks:
 
-    # --- Generate a circle with a sine-wave perturbation along its normal ---
-    radius = 100
-    num_pts = 500
+def generate_long_straight_track(num_points=2000, seed=42):
+    """
+    Generates a smooth, closed track with long straights and gentle corners.
+    
+    Parameters:
+        num_points (int): Total number of interpolated points in the returned centerline.
+        seed (int): Random seed for reproducibility of noise.
+    
+    Returns:
+        List[Tuple[float, float]]: Ordered list of (x, y) tuples representing the track centerline.
+    """
+    np.random.seed(seed)
+
+    track_outline = []
+
+    # Define major segments: long straights + curves
+    segments = [
+        ((0, 0), (200, 0)),
+        ((200, 0), (250, 100)),
+        ((250, 100), (100, 250)),
+        ((100, 250), (-20, 300)),
+        ((-20, 300), (-200, 150)),
+        ((-200, 150), (-220, 50)),
+        ((-220, 50), (0, 0))
+    ]
+
+    for start, end in segments:
+        p0 = np.array(start)
+        p1 = np.array(end)
+        for i in range(5):
+            t = i / 4
+            point = (1 - t) * p0 + t * p1
+            point += np.random.normal(scale=2, size=2)  # Light positional noise
+            track_outline.append(point)
+
+    track_outline = np.array(track_outline)
+
+    # Ensure the track is closed
+    track_outline = np.vstack([track_outline, track_outline[0]])
+
+    # B-spline interpolation
+    tck, _ = splprep(track_outline.T, s=0, per=True)
+    u_fine = np.linspace(0, 1, num_points)
+    x_fine, y_fine = splev(u_fine, tck)
+
+    # Convert to list of (x, y) tuples
+    centre_points = list(zip(x_fine, y_fine))
+    return centre_points
+
+def generate_sine_perturbed_circle(radius=100, amplitude=10, n_oscillations=12, num_pts=500):
+    """
+    Generate a closed circular path with a sine-wave perturbation applied along the normal direction.
+
+    Parameters:
+        radius (float): Base radius of the circle.
+        amplitude (float): Amplitude of the sine wave offset.
+        n_oscillations (int): Number of sine wave cycles around the circle.
+        num_pts (int): Number of points to generate along the path.
+
+    Returns:
+        List[Tuple[float, float]]: List of (x, y) tuples representing the perturbed path.
+    """
     t = np.linspace(0, 2 * np.pi, num_pts)
 
-    # Base circle
+    # Base circle coordinates
     x_center = radius * np.cos(t)
     y_center = radius * np.sin(t)
 
-    # Sine-wave offset (number of oscillations around the circle)
-    amplitude = 10
-    n_oscillations = 12
+    # Magnitude of sine perturbation along normal
     offset_mag = amplitude * np.sin(n_oscillations * t)
 
-    # Compute unit normals (perpendicular to tangent)
-    # Tangent: (dx, dy) = (−R sin t, R cos t)
+    # Compute unit normals
     dx = -radius * np.sin(t)
     dy =  radius * np.cos(t)
-    # Left-hand normal = (−dy, dx)
     nx = -dy
     ny =  dx
     L = np.hypot(nx, ny)
     nx /= L
     ny /= L
 
-    # Offset the base circle along its normal by the sine wave
+    # Apply normal perturbation
     x_vals = x_center + nx * offset_mag
     y_vals = y_center + ny * offset_mag
 
-    centre_pts = list(zip(x_vals, y_vals))
+    return list(zip(x_vals, y_vals))
+
+
+if __name__ == "__main__":
+
+    # centre_pts = generate_sine_perturbed_circle()
+    centre_pts = generate_long_straight_track()
 
     # --- Run the segmentation pipeline ---
-    fits = segment_centerline_and_fit_arcs(centre_pts, window_length=4, step_size=5)
+    fits = segment_centerline_and_fit_arcs(centre_pts, window_length=4, step_size=1)
     fits = classify_arcs_vs_straights(fits,
                                       max_rms_err=1.0,
                                       min_arc_angle=0.15,
