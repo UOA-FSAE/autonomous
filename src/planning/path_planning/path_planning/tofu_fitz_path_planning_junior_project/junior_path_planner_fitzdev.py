@@ -4,6 +4,15 @@ import matplotlib.pyplot as plt
 import math
 from scipy.interpolate import splprep, splev
 
+"""NOTES:
+At present, if you use the oval track generator with a window length of 20, it detects
+corners correctly but misidentifies the straights as corners. Its pretty bad.
+Upon looking further into this, we find that for this oval track, the RADII of both
+the actual corners and the straights are about the same (at around 50). This extends to even
+the arc angles (aroudn 3.1). This is weird, and indicates something is wrong in the circle
+fitting part specifically.
+"""
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------
 def _fit_circle_algebraic(x: np.ndarray, y: np.ndarray) -> Tuple[float, float, float]:
     """
@@ -443,14 +452,54 @@ def generate_sine_perturbed_circle(radius=100, amplitude=10, n_oscillations=12, 
 
     return list(zip(x_vals, y_vals))
 
+def generate_oval_track(num_points=1000, straight_length=200, radius=50):
+    # Half the points for straights, half for curves
+    num_curve_points = num_points // 2
+    num_straight_points = num_points - num_curve_points
+
+    # First straight (bottom)
+    straight1_x = np.linspace(-straight_length / 2, straight_length / 2, num_straight_points // 2)
+    straight1_y = np.full_like(straight1_x, -radius)
+
+    # Right curve (bottom to top, right side)
+    theta1 = np.linspace(-np.pi/2, np.pi/2, num_curve_points // 2)
+    curve1_x = radius * np.cos(theta1) + straight_length / 2
+    curve1_y = radius * np.sin(theta1)
+
+    # Second straight (top)
+    straight2_x = np.linspace(straight_length / 2, -straight_length / 2, num_straight_points // 2)
+    straight2_y = np.full_like(straight2_x, radius)
+
+    # Left curve (top to bottom, left side)
+    theta2 = np.linspace(np.pi/2, 3*np.pi/2, num_curve_points // 2)
+    curve2_x = radius * np.cos(theta2) - straight_length / 2
+    curve2_y = radius * np.sin(theta2)
+
+    # Combine all parts
+    x = np.concatenate([straight1_x, curve1_x, straight2_x, curve2_x])
+    y = np.concatenate([straight1_y, curve1_y, straight2_y, curve2_y])
+
+    # Convert to list of tuples
+    points = list(zip(x, y))
+
+    return points
+
 
 if __name__ == "__main__":
+    import test_and_scratch
+    import tofu_delaunay
+
 
     # centre_pts = generate_sine_perturbed_circle()
-    centre_pts = generate_long_straight_track()
+    # centre_pts = generate_long_straight_track()
+    # centre_pts = generate_oval_track()
+    
+    #remove delaunay cone pairs if its not needed.
+    centre_pts, blue_cones, yellow_cones = tofu_delaunay.GimmeCanD(test_and_scratch.tester_oval(100))
+
 
     # --- Run the segmentation pipeline ---
-    fits = segment_centerline_and_fit_arcs(centre_pts, window_length=4, step_size=1)
+    fits = segment_centerline_and_fit_arcs(centre_pts, window_length=20, step_size=1)
     fits = classify_arcs_vs_straights(fits,
                                       max_rms_err=1.0,
                                       min_arc_angle=0.15,
@@ -466,19 +515,22 @@ if __name__ == "__main__":
                     s['turn_dir'] = c['turn_dir']
                     break
 
-    # Optional classification + detection
-    metrics = extract_corner_metrics(corns, centre_pts)
-    classified = classify_corner_severity(metrics,
-                                          theta_hairpin=150,
-                                          R_hairpin=50,
-                                          theta_medium=60,
-                                          R_medium=150)
-    compound_tagged = detect_compound_corners(classified, max_gap_for_chicane=15)
+    if False:
+        # Optional classification + detection
+        metrics = extract_corner_metrics(corns, centre_pts)
+        classified = classify_corner_severity(metrics,
+                                              theta_hairpin=150,
+                                              R_hairpin=50,
+                                              theta_medium=60,
+                                              R_medium=150)
+        compound_tagged = detect_compound_corners(classified, max_gap_for_chicane=15)
 
-    print("\nTrack Element Sequence:")
-    print_track_detections(compound_tagged, total_pts=len(centre_pts))
+        print("\nTrack Element Sequence:")
+        print_track_detections(compound_tagged, total_pts=len(centre_pts))
+        
 
     # --- Visualize ---
+    # black is first point, 11th point is yellow.
     visualize_track_segments(centre_pts, segs)
 
 
