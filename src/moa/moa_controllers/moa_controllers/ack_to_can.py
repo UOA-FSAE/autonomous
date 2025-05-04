@@ -69,7 +69,7 @@ class ack_to_can(Node):
         """
 
         # checks before sending Ackermann
-        if 0 > ack_msg.drive.speed or ack_msg.drive.speed > 120/3.6:  # m/s   
+        if 0 > ack_msg.drive.speed or ack_msg.drive.speed > 255:  # m/s   
             self.get_logger().warn('ackermann drive SPEED out of bounds')
             return None
 
@@ -104,18 +104,18 @@ class ack_to_can(Node):
 
         # Compose CAN data packet
         ackermann_vals = np.array([
-            speed,
-            acceleration,
-            jerk,
+            int(speed),
+            int(acceleration),
+            int(jerk),
             int.from_bytes(steering_angle[:s_a_size//2], 'big'),
             int.from_bytes(steering_angle[s_a_size//2:], 'big'),
-            steering_angle_vel,
-            0,
-            0], 
+            int(steering_angle_vel),
+            int(0),
+            int(0)], 
             dtype=np.uint8
             )
 
-        return ackermann_vals
+        return ackermann_vals.tolist()
 
 
     def ack_to_can_publish_callback(self, ack_msg: AckermannDriveStamped):
