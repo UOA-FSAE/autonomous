@@ -66,13 +66,13 @@ def generate_weirdo_oval_track():
 
     return centre_points
 
-def tester_oval(no_of_points=1000, extra_bs=False):
+def tester_oval(no_of_points=1000, track_width=2, extra_bs=False):
     # Generate oval track (use the `generate_oval_track` or `generate_weirdo_oval_track` function)
     centre_points = generate_oval_track(no_of_points)
 
     # Step 6: Generate cones
-    cones = []
-    track_width = 2
+    blue_cones = []
+    yellow_cones = []
 
     for i in range(len(centre_points)):
         p = centre_points[i]
@@ -92,14 +92,17 @@ def tester_oval(no_of_points=1000, extra_bs=False):
         left = np.array([-direction[1], direction[0]])
         right = -left
 
-        # Assign color based on direction
-        cones.append(((p + track_width * left).tolist(), 'y'))  # yellow
-        cones.append(((p + track_width * right).tolist(), 'b'))  # blue
+        # Assign color based on direction. i serves as a timestamp here
+        blue_cones.append(((p + track_width * left).tolist(), 'b', i))  # blue
+        yellow_cones.append(((p + track_width * right).tolist(), 'y', i))  # yellow
 
-    cone_coords = np.array([c[0] for c in cones])
-
+    cones = []
+    for i in range(len(blue_cones)):
+        cones.append(blue_cones[i])
+        cones.append(yellow_cones[i])
 
     if extra_bs:
+        cone_coords = np.array([c[0] for c in cones])
         # Step 8: Delaunay
         tri = Delaunay(cone_coords)
 
@@ -119,3 +122,6 @@ def tester_oval(no_of_points=1000, extra_bs=False):
             print(cone)
     
     return cones
+
+# tester_oval(100, direct=True)
+
