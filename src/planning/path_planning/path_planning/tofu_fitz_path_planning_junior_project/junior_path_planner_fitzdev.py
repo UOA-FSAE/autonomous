@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import math
 from scipy.interpolate import splprep, splev
 from pyclothoids import Clothoid
-from scipy.signal import savgol_filter
 from scipy.interpolate import splprep, splev
 from scipy.ndimage import gaussian_filter1d
 
@@ -353,6 +352,41 @@ def attach_turn_directions(segs, corns):
 
     return segs
 
+# intermediataries------------------------------------------------------------------------------------------------------------------------------------------------------
+def break_apart_severe_corners_and_join_straights(centre_points, segs, split_angle=110):
+    new_segs = []
+    length = len(segs)
+    i = 0
+    while i < length:
+        seg = segs[i]
+        if seg['type'] == 'corner':
+            start = seg['idx_start']
+            end = seg['idx_end']
+            start_vec = centre_points[start+3] - centre_points[start]
+            end_vec = centre_points[end] - centre_points[end-3]
+            start_heading = np.degrees(np.arctan2(start_vec[1], start_vec[0]))
+            end_heading = np.degrees(np.arctan2(end_vec[1], end_vec[0]))
+            if abs(end_heading - start_heading) > split_angle: 
+                mid_index = (start + end)//2
+                seg['idx_start'] = mid_index + 1
+
+                new_segs.append({'type': 'corner', 'idx_start': start , 'idx_end': mid_index, 'turn_dir': seg['turn_dir']})
+        else:
+            i += 1
+            iters = 0
+            while iters < length and segs[i%length]['type'] == 'straight':
+                i += 1
+                iters += 1
+
+            i -= 1    
+            seg['idx_end'] = segs[i%length]['idx_end']
+            
+        new_segs.append(seg)     
+        i += 1
+
+    return new_segs
+            
+
 # tofu's planning-----------------------------------------------------------------------------------------------------------------------------------------------------
         
 class CornerRepr():
@@ -419,7 +453,91 @@ class EulerSpiral():
         self.spiral = spiral
         self.seg_index = seg_index
 
-def euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners):
+def find_point_hand_side(ref_point, ref_heading_vec, compare_point):
+    # Vector from A to the other point
+    to_point = compare_point - ref_point
+
+    # Compute the 2D cross product (scalar)
+    cross = ref_heading_vec[0] * to_point[1] - ref_heading_vec[1] * to_point[0]
+    return cross
+    # if cross > 0:
+    #     return "left"
+    # elif cross < 0:
+    #     return "right"
+    # else:
+    #     return "colinear"  # or "straight ahead"
+
+def check_if_close(spiral, apex_points, threshold_distance):
+        length = len(spiral)
+        mid_index = length //2
+        for i in range(mid_index):
+            upper = min(mid_index + i, length-1)
+            lower = max(mid_index - i - 1, 0)
+            for apoint in apex_points:
+                if (np.linalg.norm(spiral[upper] - apoint) <= threshold_distance) or \
+                    (np.linalg.norm(spiral[lower] - apoint) <= threshold_distance):
+                    
+                    return True
+        
+        return False
+
+def find_precut_direct(
+        start_point, outside_end_point, inside_end_point, apex_points, 
+        start_heading_deg, desired_end_heading_deg, 
+        slices=20, threshold_distance=5, clothoid_sample_size=30):
+        # plt.figure(figsize=(12, 9))
+    # plt.plot(*A, 'go', label='Start Point A')
+    # plt.plot(*B, 'ro', label='Apex Point B')
+    # plt.plot(*C, 'bo', label='End Point C')
+    # plt.plot(*D, 'bo', label='End Point C')
+    # plt.quiver(*A, np.cos(np.radians(theta_start_deg)), np.sin(np.radians(theta_start_deg)),
+    #         scale=5, color='green', label='Start Heading')
+    # plt.quiver(*B, np.cos(np.radians(theta_end_deg)), np.sin(np.radians(theta_end_deg)),
+    #         scale=5, color='red', label='Apex Heading')
+    # plt.quiver(*C, np.cos(np.radians(final_theta_deg)), np.sin(np.radians(final_theta_deg)),
+    #         scale=5, color='blue', label='End Heading')
+    # plt.quiver(*D, np.cos(np.radians(final_theta_deg)), np.sin(np.radians(final_theta_deg)),
+    #         scale=5, color='blue', label='End Heading')
+    # plt.axis('equal')
+
+    iterations = 0
+    step_vec = (np.array(inside_end_point) - np.array(outside_end_point)) / slices
+    spiral = connect_points_with_clothoid(start_point, outside_end_point, start_heading_deg, desired_end_heading_deg, n_points=clothoid_sample_size)
+    
+    while not check_if_close(spiral, apex_points, threshold_distance):
+        outside_end_point += step_vec
+        spiral = connect_points_with_clothoid(start_point, outside_end_point, start_heading_deg, desired_end_heading_deg, n_points=clothoid_sample_size)
+        # plt.plot(spiral[:, 0], spiral[:, 1], label='Spiral', linewidth=2)
+        iterations += 1
+        if iterations > slices:
+            break
+
+    return spiral
+
+def find_useful_part_of_spiral(spiral, desired_end_heading_deg, threshold_deg=5):
+    lower_limit = desired_end_heading_deg - threshold_deg
+    upper_limit = desired_end_heading_deg + threshold_deg
+
+    length = len(spiral)
+    mid_index = length //2
+    for i in range(mid_index - 1):
+        upper = min(mid_index + i, length-1)
+        lower = max(mid_index - i - 1, 0)
+
+        upper_vec = spiral[upper+1] - spiral[upper]
+        lower_vec = spiral[lower+1] - spiral[lower]
+        upper_heading = np.degrees(np.arctan2(upper_vec[1], upper_vec[0]))
+        lower_heading = np.degrees(np.arctan2(lower_vec[1], lower_vec[0]))
+
+
+        if lower_heading >= lower_limit and lower_heading <= upper_limit:
+            return spiral[:lower+1]
+        if upper_heading >= lower_limit and upper_heading <= upper_limit:
+            return spiral[:upper+1]
+    
+    return spiral
+
+def euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners, apex_point_half_count=4, threshold_distance=0.2, threshold_deg=5):
     spirals = []
     finished_spirals = {}
 
@@ -443,11 +561,19 @@ def euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners)
             yellow = yellow_cones[start:end+1]
             inside, outside = (yellow, blue) if corner_seg['turn_dir'] == 'R' else (blue, yellow)
 
-            start_point, apex_point, end_point = outside[0], inside[len(inside) // 2],  inside[-1]
+            start_point, apex_points, end_point = outside[0], \
+                inside[(len(inside) // 2) - apex_point_half_count: (len(inside) // 2) + (len(inside) // 2)],  inside[-1]
+            
             start_vec = centre[3] - centre[0]
             start_heading = np.degrees(np.arctan2(start_vec[1], start_vec[0]))
+            
+            next_corner_seg_index = seg_index + 1
+            iters = 0
+            segs_length = len(segs)
+            while iters < segs_length and segs[next_corner_seg_index]['type'] != 'corner':
+                next_corner_seg_index = (next_corner_seg_index + 1) % segs_length
+                iters += 1
 
-            next_corner_seg_index = ((seg_index + 2) % len(segs))
             if next_corner_seg_index not in finished_spirals:
                 end_vec = centre[-1] - centre[-4]
             else:
@@ -456,9 +582,10 @@ def euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners)
             
             end_heading = np.degrees(np.arctan2(end_vec[1], end_vec[0]))
 
-            spirals.append(EulerSpiral(connect_points_with_clothoid(start_point, end_point,
-                                                        theta_start_deg=start_heading, theta_end_deg=end_heading, n_points=100), 
-                                                        seg_index))
+            precut_spiral = find_precut_direct(start_point, outside[-1], inside[-1], apex_points, start_heading, end_heading, threshold_distance=threshold_distance)
+            # spirals.append(EulerSpiral(find_useful_part_of_spiral(precut_spiral, end_heading, threshold_deg=threshold_deg), seg_index))
+            spirals.append(EulerSpiral(precut_spiral, seg_index))
+
             finished_spirals[seg_index] = start_point
 
 
@@ -475,7 +602,7 @@ def sample_straight_line(p1, p2, n=50):
     """
     return np.linspace(p1, p2, n)
 
-def join_spirals(spirals, n_straight_points=50):
+def stitch_path(centre_points, segs, spirals, n_straight_points=50, straight_sample_step=10):
     """
     Joins a list of EulerSpiral objects and samples straight lines between each spiral.
     
@@ -496,11 +623,25 @@ def join_spirals(spirals, n_straight_points=50):
         # Add the spiral path, excluding the last point (to prevent duplication)
         joined_path.extend(spiral[:-1])
 
-        # Add sampled straight line from end of this spiral to start of next
-        straight = sample_straight_line(spiral[-1], next_spiral[0], n=n_straight_points)
+        following_straight_index = (spirals[i].seg_index + 1) % len(segs)
+        if segs[following_straight_index]['type'] == 'straight':
+            #for a straight path that follows the track's slight curves
+            start_idx = segs[following_straight_index]['idx_start']
+            end_idx = segs[following_straight_index]['idx_end']
+            sampled_centre = centre_points[start_idx:end_idx:straight_sample_step]
+        
+            if len(sampled_centre) > straight_sample_step:
+                offset_start = spiral[-1] - sampled_centre[0]
+                offset_end = next_spiral[0] - sampled_centre[-1]
 
-        # Exclude first point to avoid duplication with previous spiral's end
-        joined_path.extend(straight[1:])
+                for j, centre_point in enumerate(sampled_centre[1:-1]):
+                    t = j / (len(sampled_centre) - 2)  # Normalize from 0 to 1
+                    interp_offset = (1 - t) * offset_start + t * offset_end
+                    joined_path.append(centre_point + interp_offset)
+
+        else:
+            straight = sample_straight_line(spiral[-1], next_spiral[0], n=n_straight_points)
+            joined_path.extend(straight[1:])
 
     return np.array(joined_path)
 
@@ -807,14 +948,82 @@ def generate_square_track_with_rounded_corners(side_length=100, corner_radius=20
 
     return track_points
 
+def generate_flower_track(num_points=500):
+    r_large = 50  # radius of outer circles
+    r_small = 25  # radius of inner loop
+    straight_len = 2 * r_large
+
+    points = []
+
+    # Bottom straight
+    for x in np.linspace(-straight_len/2, straight_len/2, num_points//5):
+        points.append(np.array([x, -r_large]))
+
+    # Right large semicircle
+    for theta in np.linspace(-np.pi/2, np.pi/2, num_points//5):
+        x = r_large * np.cos(theta) + straight_len/2
+        y = r_large * np.sin(theta)
+        points.append(np.array([x, y]))
+
+    # Top small semicircle (inverted, center at 0, r_large - r_small)
+    for theta in np.linspace(np.pi/2, -np.pi/2, num_points//5):
+        x = r_small * np.cos(theta)
+        y = r_small * np.sin(theta) + (r_large - r_small)
+        points.append(np.array([x, y]))
+
+    # Left large semicircle
+    for theta in np.linspace(np.pi/2, 3*np.pi/2, num_points//5):
+        x = r_large * np.cos(theta) - straight_len/2
+        y = r_large * np.sin(theta)
+        points.append(np.array([x, y]))
+
+    # Close loop: return to start along bottom straight
+    for x in np.linspace(-straight_len/2, straight_len/2, num_points//5):
+        points.append(np.array([x, -r_large]))
+
+    return points
+
+def generate_ellipse_track(num_points=500):
+    a = 100  # semi-major axis (horizontal)
+    b = 50   # semi-minor axis (vertical)
+
+    points = []
+    for theta in np.linspace(0, 2*np.pi, num_points):
+        x = a * np.cos(theta)
+        y = b * np.sin(theta)
+        points.append(np.array([x, y]))
+
+    return points
+
+def generate_real_track(file_name):
+    x = []
+    y = []
+
+    # Open and read the file
+    with open(file_name, 'r') as file:
+        for line in file:
+            parts = line.strip().split(',')
+            if len(parts) == 4:
+                x.append(float(parts[0]))
+                y.append(float(parts[1]))
+
+    return np.column_stack((x, y))
+
 # main----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
     # Generation----------------------------------------------------------------------------------------------------------------------------------------------------------
-    # centre_points = generate_sine_perturbed_circle()
-    # centre_points = generate_long_straight_track()
-    # centre_points = generate_oval_track()
-    centre_points = generate_square_track_with_rounded_corners()
+    if False:
+        pass
+        # centre_points = generate_sine_perturbed_circle()
+        # centre_points = generate_long_straight_track()
+        # centre_points = generate_oval_track()
+        # centre_points = generate_square_track_with_rounded_corners()
+        # centre_points = generate_flower_track()
+        # centre_points = generate_ellipse_track()
+        # centre_points = generate_real_track('berlin_2018.txt')
+    centre_points = generate_real_track('berlin_2018.txt')
+
     centre_points = np.array(centre_points)
     blue_cones, yellow_cones = generate_cones(centre_points)
     blue_margin, yellow_margin = generate_cones(centre_points, offset=1.0)
@@ -828,12 +1037,13 @@ if __name__ == "__main__":
     segs = consolidate_segments(fits, min_straight_len=5)
     corns = characterize_corners(segs, centre_points)
     segs = attach_turn_directions(segs, corns)
-
+    segs = break_apart_severe_corners_and_join_straights(centre_points, segs, split_angle=360)
     # Path Planning----------------------------------------------------------------------------------------------------------------------------------------------------------
     ranked_corners = rank_corners(centre_points, segs)
-    spirals = euler_spirals(centre_points, blue_margin, yellow_margin, segs, ranked_corners)
-    stitched_path = join_spirals(spirals)
-    optimal_path = smooth_path(stitched_path, sigma=10)
+    spirals = euler_spirals(centre_points, blue_margin, yellow_margin, segs, ranked_corners, threshold_distance=0.1)
+    stitched_path = stitch_path(centre_points, segs, spirals, straight_sample_step=3)
+    # optimal_path = smooth_path(stitched_path, sigma=2)
+    optimal_path = stitched_path
 
     # Visualization----------------------------------------------------------------------------------------------------------------------------------------------------------
     testing_plotter(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path)
