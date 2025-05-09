@@ -485,10 +485,8 @@ def check_if_close(spiral, apex_points, threshold_distance):
         
         return False, None, None
 
-
 def check_if_on_correct_side(apex_point, apex_heading_vec, spiral_mid_point, correct_side):
     return correct_side == find_point_hand_side(apex_point, apex_heading_vec, spiral_mid_point)
-
 
 def find_precut_direct(
         start_point, outside_end_point, inside_end_point, apex_points, 
@@ -707,7 +705,7 @@ def smooth_path(stitched_path, sigma=2):
     return np.column_stack((smoothed_x, smoothed_y))
 
 
-# visualization, testing----------------------------------------------------------------------------------------------------------------------------------------------------------
+# visualization----------------------------------------------------------------------------------------------------------------------------------------------------------
 def visualize_track_segments(
     centre_points: List[Tuple[float, float]],
     segments: List[Dict[str, Any]],
@@ -740,36 +738,36 @@ def visualize_track_segments(
 
 def testing_plotter(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path):
     plt.figure(figsize=(12, 7))
-    plt.scatter(centre_points[:, 0], centre_points[:, 1], color='red', marker='x', label='Centre Points')
-    plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones', s=2)
-    plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color='#CCCC00', marker='o', label='Yellow Cones', s=2)
+    # plt.scatter(centre_points[:, 0], centre_points[:, 1], color='red', marker='x', label='Centre Points')
+    plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones', s=0.2)
+    plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color='#CCCC00', marker='o', label='Yellow Cones', s=0.2)
     # plt.scatter(blue_margin[:, 0], blue_margin[:, 1], color='blue', marker='o', label='Blue Margin', s=1)
     # plt.scatter(yellow_margin[:, 0], yellow_margin[:, 1], color='yellow', marker='o', label='Yellow Margin', s=1)
-    plt.plot(stitched_path[:, 0], stitched_path[:, 1], color='green', label='Stitched Path', linewidth=3)
-    plt.plot(optimal_path[:, 0], optimal_path[:, 1], color='purple', label='Optimal Path', linewidth=3)
+    # plt.plot(stitched_path[:, 0], stitched_path[:, 1], color='green', label='Stitched Path', linewidth=3)
+    plt.plot(optimal_path[:, 0], optimal_path[:, 1], color='red', label='Optimal Path', linewidth=2)
     # for spiral in spirals:
     #     plt.plot(spiral.spiral[:, 0], spiral.spiral[:, 1], color='green', linewidth=3, label='Spiral Path')
     
     plt.scatter(centre_points[0][0], centre_points[0][1], color='black', zorder=5, s=70, label='Start Point')
     plt.scatter(centre_points[-2][0], centre_points[-2][1], color='purple', zorder=5, s=70, label='End Point')
     
-    # Plot segments
-    for seg in segs:
-        idx_start = seg['idx_start']
-        idx_end = seg['idx_end']
-        seg_points = centre_points[idx_start:idx_end+1]  # +1 because slicing is exclusive
+    # # Plot segments
+    # for seg in segs:
+    #     idx_start = seg['idx_start']
+    #     idx_end = seg['idx_end']
+    #     seg_points = centre_points[idx_start:idx_end+1]  # +1 because slicing is exclusive
         
-        if seg['type'] == 'corner':
-            if seg['turn_dir'] == 'R':
-                color = 'red'
-            elif seg['turn_dir'] == 'L':
-                color = 'cyan'
-            else:
-                color = 'gray'
-        else:
-            color = 'gray'
+    #     if seg['type'] == 'corner':
+    #         if seg['turn_dir'] == 'R':
+    #             color = 'red'
+    #         elif seg['turn_dir'] == 'L':
+    #             color = 'cyan'
+    #         else:
+    #             color = 'gray'
+    #     else:
+    #         color = 'gray'
         
-        plt.plot(seg_points[:, 0], seg_points[:, 1], color=color, linewidth=2)
+    #     plt.plot(seg_points[:, 0], seg_points[:, 1], color=color, linewidth=2)
 
     plt.axis('equal')
     plt.legend()
@@ -1042,6 +1040,58 @@ def generate_real_track(file_name):
 
     return np.column_stack((x, y))
 
+# lap time testing----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+def estimate_lap_time_realistic(
+    path_points,
+    max_lateral_accel_ms2=45.0,
+    max_accel_ms2=13.0,
+    max_brake_ms2=18.0,
+    top_speed_ms=95.0  # ≈ 342 km/h
+):
+    n = len(path_points)
+    distances = np.zeros(n - 1)
+    curvatures = np.zeros(n - 2)
+    speeds = np.zeros(n)
+
+    # --- 1. Calculate distances between each point ---
+    for i in range(n - 1):
+        distances[i] = np.linalg.norm(path_points[i + 1] - path_points[i])
+
+    # --- 2. Estimate curvature from angle between vectors ---
+    for i in range(1, n - 1):
+        vec1 = path_points[i] - path_points[i - 1]
+        vec2 = path_points[i + 1] - path_points[i]
+        angle = np.arccos(np.clip(np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)), -1.0, 1.0))
+        radius = np.linalg.norm(vec1) / angle if angle != 0 else np.inf
+        curvatures[i - 1] = 1.0 / radius if radius != np.inf else 0.0
+
+    # --- 3. Forward pass (acceleration-limited) ---
+    speeds[0] = 0.0  # start from rest
+    for i in range(n - 2):
+        # Max speed from curvature
+        corner_speed = min(top_speed_ms, np.sqrt(max_lateral_accel_ms2 / curvatures[i]) if curvatures[i] > 0 else top_speed_ms)
+        # Accelerate toward that corner
+        v_possible = np.sqrt(speeds[i]**2 + 2 * max_accel_ms2 * distances[i])
+        speeds[i + 1] = min(v_possible, corner_speed)
+
+    # --- 4. Backward pass (braking-limited) ---
+    speeds[-1] = 0.0  # assume car stops at end
+    for i in reversed(range(1, n - 1)):
+        v_possible = np.sqrt(speeds[i + 1]**2 + 2 * max_brake_ms2 * distances[i])
+        speeds[i] = min(speeds[i], v_possible)
+
+    # --- 5. Compute time per segment ---
+    total_time = 0.0
+    for i in range(n - 1):
+        if speeds[i] == 0 and speeds[i + 1] == 0:
+            continue  # avoid div by zero
+        avg_speed = (speeds[i] + speeds[i + 1]) / 2
+        total_time += distances[i] / avg_speed
+
+    return total_time
+
+
 # main----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -1056,12 +1106,14 @@ if __name__ == "__main__":
         # centre_points = generate_ellipse_track()
         # centre_points = generate_real_track('berlin_2018.txt')
         # centre_points = generate_real_track('modena_2019.txt')
+    # centre_points = generate_square_track_with_rounded_corners()
     centre_points = generate_real_track('berlin_2018.txt')
 
     centre_points = np.array(centre_points)
     cone_distance_from_centre_points = 5
+    margin = 0.85
     blue_cones, yellow_cones = generate_cones(centre_points, offset=cone_distance_from_centre_points)
-    blue_margin, yellow_margin = generate_cones(centre_points, offset=cone_distance_from_centre_points-0.85) # car is approx 1.7m in width, so half of that
+    blue_margin, yellow_margin = generate_cones(centre_points, offset=cone_distance_from_centre_points-margin) # car is approx 1.7m in width, so half of that
 
     # Corner Identification----------------------------------------------------------------------------------------------------------------------------------------------------------
     fits = segment_centreline_and_fit_arcs(centre_points, window_length=20, step_size=1)
@@ -1080,8 +1132,11 @@ if __name__ == "__main__":
     optimal_path = smooth_path(stitched_path, sigma=3)
     # optimal_path = stitched_path
 
-    # Visualization----------------------------------------------------------------------------------------------------------------------------------------------------------
+    # Visualization & Testing----------------------------------------------------------------------------------------------------------------------------------------------------------
+    print(f"Optimal Path Lap Time: {estimate_lap_time_realistic(optimal_path)}s")
+    print(f"Centreline Lap Time: {estimate_lap_time_realistic(centre_points)}s")
     testing_plotter(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path)
+
 
 
 
