@@ -369,7 +369,7 @@ def sixth_one():
         # Define start and end points with headings
         A = (0, 0)             # Start point
         B = (25, 35)           # End point
-        C = (45, 87)
+        C = (28, 87)
         theta_start_deg = 0   # Start heading in degrees
         theta_end_deg = 70    # End heading in degrees
         final_theta_deg = 90
@@ -432,38 +432,6 @@ def sixth_one():
 
         # Plot the clothoid
         plt.figure(figsize=(12, 9))
-        if True:
-            pass
-            # plt.plot(x_vals, y_vals, label='Clothoid First Half Path')
-            # plt.plot(x2, y2, label='Clothoid Second Half Path')
-            # plt.plot(x3, y3, label='Clothoid Direct Path')
-            # plt.plot(average_x, average_y, label='Average Clothoid of the others')
-            # plt.plot(averx, avery, label='Aim At Average Clothoid')
-            # plt.plot(divergex, divergey, label='Direct Using Apex Tangent at End')
-            # plt.plot(huggx, huggy, label='Hugs Apex by direct translation?')
-            # plt.plot(apexendx, apexendy, label='Uses final heading on apex')
-            # plt.plot(apexendx2, apexendy2, label='Uses second half final heading on apex')
-            # plt.plot(axex, axey, label='First half Uses final heading on apex')
-            # plt.plot(axex2, axey2, label='Second half Uses final heading on apex')
-            # plt.plot(x4, y4, label='Clothoid Direct Optmized')
-            # plt.plot(testx, testy, label='test1')
-            # plt.plot(test2x, test2y, label='45')
-            # test2x, test2y, clothoid3 = connect_points_with_clothoid(A, B, theta_start_deg, 45)
-            # plt.plot(test2x, test2y, label='90')
-            # test2x, test2y, clothoid3 = connect_points_with_clothoid(A, B, theta_start_deg, 90)
-            # plt.plot(test2x, test2y, label='135')
-            # test2x, test2y, clothoid3 = connect_points_with_clothoid(A, B, theta_start_deg, 135)
-            # plt.plot(test2x, test2y, label='180')
-            # test2x, test2y, clothoid3 = connect_points_with_clothoid(A, B, theta_start_deg, 180)
-            # plt.plot(test2x, test2y, label='225')
-            # test2x, test2y, clothoid3 = connect_points_with_clothoid(A, B, theta_start_deg, 225)
-            # plt.plot(test2x, test2y, label='270')
-            # test2x, test2y, clothoid3 = connect_points_with_clothoid(A, B, theta_start_deg, 270)
-            # plt.plot(test2x, test2y, label='315')
-            # test2x, test2y, clothoid3 = connect_points_with_clothoid(A, B, theta_start_deg, 315)
-            # plt.plot(test2x, test2y, label='360')
-            # test2x, test2y, clothoid3 = connect_points_with_clothoid(A, B, theta_start_deg, 360)
-
         plt.plot(x_full, y_full, label='Partitioned')
         plt.plot(x_direct, y_direct, label='Direct')
         plt.plot(x_complete, y_complete, label='Proportioned')

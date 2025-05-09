@@ -3,10 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 from scipy.interpolate import splprep, splev
-from scipy.optimize import minimize_scalar
-from scipy.integrate import cumtrapz
-from scipy.optimize import minimize_scalar
-from scipy.special import fresnel
+from pyclothoids import Clothoid
 
 """NOTES:
 At present, if you use the oval track generator with a window length of 20, it detects
@@ -340,128 +337,9 @@ def print_track_detections(
         if last_end < total_pts - 1:
             print("Straight")
 
-class SegIslands():
-    def __init__(self, points=[], max_overload=0):
-        self.points = points
-        self.length = len(points)
-        self.mid_index = self.length//2
-        self.first_half = points[:self.mid_index]
-        self.second_half = points[self.mid_index+1:]
-        self.fh_length = len(self.first_half)
-        self.sh_length = len(self.second_half)
-        self.max_overload = max_overload
-        self.fh_gradient = max_overload / self.fh_length
-        self.sh_gradient = max_overload / self.sh_length
-
-    def linearize_laterals(self, half, relevant_cones):
-        if half == 'f':
-            centre_points = self.first_half
-            gradient = self.fh_gradient
-        else:
-            centre_points = self.second_half
-            gradient = self.sh_gradient
-
-        planned_path = []
-        for i in range(len(centre_points)):
-            cone = relevant_cones[i]
-            centre_point = centre_points[i]
-            base_displacement = cone - centre_point
-            final_pos = base_displacement * (self.max_overload - gradient*i) + centre_point
-            planned_path.append(final_pos)
-
-        return planned_path
 
 #tofu's planning:
-
-
-def find_angle(point1, mid_point, point2):
-    # Convert to NumPy arrays (if not already)
-    point1 = np.array(point1)
-    mid_point = np.array(mid_point)
-    point2 = np.array(point2)
-
-    # Vectors from mid_point to point1 and point2
-    a = point1 - mid_point
-    b = point2 - mid_point
-
-    # Dot product and magnitudes
-    dot_prod = np.dot(a, b)
-    mag_a = np.linalg.norm(a)
-    mag_b = np.linalg.norm(b)
-
-    if mag_a == 0 or mag_b == 0:
-        return 0.0
-
-    # Clamp to avoid NaNs from floating point errors
-    cos_angle = np.clip(dot_prod / (mag_a * mag_b), -1.0, 1.0)
-    angle_rad = np.arccos(cos_angle)
-    angle_deg = np.degrees(angle_rad)
-
-    return angle_deg
-def lateralized_ideal_curves(centre_points, blue_cones, yellow_cones, segs, margin=0.5, track_width=3):
-    """
-    Refs: 
-    - https://dspace.mit.edu/bitstream/handle/1721.1/64669/706825301-MIT.pdf
-    - https://www.youtube.com/watch?v=aZlOkt1oU2k&list=PLVdC2-cdn7MWYL4gYNN-wHI1AYc_FT172&index=6&ab_channel=Driver61
-
-
-    This doesn't use the geometric best line, but instead uses the IDEAL racing line.
-    The ideal racing line turns a lot at first, apexes a bit later than the geomtric line but ends up with
-    a faster straight entry speed (which is the goal here).
-    It has been found that the greater the angle of the curve, (eg. a hairpin would be approx. 180 degrees),
-    the further (later) the apex of the ideal racing line is compared ot the geomtric line. We can use this 
-    basic observation to get the best realistic path.
-    OK IDEAL RACING LINE is just a late apex and traditional apex trying to become one. We can find this
-    analytically using EULER SPIRALS! Since we have done the cornber identificant, this will work great as
-    Euler spirals work near perfectly for corners in isolation. We can tweak the use of Euler spirals to make
-    straights easier to plan for, while also minimizing overal track time because late apex is generally a good idea.
-    For a sequence of corners (later stages):
-    - Find final corner in apex, Euler spiral for it.
-    - For every corner before this in the sequence, just traditional apex it, as traditional apex maximises 
-    We essentially want to:
-
-
-    Assumes:
-    - The track is 3m wide.
-    - Margin is 0.5m from track boundaries if not specified is given.
-    - Overload is the term given to how far in or out we go from the centreline divided by
-      the distance (along the delaunay edge) to the margin from the centreline.
-    """
-    """each centre point has a (centre point index // 2) corresponding blue and yellow cone that formed it"""
-    
-    
-    half_track_width = (track_width/2)
-    max_overload = (half_track_width - margin) / half_track_width
-
-    
-
-    for seg in segs:
-        if seg['type'] == 'corner':
-            corners_centre_points = centre_points[seg['idx_start']:seg['idx_end']+1]
-            mid_centre_point = corners_centre_points[len(corners_centre_points) // 2]
-def lateral_linear_curves(centre_points, blue_cones, yellow_cones, segs, margin=0.5, track_width=3):
-
-    """
-    Assumes:
-    - The track is 3m wide.
-    - Margin is 0.5m from track boundaries if not specified is given.
-    - Overload is the term given to how far in or out we go from the centreline divided by
-      the distance (along the delaunay edge) to the margin from the centreline.
-    """
-    half_track_width = (track_width/2)
-    max_overload = (half_track_width - margin) / half_track_width
-
-    planned_curves = []
-
-    for seg in segs:
-        if seg['type'] == 'corner':
-            """TradApex: go on the outer for the ends of the curve, and kiss the apex"""
-            corner_si = SegIslands(centre_points[seg['idx_start']:seg['idx_end']+1])
-            first_half_si = SegIslands(corner_si.first_half, max_overload)
-            second_half_si = SegIslands(corner_si.second_half, max_overload)
-
-            planned_path = []
-            
+        
 class CornerRepr():
     def __init__(self, index, length):
         self.index = index
@@ -492,239 +370,71 @@ def rank_corners(centre_points, segs):
 
     return ranked_corners
 
-def vector_angle(v):
-    return np.radians(np.arctan2(v[1], v[0])) % 360
+def connect_points_with_clothoid(A, B, theta_start_deg, theta_end_deg, n_points=500):
+        """
+        Connects two points A and B with specified start and end headings using a clothoid.
 
-def find_turn_angle(first_point, mid_point, second_point):
-    """
-    Computes the signed smallest angle between two vectors relative to the positive x-axis.
-    
-    Parameters:
-    - v1: np.array, first vector
-    - v2: np.array, second vector
-    
-    Returns:
-    - angle_deg: float, angle in degrees from v1 to v2 (0 to 360)
-    """
-    v1 = mid_point - first_point
-    v2 = second_point - mid_point
+        Parameters:
+        - A: Tuple (x0, y0) representing the start point.
+        - B: Tuple (x1, y1) representing the end point.
+        - theta_start_deg: Start heading in degrees.
+        - theta_end_deg: End heading in degrees.
+        - n_points: Number of points to sample along the clothoid.
 
-    angle1 = vector_angle(v1)
-    angle2 = vector_angle(v2)
-    angle_diff = abs((angle2 - angle1) % (2*math.pi))
+        Returns:
+        - x_vals: X coordinates of the sampled points.
+        - y_vals: Y coordinates of the sampled points.
+        - clothoid: The Clothoid object representing the curve.
+        """
+        # Convert angles from degrees to radians
+        theta_start_rad = np.radians(theta_start_deg)
+        theta_end_rad = np.radians(theta_end_deg)
 
-    return angle_diff#, angle2, np.linalg.norm(v2)
+        # Create the clothoid that connects the two points with specified headings
+        clothoid = Clothoid.G1Hermite(A[0], A[1], theta_start_rad, B[0], B[1], theta_end_rad)
 
-def check_if_in_range(point, ref_point, threshold):
-    if np.linalg.norm(point - ref_point) <= threshold:
-        return True
-    return False
+        # Sample points along the clothoid
+        x_vals, y_vals = clothoid.SampleXY(n_points)
 
-def find_end_heading():
-    #TODO
-    pass
+        return (x_vals, y_vals)
 
-def euler_spiral_corner(centre_points, blue_cones, yellow_cones, turn_direction, 
-                        mode='auto_apex', displacement_step=10, retry_displacement_coefficient=0.9, retry_angle_coefficient = 1.5,
-                        angle_step_degrees=1, threshold_radius=1, end_length_scaler=1.4, end_resolution=10):
-
-    n = len(centre_points)
-    mid_index = n//2
-    turn_angle, end_heading, end_length = find_turn_angle(centre_points[0], centre_points[mid_index], centre_points[-1])
-    end_length *= end_length_scaler
-    outside = []
-    inside = []
-    turn_polarity = 1
-    if turn_direction == 'R':
-        inside = yellow_cones
-        outside = blue_cones
-        turn_polarity = -1
-    else:
-        inside = blue_cones
-        outside = yellow_cones
-
-
-    if mode != 'auto_apex':
-        end_heading = find_end_heading()
-
-
-
-    #First section: Before the apex
-    delta_angle = turn_polarity * np.radians(angle_step_degrees)
-    apex_point = inside[mid_index]
-
-    successful = False
-    i = 0
-    plt.figure(figsize=(12, 7))
-    plt.scatter(centre_points[:, 0], centre_points[:, 1], color='red', marker='x', label='Centre Points')
-    plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones')
-    plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color='yellow', marker='o', label='Yellow Cones')
-    plt.axis('equal')
-    plt.legend()
-    plt.title('Bruh Graph with Segments')
-
-    while not successful:
-        path = [outside[0]]
-        heading = vector_angle(outside[0] - outside[1])
-        i += 1
-        accumulated_delta_angle = 0
-        plt.scatter(outside[0][0], outside[0][1], color='blue', zorder=5, s=70)
-        plt.scatter(apex_point[0], apex_point[1], color='red', zorder=5, s=70)
-        j = 0
-        delta_angle *= retry_angle_coefficient
-        while (abs(accumulated_delta_angle) < abs(turn_angle)):
-            j += 1
-            heading = heading + delta_angle*j
-            offset = np.array([np.cos(heading), np.sin(heading)]) * displacement_step# * retry_displacement_coefficient**i
-            path.append(path[-1] + offset)
-            accumulated_delta_angle += delta_angle*j
-            plt.scatter(path[-1][0], path[-1][1], color='green', marker='x', zorder=5, s=3)
-
-            if check_if_in_range(path[-1], apex_point, threshold_radius):
-                successful = True
-                break
-        
-
-
-    #After apex, to end
-    delta_angle = (end_heading - heading)
-    gradient = delta_angle / end_length
-    delta_disp = end_length / end_resolution
-
-    for i in range(end_resolution):
-        heading = gradient*delta_disp
-        offset = np.array([np.cos(heading), np.sin(heading)]) * delta_disp
-        path.append(path[-1] + offset)
-
-
-
-    return path
-
-
-    
-        
-#------------------------------------------------------------------------------
-
-# def vector_angle(v):
-#     return np.arctan2(v[1], v[0])
-
-def generate_euler_spiral_segment(start_point, start_heading, turn_angle, apex_point, 
-                                  initial_step=2.0, threshold_radius=1.0, max_iters=50, curvature_scale=0.01, turn_sign=1):
-    
-    plt.figure(figsize=(12, 7))
-    plt.scatter(start_point[0], start_point[1], color='blue', zorder=5, s=70)
-    plt.scatter(apex_point[0], apex_point[1], color='red', zorder=5, s=70)
-    plt.scatter(apex_point[0], apex_point[1], color='red', zorder=5, s=70)
-    plt.axis('equal')
-    plt.legend()
-    plt.title('Bruh Graph with Segments')
-    # plt.show()
-
-
-    for attempt in range(max_iters):
-        step_size = initial_step * (0.9 ** attempt)
-        path = [start_point]
-        heading = start_heading
-        accumulated_angle = 0.0
-        s = 0.0
-
-        while abs(accumulated_angle) < abs(turn_angle):
-            s += step_size
-            curvature = curvature_scale * s * turn_sign
-            dtheta = curvature * step_size * np.sign(turn_angle)
-            heading += dtheta
-            accumulated_angle += dtheta
-
-            dx = step_size * np.cos(heading)
-            dy = step_size * np.sin(heading)
-            new_point = path[-1] + np.array([dx, dy])
-            path.append(new_point)
-
-            plt.scatter(new_point[0], new_point[1], color='green', marker='x', zorder=5, s=2)
-
-            if np.linalg.norm(new_point - apex_point) < threshold_radius:
-                return path, heading  # success
-
-    return None, None  # failed to hit apex within threshold
-
-def generate_euler_spiral_to_heading(start_point, start_heading, end_heading, 
-                                     segment_length=10.0, num_points=20, curvature_scale=0.01):
-    path = [start_point]
-    heading = start_heading
-    delta_angle = end_heading - start_heading
-    total_length = segment_length
-    ds = total_length / num_points
-
-    for i in range(1, num_points + 1):
-        s = i * ds
-        curvature = (curvature_scale * s) * np.sign(delta_angle)
-        dtheta = curvature * ds
-        heading += dtheta
-        dx = ds * np.cos(heading)
-        dy = ds * np.sin(heading)
-        new_point = path[-1] + np.array([dx, dy])
-        path.append(new_point)
-
-    return path
-
-def generate_euler_spiral_full(start_point, start_heading, turn_angle, apex_point, end_heading, threshold_radius=5, turn_sign=1):
-    first_half, final_heading = generate_euler_spiral_segment(
-        start_point, start_heading, turn_angle, apex_point, threshold_radius=threshold_radius, turn_sign=turn_sign
-    )
-
-    if first_half is None:
-        raise ValueError("Failed to generate first half of Euler spiral to hit apex.")
-
-    second_half = generate_euler_spiral_to_heading(
-        first_half[-1], final_heading, end_heading
-    )
-
-    return first_half + second_half[1:]  # Remove duplicate connection point
-
-def euler_spirals(centre_points, blue_cones, yellow_cones, ranked_corners, mode='auto'):
+def euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners):
     spirals = []
+
+    # plt.figure(figsize=(12, 7))
+    # plt.axis('equal')
+    # plt.scatter(centre_points[:, 0], centre_points[:, 1], color='red', marker='x', label='Centre Points')
+    # plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones')
+    # plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color='yellow', marker='o', label='Yellow Cones')
+
     for ranked_corner in ranked_corners:
-        corner = segs[ranked_corner.index]
-        start = corner['idx_start']
-        end = corner['idx_end'] + 1
+        corner_seg = segs[ranked_corner.index]
+        start = corner_seg['idx_start']
+        end = corner_seg['idx_end']
 
-        centre = centre_points[start : end]
-        blue = blue_cones[start : end]
-        yellow = yellow_cones[start : end]
+        centre = centre_points[start:end+1]
+        if len(centre) > 1:
+            blue = blue_cones[start:end+1]
+            yellow = yellow_cones[start:end+1]
+            inside, outside = (yellow, blue) if corner_seg['turn_dir'] == 'R' else (blue, yellow)
 
-        mid_index = len(centre)//2
-        turn_angle = find_turn_angle(centre[0], centre[mid_index], centre[-1])
-        inside, outside, turn_sign = (yellow, blue, 1) if (corner['turn_dir'] == 'R') else (blue, yellow, -1)
-        start_point = outside[0]
-        apex_point = inside[mid_index]
-        start_heading = vector_angle(centre_points[1] - centre_points[0])
-        end_heading = vector_angle(centre_points[-1] - centre_points[-2])
-        spirals.append(generate_euler_spiral_full(start_point, start_heading, turn_angle, apex_point, end_heading, turn_sign=turn_sign))
-
-    return spirals
-
-#-------------------------------------------------------------------------------    
-    
+            start_point, apex_point, end_point = outside[0], inside[len(inside) // 2],  inside[-1]
+            start_vec = centre[1] - centre[0]
+            end_vec = centre[-1] - centre[-2]
+            start_heading = np.degrees(np.arctan2(start_vec[1], start_vec[0]))
+            end_heading = np.degrees(np.arctan2(end_vec[1], end_vec[0]))
             
-def euler_spiral_corners(centre_points, blue_cones, yellow_cones, segs, ranked_corners):
-    spirals = []
-    for i in range(len(ranked_corners)):
-        corner = segs[ranked_corners[i].index]
-        start = corner['idx_start']
-        end = corner['idx_end'] + 1
-        centre = centre_points[start : end]
-        blue = blue_cones[start : end]
-        yellow = yellow_cones[start : end]
 
-        spirals.append(euler_spiral_corner(centre, blue, yellow, corner['turn_dir'], displacement_step=1))
+            spirals.append(connect_points_with_clothoid(start_point, end_point, 
+                                                        theta_start_deg=start_heading, theta_end_deg=end_heading, n_points=100))
 
+
+
+            # plt.plot(spirals[-1][0], spirals[-1][1], color='green', linewidth=2, label='Spiral Path')
+            #assume no sequences for now, so we euler spiral everything
+            #assume the first point is the start of the spiral
+        
     return spirals
-
-
-
-            
-                
-
 
 
 
@@ -795,20 +505,20 @@ def visualize_track_segments(
 def testing_plotter(centre_points, blue_cones, yellow_cones, segs, spirals):
     plt.figure(figsize=(12, 7))
     plt.scatter(centre_points[:, 0], centre_points[:, 1], color='red', marker='x', label='Centre Points')
-    plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones')
-    plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color='yellow', marker='o', label='Yellow Cones')
+    plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones', s=2)
+    plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color='yellow', marker='o', label='Yellow Cones', s=2)
 
     for spiral in spirals:
-        plt.scatter(spiral[:, 0], spiral[:, 1], color='black', marker='o')
+        plt.plot(spiral[0], spiral[1], color='green', linewidth=2, label='Spiral Path')
     
-    # plt.scatter(centre_points[0][0], centre_points[0][1], color='black', zorder=5, s=70)
+    plt.scatter(centre_points[0][0], centre_points[0][1], color='black', zorder=5, s=70, label='Start Point')
     # plt.scatter(centre_points[10][0], centre_points[10][1], color='purple', zorder=5, s=70)
     # plt.scatter(centre_points[50][0], centre_points[50][1], color='black', zorder=5, s=70)
     # plt.scatter(centre_points[100][0], centre_points[100][1], color='purple', zorder=5, s=70)
     # plt.scatter(centre_points[150][0], centre_points[150][1], color='black', zorder=5, s=70)
     # plt.scatter(centre_points[190][0], centre_points[190][1], color='purple', zorder=5, s=70)
     # plt.scatter(centre_points[96][0], centre_points[96][1], color='red', zorder=5, s=100)
-    # plt.scatter(centre_points[-1][0], centre_points[-1][1], color='blue', zorder=5, s=100)
+    plt.scatter(centre_points[-2][0], centre_points[-2][1], color='purple', zorder=5, s=70, label='End Point')
     
     # Plot segments
     for seg in segs:
@@ -954,14 +664,73 @@ def generate_oval_track(num_points=1000, straight_length=200, radius=50):
     return points
 
 
+def generate_square_track_with_rounded_corners(side_length=100, corner_radius=20, resolution=1.0):
+    """
+    Generate a square track with rounded corners.
+
+    Parameters:
+    - side_length: Length of one straight side of the square (in meters).
+    - corner_radius: Radius of the rounded corners (in meters).
+    - resolution: Distance between sampled points (in meters).
+
+    Returns:
+    - track_points: List of (x, y) tuples representing the track centerline.
+    """
+    if 2 * corner_radius >= side_length:
+        raise ValueError("Corner radius too large compared to side length")
+
+    track_points = []
+
+    # Define the four corners (center of arc)
+    corner_centers = [
+        (corner_radius, corner_radius),  # Bottom-left
+        (side_length - corner_radius, corner_radius),  # Bottom-right
+        (side_length - corner_radius, side_length - corner_radius),  # Top-right
+        (corner_radius, side_length - corner_radius)   # Top-left
+    ]
+
+    # Define the angles for each quarter circle
+    corner_angles = [
+        (np.pi, 1.5 * np.pi),    # Bottom-left (left to up)
+        (1.5 * np.pi, 2.0 * np.pi),  # Bottom-right (down to right)
+        (0, 0.5 * np.pi),        # Top-right (right to up)
+        (0.5 * np.pi, np.pi)     # Top-left (up to left)
+    ]
+
+    # Generate arcs and straight segments
+    for i in range(4):
+        cx, cy = corner_centers[i]
+        theta_start, theta_end = corner_angles[i]
+        theta = np.arange(theta_start, theta_end, resolution / corner_radius)
+        arc_x = cx + corner_radius * np.cos(theta)
+        arc_y = cy + corner_radius * np.sin(theta)
+        track_points.extend(zip(arc_x, arc_y))
+
+        # Connect to next arc with a straight line
+        next_i = (i + 1) % 4
+        x0 = arc_x[-1]
+        y0 = arc_y[-1]
+        x1 = corner_centers[next_i][0] + corner_radius * np.cos(corner_angles[next_i][0])
+        y1 = corner_centers[next_i][1] + corner_radius * np.sin(corner_angles[next_i][0])
+
+        # Interpolate along straight segment
+        length = np.hypot(x1 - x0, y1 - y0)
+        steps = max(int(length / resolution), 2)
+        straight_x = np.linspace(x0, x1, steps)
+        straight_y = np.linspace(y0, y1, steps)
+        track_points.extend(zip(straight_x, straight_y))
+
+    return track_points
+
 if __name__ == "__main__":
     import test_and_scratch
     import tofu_delaunay
 
 
     # centre_points = generate_sine_perturbed_circle()
-    centre_points = generate_long_straight_track()
+    # centre_points = generate_long_straight_track()
     # centre_points = generate_oval_track()
+    centre_points = generate_square_track_with_rounded_corners()
 
     centre_points = np.array(centre_points)
     blue_cones, yellow_cones = generate_cones(centre_points)
@@ -974,11 +743,11 @@ if __name__ == "__main__":
     # centre_points, blue_cones, yellow_cones = tofu_delaunay.GimmeCanD(test_and_scratch.tester_oval(500))
 
     # --- Corner Identification---
-    fits = segment_centreline_and_fit_arcs(centre_points, window_length=10, step_size=1)
+    fits = segment_centreline_and_fit_arcs(centre_points, window_length=20, step_size=1)
     fits = classify_arcs_vs_straights(fits,
                                       max_rms_err=1.0,
                                       min_arc_angle=0.15,
-                                      max_R_for_corner=300)
+                                      max_R_for_corner=50)
     segs = consolidate_segments(fits, min_straight_len=5)
     corns = characterize_corners(segs, centre_points)
     # Attach turn directions to segments
@@ -1007,7 +776,7 @@ if __name__ == "__main__":
     ranked_corners = rank_corners(centre_points, segs)
 
     #BLUE CONES = left side, YELLOW CONES = right side
-    spirals = euler_spirals(centre_points, blue_cones, yellow_cones, ranked_corners)
+    spirals = euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners)
     # spirals = euler_spiral_corners(centre_points, blue_cones, yellow_cones, segs, ranked_corners)
 
     # black is first point, 11th point is yellow.
