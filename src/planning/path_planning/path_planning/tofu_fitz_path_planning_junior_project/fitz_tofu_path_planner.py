@@ -447,7 +447,8 @@ def find_useful_part_of_spiral(spiral, desired_end_heading_deg, threshold_deg=5)
     
     return spiral
 
-def euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners, apex_point_half_count=4, threshold_distance=0.2, threshold_deg=5):
+def euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners, 
+                  apex_point_half_count=4, threshold_distance=0.2, threshold_deg=5, min_straight_length=15, traditional_apex_smoothing_sigma=5):
     spirals = []
     finished_spirals = {}
 
@@ -471,7 +472,8 @@ def euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners,
             inside, outside, correct_side = (yellow, blue, 'L') if corner_seg['turn_dir'] == 'R' else (blue, yellow, 'R')
 
             start_point = outside[0]
-            apex_points = inside[(len(inside) // 2)-apex_point_half_count : (len(inside) // 2)+apex_point_half_count]
+            mid_index_inside = len(inside) // 2
+            apex_points = inside[mid_index_inside-apex_point_half_count : mid_index_inside+apex_point_half_count]
             
             start_vec = centre[3] - centre[0]
             start_heading = np.degrees(np.arctan2(start_vec[1], start_vec[0]))
@@ -490,10 +492,15 @@ def euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners,
             
             end_heading = np.degrees(np.arctan2(end_vec[1], end_vec[0]))
 
-            precut_spiral = find_precut_direct(start_point, outside[-1], inside[-1], inside, start_heading, end_heading, correct_side, 
-                                               threshold_distance=threshold_distance, threshold_deg=threshold_deg)
-            # spirals.append(EulerSpiral(find_useful_part_of_spiral(precut_spiral, end_heading, threshold_deg=threshold_deg), seg_index))
-            spirals.append(EulerSpiral(precut_spiral, seg_index))
+            distance_to_next_corner = np.linalg.norm(end_vec)
+
+            if distance_to_next_corner >= min_straight_length or segs[next_corner_seg_index]['turn_dir'] != correct_side: #late apex (use euler spiral) if same direction turns
+                spiral = find_precut_direct(start_point, outside[-1], inside[-1], inside, start_heading, end_heading, correct_side, 
+                                                threshold_distance=threshold_distance, threshold_deg=threshold_deg)
+            else:
+                spiral = traditional_apex(centre, outside, inside, mid_index_inside, sigma=traditional_apex_smoothing_sigma)
+            
+            spirals.append(EulerSpiral(spiral, seg_index))
 
             finished_spirals[seg_index] = start_point
 
@@ -505,11 +512,30 @@ def euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners,
 
     return sorted(spirals, key=lambda es: es.seg_index)
 
+def traditional_apex(centre, outside, inside, mid_index_inside, sigma=5):
+
+    mid_index_centre = len(centre)//2
+    path = interpolate_laterals(centre[:mid_index_centre], outside[0], inside[mid_index_inside]) + \
+        interpolate_laterals(centre[mid_index_centre:], inside[mid_index_inside+1], outside[-1])
+    return smooth_path(np.array(path), sigma=sigma)
+
 def sample_straight_line(p1, p2, n=50):
     """
     Returns `n` points evenly spaced between points p1 and p2 (both np.array).
     """
     return np.linspace(p1, p2, n)
+
+def interpolate_laterals(reference_points, initial_point, final_point):
+    path = []
+    offset_start = initial_point - reference_points[0]
+    offset_end = final_point - reference_points[-1]
+
+    for j, centre_point in enumerate(reference_points[1:-1]):
+        t = j / (len(reference_points) - 2)  # Normalize from 0 to 1
+        interp_offset = (1 - t) * offset_start + t * offset_end
+        path.append(centre_point + interp_offset)
+
+    return path
 
 def stitch_path(centre_points, segs, spirals, n_straight_points=50, straight_sample_step=10):
     """
@@ -545,16 +571,7 @@ def stitch_path(centre_points, segs, spirals, n_straight_points=50, straight_sam
                 part2 = centre_points[:end_idx:straight_sample_step]
                 sampled_centre = np.concatenate((part1, part2))
 
-        
-            if len(sampled_centre) > straight_sample_step:
-                offset_start = spiral[-1] - sampled_centre[0]
-                offset_end = next_spiral[0] - sampled_centre[-1]
-
-                for j, centre_point in enumerate(sampled_centre[1:-1]):
-                    t = j / (len(sampled_centre) - 2)  # Normalize from 0 to 1
-                    interp_offset = (1 - t) * offset_start + t * offset_end
-                    joined_path.append(centre_point + interp_offset)
-
+            joined_path.extend(interpolate_laterals(sampled_centre, spiral[-1], next_spiral[0]))
         else:
             straight = sample_straight_line(spiral[-1], next_spiral[0], n=n_straight_points)
             joined_path.extend(straight[1:])
@@ -583,7 +600,7 @@ def smooth_path(stitched_path, sigma=2):
 
 
 # visualization----------------------------------------------------------------------------------------------------------------------------------------------------------
-def visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path):
+def visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path, show_segs=False):
     plt.figure(figsize=(12, 7))
     # plt.scatter(centre_points[:, 0], centre_points[:, 1], color='red', marker='x', label='Centre Points')
     plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones', s=0.2)
@@ -599,22 +616,23 @@ def visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margi
     plt.scatter(centre_points[-2][0], centre_points[-2][1], color='purple', zorder=5, s=70, label='End Point')
     
     # # Plot segments
-    # for seg in segs:
-    #     idx_start = seg['idx_start']
-    #     idx_end = seg['idx_end']
-    #     seg_points = centre_points[idx_start:idx_end+1]  # +1 because slicing is exclusive
-        
-    #     if seg['type'] == 'corner':
-    #         if seg['turn_dir'] == 'R':
-    #             color = 'red'
-    #         elif seg['turn_dir'] == 'L':
-    #             color = 'cyan'
-    #         else:
-    #             color = 'gray'
-    #     else:
-    #         color = 'gray'
-        
-    #     plt.plot(seg_points[:, 0], seg_points[:, 1], color=color, linewidth=2)
+    if show_segs:
+        for seg in segs:
+            idx_start = seg['idx_start']
+            idx_end = seg['idx_end']
+            seg_points = centre_points[idx_start:idx_end+1]  # +1 because slicing is exclusive
+            
+            if seg['type'] == 'corner':
+                if seg['turn_dir'] == 'R':
+                    color = 'red'
+                elif seg['turn_dir'] == 'L':
+                    color = 'cyan'
+                else:
+                    color = 'gray'
+            else:
+                color = 'gray'
+            
+            plt.plot(seg_points[:, 0], seg_points[:, 1], color=color, linewidth=2)
 
     plt.axis('equal')
     plt.legend()
@@ -953,6 +971,8 @@ if __name__ == "__main__":
         # centre_points = generate_ellipse_track()
         # centre_points = generate_real_track('berlin_2018.txt')
         # centre_points = generate_real_track('modena_2019.txt')
+        # centre_points = generate_real_track('handling_track.txt')
+        # centre_points = generate_real_track('rounded_rectangle.txt')
     # centre_points = generate_square_track_with_rounded_corners()
     centre_points = generate_real_track('modena_2019.txt')
 
@@ -974,7 +994,8 @@ if __name__ == "__main__":
     segs = break_apart_severe_corners_and_join_straights(centre_points, segs)
     # Path Planning----------------------------------------------------------------------------------------------------------------------------------------------------------
     ranked_corners = rank_corners(centre_points, segs)
-    spirals = euler_spirals(centre_points, blue_margin, yellow_margin, segs, ranked_corners, threshold_distance=1)
+    spirals = euler_spirals(centre_points, blue_margin, yellow_margin, segs, ranked_corners, 
+                            threshold_distance=1, min_straight_length=0, traditional_apex_smoothing_sigma=10)
     stitched_path = stitch_path(centre_points, segs, spirals, straight_sample_step=3)
     optimal_path = smooth_path(stitched_path, sigma=3)
     # optimal_path = stitched_path
@@ -982,7 +1003,7 @@ if __name__ == "__main__":
     # Visualization & Testing----------------------------------------------------------------------------------------------------------------------------------------------------------
     print(f"Optimal Path Lap Time: {estimate_lap_time_realistic(optimal_path)}s")
     print(f"Centreline Lap Time: {estimate_lap_time_realistic(centre_points)}s")
-    visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path)
+    visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path, show_segs=False)
 
 
 
