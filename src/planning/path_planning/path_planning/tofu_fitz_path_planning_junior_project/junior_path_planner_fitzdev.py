@@ -74,7 +74,6 @@ def _fit_circle_algebraic(x: np.ndarray, y: np.ndarray) -> Tuple[float, float, f
         return np.nan, np.nan, np.inf
     return cx, cy, R
 
-
 def segment_centreline_and_fit_arcs(
     centre_points: List[Tuple[float, float]],
     window_length: int,
@@ -121,7 +120,6 @@ def segment_centreline_and_fit_arcs(
 
     return fits
 
-
 def classify_arcs_vs_straights(
     fits: List[Dict[str, Any]],
     max_rms_err: float,
@@ -146,7 +144,6 @@ def classify_arcs_vs_straights(
         fit['is_corner'] = bool(is_corner)
 
     return fits
-
 
 def consolidate_segments(
     fits: List[Dict[str, Any]],
@@ -206,7 +203,6 @@ def consolidate_segments(
                 segments.pop(-1)
     return segments
 
-
 def characterize_corners(
     segments: List[Dict[str, Any]],
     centre_points: List[Tuple[float, float]]
@@ -233,117 +229,6 @@ def characterize_corners(
             'turn_dir':  turn_dir
         })
     return corners
-
-
-def extract_corner_metrics(
-    corners: List[Dict[str, Any]],
-    centre_points: List[Tuple[float, float]]
-) -> List[Dict[str, Any]]:
-    # (unchanged)
-    metrics = []
-    n_corners = len(corners)
-    for i, c in enumerate(corners):
-        start, end = c['idx_start'], c['idx_end']
-        theta = abs(c['arc_angle']) * 180.0 / math.pi
-        L = sum(math.hypot(centre_points[k+1][0] - centre_points[k][0], centre_points[k+1][1] - centre_points[k][1])
-                for k in range(start, end))
-        if i < n_corners - 1:
-            next_start = corners[i+1]['idx_start']
-            next_gap = math.hypot(centre_points[next_start][0] - centre_points[end][0],
-                                  centre_points[next_start][1] - centre_points[end][1])
-        else:
-            next_gap = None
-        enriched = dict(c)
-        enriched.update({'theta': theta, 'L': L, 'next_gap': next_gap})
-        metrics.append(enriched)
-    return metrics
-
-
-def classify_corner_severity(
-    corner_metrics: List[Dict[str, Any]],
-    theta_hairpin: float,
-    R_hairpin: float,
-    theta_medium: float,
-    R_medium: float
-) -> List[Dict[str, Any]]:
-    # (unchanged)
-    classified = []
-    for cm in corner_metrics:
-        theta = cm.get('theta', 0.0)
-        R = cm.get('R', float('inf'))
-        if theta >= theta_hairpin and R <= R_hairpin:
-            severity = "Hairpin"
-        elif theta >= theta_medium and R <= R_medium:
-            severity = "Medium"
-        else:
-            severity = "Sweeper"
-        cm2 = dict(cm)
-        cm2['severity'] = severity
-        classified.append(cm2)
-    return classified
-
-
-def detect_compound_corners(
-    corner_metrics: List[Dict[str, Any]],
-    max_gap_for_chicane: float
-) -> List[Dict[str, Any]]:
-    # (unchanged)
-    for cm in corner_metrics:
-        cm['compound_id'] = None
-    next_id = 1
-    in_group = False
-    for i in range(len(corner_metrics) - 1):
-        curr, nxt = corner_metrics[i], corner_metrics[i+1]
-        if curr['turn_dir'] != nxt['turn_dir'] and (curr['next_gap'] or float('inf')) <= max_gap_for_chicane:
-            if not in_group:
-                curr['compound_id'] = next_id
-                nxt['compound_id'] = next_id
-                in_group = True
-                next_id += 1
-            else:
-                nxt['compound_id'] = next_id - 1
-        else:
-            in_group = False
-    return corner_metrics
-
-
-def print_track_detections(
-    corner_list: List[Dict[str, Any]],
-    total_pts: Optional[int] = None
-) -> None:
-    """
-    Print the sequence of detected track elements, including starting/ending straights.
-    """
-    if not corner_list:
-        print("Straight")
-        return
-    corners = sorted(corner_list, key=lambda c: c['idx_start'])
-    # initial straight
-    if corners[0]['idx_start'] > 0:
-        print("Straight")
-    i = 0
-    n = len(corners)
-    while i < n:
-        curr = corners[i]
-        # inter-corner straight
-        if i > 0 and curr['idx_start'] - corners[i-1]['idx_end'] > 1:
-            print("Straight")
-        # compounds
-        comp = curr.get('compound_id')
-        if comp is not None:
-            j = i
-            while j < n and corners[j].get('compound_id') == comp:
-                j += 1
-            print("Chicane")
-            i = j
-        else:
-            print(curr.get('severity', 'Corner'))
-            i += 1
-    # trailing straight
-    if total_pts is not None:
-        last_end = corners[-1]['idx_end']
-        if last_end < total_pts - 1:
-            print("Straight")
 
 
 # intermediataries------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -395,14 +280,14 @@ def break_apart_severe_corners_and_join_straights(centre_points, segs, split_ang
         i += 1
 
     return new_segs
-            
+
 
 # tofu's planning-----------------------------------------------------------------------------------------------------------------------------------------------------
-        
 class CornerRepr():
     def __init__(self, index, length):
         self.index = index
         self.length = length
+
 def rank_corners(centre_points, segs):
     number_of_segs = len(segs)
     ranked_corners = [] #list of CornerReprs
@@ -534,8 +419,8 @@ def find_precut_direct(
         # if iterations > slices:
         #     break
 
-    # if iterations > 0:
-    #     spiral = find_useful_part_of_spiral(spiral, desired_end_heading_deg, threshold_deg=threshold_deg)
+    if iterations > 0:
+        spiral = find_useful_part_of_spiral(spiral, desired_end_heading_deg, threshold_deg=threshold_deg)
 
     return spiral
 
@@ -676,14 +561,6 @@ def stitch_path(centre_points, segs, spirals, n_straight_points=50, straight_sam
 
     return np.array(joined_path)
 
-def find_median(list_of_np_arrays):
-    # Stack them into a 2D array
-    stacked = np.stack(list_of_np_arrays)
-    # Compute the median point
-    median_point = np.median(stacked, axis=0)
-
-    return median_point
-
 def smooth_path(stitched_path, sigma=2):
     """
     Smooths a path using a Gaussian filter.
@@ -706,37 +583,7 @@ def smooth_path(stitched_path, sigma=2):
 
 
 # visualization----------------------------------------------------------------------------------------------------------------------------------------------------------
-def visualize_track_segments(
-    centre_points: List[Tuple[float, float]],
-    segments: List[Dict[str, Any]],
-    blue_cones: List[Tuple[float, float]], 
-    yellow_cones: List[Tuple[float, float]],
-    line_width: float = 2.0,
-    marker_size: float = 4.0,
-    color_map: Optional[Dict[str, str]] = None
-) -> None:
-    # (unchanged)
-    if color_map is None:
-        color_map = {'straight': 'gray', 'L': 'blue', 'R': 'red'}
-    xs, ys = zip(*centre_points)
-    plt.figure(figsize=(8, 8))
-    ax = plt.gca()
-    ax.set_aspect('equal', 'box')
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_title('Track Centreline Segments')
-    for seg in segments:
-        sx, sy = xs[seg['idx_start']:seg['idx_end']+1], ys[seg['idx_start']:seg['idx_end']+1]
-        color = color_map['straight'] if seg['type']=='straight' else color_map.get(seg.get('turn_dir',''), 'black')
-        ax.plot(sx, sy, linewidth=line_width, color=color)
-        ax.scatter([sx[0], sx[-1]], [sy[0], sy[-1]], s=marker_size**2, color=color, zorder=3)
-    plt.scatter(centre_points[0][0], centre_points[0][1], color='black', zorder=5, s=70)
-    plt.scatter(centre_points[10][0], centre_points[10][1], color='yellow', zorder=5, s=70)
-    plt.scatter(blue_cones[:][0], blue_cones[:][1], color='blue', marker='o', label='Blue Cones')
-    plt.scatter(yellow_cones[:][0], yellow_cones[:][1], color='yellow', marker='o', label='Yellow Cones')
-    plt.show()
-
-def testing_plotter(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path):
+def visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path):
     plt.figure(figsize=(12, 7))
     # plt.scatter(centre_points[:, 0], centre_points[:, 1], color='red', marker='x', label='Centre Points')
     plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones', s=0.2)
@@ -773,6 +620,7 @@ def testing_plotter(centre_points, blue_cones, yellow_cones, blue_margin, yellow
     plt.legend()
     plt.title('Bruh Graph with Segments')
     plt.show()
+
 
 # generation of tracks----------------------------------------------------------------------------------------------------------------------------------------------------------
 def generate_cones(centre_points, offset=1.5):
@@ -1040,8 +888,8 @@ def generate_real_track(file_name):
 
     return np.column_stack((x, y))
 
-# lap time testing----------------------------------------------------------------------------------------------------------------------------------------------------------
 
+# lap time testing----------------------------------------------------------------------------------------------------------------------------------------------------------
 def estimate_lap_time_realistic(
     path_points,
     max_lateral_accel_ms2=45.0,
@@ -1093,7 +941,6 @@ def estimate_lap_time_realistic(
 
 
 # main----------------------------------------------------------------------------------------------------------------------------------------------------------
-
 if __name__ == "__main__":
     # Generation----------------------------------------------------------------------------------------------------------------------------------------------------------
     if False:
@@ -1107,7 +954,7 @@ if __name__ == "__main__":
         # centre_points = generate_real_track('berlin_2018.txt')
         # centre_points = generate_real_track('modena_2019.txt')
     # centre_points = generate_square_track_with_rounded_corners()
-    centre_points = generate_real_track('berlin_2018.txt')
+    centre_points = generate_real_track('modena_2019.txt')
 
     centre_points = np.array(centre_points)
     cone_distance_from_centre_points = 5
@@ -1135,7 +982,7 @@ if __name__ == "__main__":
     # Visualization & Testing----------------------------------------------------------------------------------------------------------------------------------------------------------
     print(f"Optimal Path Lap Time: {estimate_lap_time_realistic(optimal_path)}s")
     print(f"Centreline Lap Time: {estimate_lap_time_realistic(centre_points)}s")
-    testing_plotter(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path)
+    visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path)
 
 
 
