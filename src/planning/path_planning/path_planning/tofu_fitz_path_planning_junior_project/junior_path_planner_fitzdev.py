@@ -4,6 +4,10 @@ import matplotlib.pyplot as plt
 import math
 from scipy.interpolate import splprep, splev
 from pyclothoids import Clothoid
+from scipy.signal import savgol_filter
+from scipy.interpolate import splprep, splev
+from scipy.ndimage import gaussian_filter1d
+
 
 """NOTES:
 At present, if you use the oval track generator with a window length of 20, it detects
@@ -12,9 +16,11 @@ Upon looking further into this, we find that for this oval track, the RADII of b
 the actual corners and the straights are about the same (at around 50). This extends to even
 the arc angles (aroudn 3.1). This is weird, and indicates something is wrong in the circle
 fitting part specifically.
+
+BLUE CONES = left side, YELLOW CONES = right side
 """
 
-# ----------------------------------------------------------------------------------------------------------------------------------------------------------
+# fitz's identification----------------------------------------------------------------------------------------------------------------------------------------------------------
 def _fit_circle_algebraic(x: np.ndarray, y: np.ndarray) -> Tuple[float, float, float]:
     """
     Fit a circle x^2 + y^2 + A x + B y + C = 0
@@ -337,8 +343,17 @@ def print_track_detections(
         if last_end < total_pts - 1:
             print("Straight")
 
+def attach_turn_directions(segs, corns):
+    for s in segs:
+        if s['type'] == 'corner':
+            for c in corns:
+                if c['idx_start'] == s['idx_start'] and c['idx_end'] == s['idx_end']:
+                    s['turn_dir'] = c['turn_dir']
+                    break
 
-#tofu's planning:
+    return segs
+
+# tofu's planning-----------------------------------------------------------------------------------------------------------------------------------------------------
         
 class CornerRepr():
     def __init__(self, index, length):
@@ -395,83 +410,130 @@ def connect_points_with_clothoid(A, B, theta_start_deg, theta_end_deg, n_points=
 
         # Sample points along the clothoid
         x_vals, y_vals = clothoid.SampleXY(n_points)
+        points = np.column_stack((x_vals, y_vals))  # Combine into shape (n_points, 2)
 
-        return (x_vals, y_vals)
+        return points
+
+class EulerSpiral():
+    def __init__(self, spiral, seg_index):
+        self.spiral = spiral
+        self.seg_index = seg_index
 
 def euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners):
     spirals = []
+    finished_spirals = {}
 
     # plt.figure(figsize=(12, 7))
     # plt.axis('equal')
     # plt.scatter(centre_points[:, 0], centre_points[:, 1], color='red', marker='x', label='Centre Points')
     # plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones')
     # plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color='yellow', marker='o', label='Yellow Cones')
+    # plt.scatter(centre_points[0][0], centre_points[0][1], color='black', zorder=5, s=70, label='Start Point')
+    # plt.scatter(centre_points[-2][0], centre_points[-2][1], color='purple', zorder=5, s=70, label='End Point')
 
     for ranked_corner in ranked_corners:
-        corner_seg = segs[ranked_corner.index]
+        seg_index = ranked_corner.index
+        corner_seg = segs[seg_index]
         start = corner_seg['idx_start']
         end = corner_seg['idx_end']
 
         centre = centre_points[start:end+1]
-        if len(centre) > 1:
+        if len(centre) > 4:
             blue = blue_cones[start:end+1]
             yellow = yellow_cones[start:end+1]
             inside, outside = (yellow, blue) if corner_seg['turn_dir'] == 'R' else (blue, yellow)
 
             start_point, apex_point, end_point = outside[0], inside[len(inside) // 2],  inside[-1]
-            start_vec = centre[1] - centre[0]
-            end_vec = centre[-1] - centre[-2]
+            start_vec = centre[3] - centre[0]
             start_heading = np.degrees(np.arctan2(start_vec[1], start_vec[0]))
-            end_heading = np.degrees(np.arctan2(end_vec[1], end_vec[0]))
-            
 
-            spirals.append(connect_points_with_clothoid(start_point, end_point, 
-                                                        theta_start_deg=start_heading, theta_end_deg=end_heading, n_points=100))
+            next_corner_seg_index = ((seg_index + 2) % len(segs))
+            if next_corner_seg_index not in finished_spirals:
+                end_vec = centre[-1] - centre[-4]
+            else:
+                end_point = centre[-1]
+                end_vec = finished_spirals[next_corner_seg_index] - centre[-1]
+            
+            end_heading = np.degrees(np.arctan2(end_vec[1], end_vec[0]))
+
+            spirals.append(EulerSpiral(connect_points_with_clothoid(start_point, end_point,
+                                                        theta_start_deg=start_heading, theta_end_deg=end_heading, n_points=100), 
+                                                        seg_index))
+            finished_spirals[seg_index] = start_point
 
 
 
             # plt.plot(spirals[-1][0], spirals[-1][1], color='green', linewidth=2, label='Spiral Path')
             #assume no sequences for now, so we euler spiral everything
             #assume the first point is the start of the spiral
-        
-    return spirals
 
+    return sorted(spirals, key=lambda es: es.seg_index)
 
-
-
-
-
-#visualization, testing
-def generate_cones(centre_points, offset=1.5):
+def sample_straight_line(p1, p2, n=50):
     """
-    Generates blue (left) and yellow (right) cones offset perpendicularly from the centreline.
+    Returns `n` points evenly spaced between points p1 and p2 (both np.array).
+    """
+    return np.linspace(p1, p2, n)
+
+def join_spirals(spirals, n_straight_points=50):
+    """
+    Joins a list of EulerSpiral objects and samples straight lines between each spiral.
     
     Parameters:
-    - centre_points: list of np.array([x, y])
-    - offset: float, distance from centerline to each cone (in meters)
+    - spirals: List of EulerSpiral instances.
+    - n_straight_points: Number of points to sample for each connecting straight line.
     
     Returns:
-    - blue_cones: list of np.array([x, y]) to the left of the centreline
-    - yellow_cones: list of np.array([x, y]) to the right of the centreline
+    - joined_path: NumPy array of shape (total_points, 2)
     """
-    blue_cones = []
-    yellow_cones = []
+    joined_path = []
 
-    for i in range(1, len(centre_points)-1):
-        prev_pt = centre_points[i-1]
-        next_pt = centre_points[i+1]
-        direction = next_pt - prev_pt
-        direction /= np.linalg.norm(direction)  # Normalize
-        perp = np.array([-direction[1], direction[0]])  # 90° rotation for left
+    length = len(spirals)
+    for i in range(length):
+        spiral = spirals[i].spiral
+        next_spiral = spirals[(i + 1) % length].spiral
 
-        center = centre_points[i]
-        blue_cones.append(center + offset * perp)     # Left (blue)
-        yellow_cones.append(center - offset * perp)   # Right (yellow)
+        # Add the spiral path, excluding the last point (to prevent duplication)
+        joined_path.extend(spiral[:-1])
 
-    return np.array(blue_cones), np.array(yellow_cones)
+        # Add sampled straight line from end of this spiral to start of next
+        straight = sample_straight_line(spiral[-1], next_spiral[0], n=n_straight_points)
+
+        # Exclude first point to avoid duplication with previous spiral's end
+        joined_path.extend(straight[1:])
+
+    return np.array(joined_path)
+
+def find_median(list_of_np_arrays):
+    # Stack them into a 2D array
+    stacked = np.stack(list_of_np_arrays)
+    # Compute the median point
+    median_point = np.median(stacked, axis=0)
+
+    return median_point
+
+def smooth_path(stitched_path, sigma=2):
+    """
+    Smooths a path using a Gaussian filter.
+
+    Parameters:
+    - stitched_path: np.ndarray of shape (N, 2) representing [x, y] coordinates.
+    - sigma: float, standard deviation for Gaussian kernel.
+
+    Returns:
+    - np.ndarray of same shape (N, 2), smoothed path.
+    """
+    if stitched_path.ndim != 2 or stitched_path.shape[1] != 2:
+        raise ValueError("stitched_path must be a 2D array with shape (N, 2)")
+
+    # Apply Gaussian filter separately to x and y coordinates
+    smoothed_x = gaussian_filter1d(stitched_path[:, 0], sigma)
+    smoothed_y = gaussian_filter1d(stitched_path[:, 1], sigma)
+
+    return np.column_stack((smoothed_x, smoothed_y))
 
 
-
+# visualization, testing----------------------------------------------------------------------------------------------------------------------------------------------------------
 def visualize_track_segments(
     centre_points: List[Tuple[float, float]],
     segments: List[Dict[str, Any]],
@@ -502,22 +564,19 @@ def visualize_track_segments(
     plt.scatter(yellow_cones[:][0], yellow_cones[:][1], color='yellow', marker='o', label='Yellow Cones')
     plt.show()
 
-def testing_plotter(centre_points, blue_cones, yellow_cones, segs, spirals):
+def testing_plotter(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path):
     plt.figure(figsize=(12, 7))
     plt.scatter(centre_points[:, 0], centre_points[:, 1], color='red', marker='x', label='Centre Points')
     plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones', s=2)
-    plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color='yellow', marker='o', label='Yellow Cones', s=2)
-
-    for spiral in spirals:
-        plt.plot(spiral[0], spiral[1], color='green', linewidth=2, label='Spiral Path')
+    plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color='#CCCC00', marker='o', label='Yellow Cones', s=2)
+    # plt.scatter(blue_margin[:, 0], blue_margin[:, 1], color='blue', marker='o', label='Blue Margin', s=1)
+    # plt.scatter(yellow_margin[:, 0], yellow_margin[:, 1], color='yellow', marker='o', label='Yellow Margin', s=1)
+    plt.plot(stitched_path[:, 0], stitched_path[:, 1], color='green', label='Stitched Path', linewidth=3)
+    plt.plot(optimal_path[:, 0], optimal_path[:, 1], color='purple', label='Optimal Path', linewidth=3)
+    # for spiral in spirals:
+    #     plt.plot(spiral.spiral[:, 0], spiral.spiral[:, 1], color='green', linewidth=3, label='Spiral Path')
     
     plt.scatter(centre_points[0][0], centre_points[0][1], color='black', zorder=5, s=70, label='Start Point')
-    # plt.scatter(centre_points[10][0], centre_points[10][1], color='purple', zorder=5, s=70)
-    # plt.scatter(centre_points[50][0], centre_points[50][1], color='black', zorder=5, s=70)
-    # plt.scatter(centre_points[100][0], centre_points[100][1], color='purple', zorder=5, s=70)
-    # plt.scatter(centre_points[150][0], centre_points[150][1], color='black', zorder=5, s=70)
-    # plt.scatter(centre_points[190][0], centre_points[190][1], color='purple', zorder=5, s=70)
-    # plt.scatter(centre_points[96][0], centre_points[96][1], color='red', zorder=5, s=100)
     plt.scatter(centre_points[-2][0], centre_points[-2][1], color='purple', zorder=5, s=70, label='End Point')
     
     # Plot segments
@@ -543,7 +602,34 @@ def testing_plotter(centre_points, blue_cones, yellow_cones, segs, spirals):
     plt.title('Bruh Graph with Segments')
     plt.show()
 
-# Generation of tracks:
+# generation of tracks----------------------------------------------------------------------------------------------------------------------------------------------------------
+def generate_cones(centre_points, offset=1.5):
+    """
+    Generates blue (left) and yellow (right) cones offset perpendicularly from the centreline.
+    
+    Parameters:
+    - centre_points: list of np.array([x, y])
+    - offset: float, distance from centerline to each cone (in meters)
+    
+    Returns:
+    - blue_cones: list of np.array([x, y]) to the left of the centreline
+    - yellow_cones: list of np.array([x, y]) to the right of the centreline
+    """
+    blue_cones = []
+    yellow_cones = []
+
+    for i in range(1, len(centre_points)-1):
+        prev_pt = centre_points[i-1]
+        next_pt = centre_points[i+1]
+        direction = next_pt - prev_pt
+        direction /= np.linalg.norm(direction)  # Normalize
+        perp = np.array([-direction[1], direction[0]])  # 90° rotation for left
+
+        center = centre_points[i]
+        blue_cones.append(center + offset * perp)     # Left (blue)
+        yellow_cones.append(center - offset * perp)   # Right (yellow)
+
+    return np.array(blue_cones), np.array(yellow_cones)
 
 def generate_long_straight_track(num_points=2000, seed=42):
     """
@@ -663,7 +749,6 @@ def generate_oval_track(num_points=1000, straight_length=200, radius=50):
 
     return points
 
-
 def generate_square_track_with_rounded_corners(side_length=100, corner_radius=20, resolution=1.0):
     """
     Generate a square track with rounded corners.
@@ -722,27 +807,19 @@ def generate_square_track_with_rounded_corners(side_length=100, corner_radius=20
 
     return track_points
 
+# main----------------------------------------------------------------------------------------------------------------------------------------------------------
+
 if __name__ == "__main__":
-    import test_and_scratch
-    import tofu_delaunay
-
-
+    # Generation----------------------------------------------------------------------------------------------------------------------------------------------------------
     # centre_points = generate_sine_perturbed_circle()
     # centre_points = generate_long_straight_track()
     # centre_points = generate_oval_track()
     centre_points = generate_square_track_with_rounded_corners()
-
     centre_points = np.array(centre_points)
     blue_cones, yellow_cones = generate_cones(centre_points)
+    blue_margin, yellow_margin = generate_cones(centre_points, offset=1.0)
 
-    """
-    remove delaunay cone pairs if its not needed. 
-    Assumes blue cones are to the left, and yellow cones are to the right of the car at all times
-    This will help in the planning paet
-    """
-    # centre_points, blue_cones, yellow_cones = tofu_delaunay.GimmeCanD(test_and_scratch.tester_oval(500))
-
-    # --- Corner Identification---
+    # Corner Identification----------------------------------------------------------------------------------------------------------------------------------------------------------
     fits = segment_centreline_and_fit_arcs(centre_points, window_length=20, step_size=1)
     fits = classify_arcs_vs_straights(fits,
                                       max_rms_err=1.0,
@@ -750,39 +827,16 @@ if __name__ == "__main__":
                                       max_R_for_corner=50)
     segs = consolidate_segments(fits, min_straight_len=5)
     corns = characterize_corners(segs, centre_points)
-    # Attach turn directions to segments
-    for s in segs:
-        if s['type'] == 'corner':
-            for c in corns:
-                if c['idx_start'] == s['idx_start'] and c['idx_end'] == s['idx_end']:
-                    s['turn_dir'] = c['turn_dir']
-                    break
+    segs = attach_turn_directions(segs, corns)
 
-    if False:
-        # Optional classification + detection
-        metrics = extract_corner_metrics(corns, centre_points)
-        classified = classify_corner_severity(metrics,
-                                              theta_hairpin=150,
-                                              R_hairpin=50,
-                                              theta_medium=60,
-                                              R_medium=150)
-        compound_tagged = detect_compound_corners(classified, max_gap_for_chicane=15)
-
-        print("\nTrack Element Sequence:")
-        print_track_detections(compound_tagged, total_pts=len(centre_points))
-    
-
-
+    # Path Planning----------------------------------------------------------------------------------------------------------------------------------------------------------
     ranked_corners = rank_corners(centre_points, segs)
+    spirals = euler_spirals(centre_points, blue_margin, yellow_margin, segs, ranked_corners)
+    stitched_path = join_spirals(spirals)
+    optimal_path = smooth_path(stitched_path, sigma=10)
 
-    #BLUE CONES = left side, YELLOW CONES = right side
-    spirals = euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners)
-    # spirals = euler_spiral_corners(centre_points, blue_cones, yellow_cones, segs, ranked_corners)
-
-    # black is first point, 11th point is yellow.
-    testing_plotter(centre_points, blue_cones, yellow_cones, segs, spirals)
-    # visualize_track_segments(centre_points, segs, blue_cones, yellow_cones)
-
+    # Visualization----------------------------------------------------------------------------------------------------------------------------------------------------------
+    testing_plotter(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path)
 
 
 
