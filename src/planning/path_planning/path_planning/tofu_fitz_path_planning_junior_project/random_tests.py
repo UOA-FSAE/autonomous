@@ -902,8 +902,10 @@ def eighth_one():
 
                 # Right 150-degree turn
                 ((200, 200), (215, 180), (225, 155), (250, 135), 270, 120),
+                
+                ((0, 0), (15, 15), (-20, 50), (-30, 70), 0, 225),
             ]
-        A, B, D, C, theta_start_deg, final_theta_deg = corner_test_cases[9]
+        A, B, C, D, theta_start_deg, final_theta_deg = corner_test_cases[-1]
 
         direct = connect_points_with_clothoid(A, C, theta_start_deg, final_theta_deg, n_points=1000)
         optimal_direct = find_precut_direct(A, D, C, [B], 
@@ -938,28 +940,30 @@ def eighth_one():
             plt.ylabel('Y')
             plt.show()
 
-def is_point_right_or_left(ref_point, ref_heading_vec, compare_point):
-    # Vector from A to the other point
-    to_point = compare_point - ref_point
+def eightpointfifth_one():
 
-    # Compute the 2D cross product (scalar)
-    cross = ref_heading_vec[0] * to_point[1] - ref_heading_vec[1] * to_point[0]
+    def is_point_right_or_left(ref_point, ref_heading_vec, compare_point):
+        # Vector from A to the other point
+        to_point = compare_point - ref_point
 
-    if cross > 0:
-        return "left"
-    elif cross < 0:
-        return "right"
-    else:
-        return "colinear"  # or "straight ahead"
+        # Compute the 2D cross product (scalar)
+        cross = ref_heading_vec[0] * to_point[1] - ref_heading_vec[1] * to_point[0]
 
-
-apex_point = np.array([0, 0])
-heading = np.array([1, 1])  # pointing along +x
-P1 = np.array([0, 1])       # should be left
-P2 = np.array([1, -1])      # should be right
-
-print(is_point_right_or_left(apex_point, heading, P1))  # left
-print(is_point_right_or_left(apex_point, heading, P2))  # right
+        if cross > 0:
+            return "left"
+        elif cross < 0:
+            return "right"
+        else:
+            return "colinear"  # or "straight ahead"
 
 
-# eighth_one()
+    apex_point = np.array([0, 0])
+    heading = np.array([1, 1])  # pointing along +x
+    P1 = np.array([0, 1])       # should be left
+    P2 = np.array([1, -1])      # should be right
+
+    print(is_point_right_or_left(apex_point, heading, P1))  # left
+    print(is_point_right_or_left(apex_point, heading, P2))  # right
+
+
+eighth_one()
