@@ -7,7 +7,6 @@ from pyclothoids import Clothoid
 from scipy.interpolate import splprep, splev
 from scipy.ndimage import gaussian_filter1d
 
-
 """NOTES:
 At present, if you use the oval track generator with a window length of 20, it detects
 corners correctly but misidentifies the straights as corners. Its pretty bad.
@@ -19,7 +18,8 @@ fitting part specifically.
 BLUE CONES = left side, YELLOW CONES = right side
 REFS:
 https://github.com/TUMFTM/global_racetrajectory_optimization/blob/master/inputs/tracks/berlin_2018.csv
-
+https://dspace.mit.edu/bitstream/handle/1721.1/64669/706825301-MIT.pdf
+and chatgpt ofcourse
 """
 
 # fitz's identification----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -603,11 +603,11 @@ def smooth_path(stitched_path, sigma=2):
 def visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path, show_segs=False):
     plt.figure(figsize=(12, 7))
     # plt.scatter(centre_points[:, 0], centre_points[:, 1], color='red', marker='x', label='Centre Points')
-    plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones', s=0.2)
-    plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color='#CCCC00', marker='o', label='Yellow Cones', s=0.2)
+    plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones', s=1)
+    plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color='#CCCC00', marker='o', label='Yellow Cones', s=1)
     # plt.scatter(blue_margin[:, 0], blue_margin[:, 1], color='blue', marker='o', label='Blue Margin', s=1)
     # plt.scatter(yellow_margin[:, 0], yellow_margin[:, 1], color='yellow', marker='o', label='Yellow Margin', s=1)
-    # plt.plot(stitched_path[:, 0], stitched_path[:, 1], color='green', label='Stitched Path', linewidth=3)
+    plt.plot(stitched_path[:, 0], stitched_path[:, 1], color='green', label='Stitched Path', linewidth=3)
     plt.plot(optimal_path[:, 0], optimal_path[:, 1], color='red', label='Optimal Path', linewidth=2)
     # for spiral in spirals:
     #     plt.plot(spiral.spiral[:, 0], spiral.spiral[:, 1], color='green', linewidth=3, label='Spiral Path')
@@ -900,7 +900,7 @@ def generate_real_track(file_name):
     with open(file_name, 'r') as file:
         for line in file:
             parts = line.strip().split(',')
-            if len(parts) == 4:
+            if len(parts) > 1:
                 x.append(float(parts[0]))
                 y.append(float(parts[1]))
 
@@ -973,8 +973,9 @@ if __name__ == "__main__":
         # centre_points = generate_real_track('modena_2019.txt')
         # centre_points = generate_real_track('handling_track.txt')
         # centre_points = generate_real_track('rounded_rectangle.txt')
-    # centre_points = generate_square_track_with_rounded_corners()
-    centre_points = generate_real_track('modena_2019.txt')
+        # centre_points = generate_real_track('LVMS.txt')
+    # centre_points = generate_sine_perturbed_circle()
+    centre_points = generate_real_track('BrandsHatch.txt')
 
     centre_points = np.array(centre_points)
     cone_distance_from_centre_points = 5
@@ -995,15 +996,22 @@ if __name__ == "__main__":
     # Path Planning----------------------------------------------------------------------------------------------------------------------------------------------------------
     ranked_corners = rank_corners(centre_points, segs)
     spirals = euler_spirals(centre_points, blue_margin, yellow_margin, segs, ranked_corners, 
-                            threshold_distance=1, min_straight_length=0, traditional_apex_smoothing_sigma=10)
+                            threshold_distance=0.1, min_straight_length=1, traditional_apex_smoothing_sigma=10)
     stitched_path = stitch_path(centre_points, segs, spirals, straight_sample_step=3)
-    optimal_path = smooth_path(stitched_path, sigma=3)
+    try:
+        optimal_path = smooth_path(stitched_path, sigma=3)
+    except:
+        optimal_path = centre_points
     # optimal_path = stitched_path
 
     # Visualization & Testing----------------------------------------------------------------------------------------------------------------------------------------------------------
-    print(f"Optimal Path Lap Time: {estimate_lap_time_realistic(optimal_path)}s")
-    print(f"Centreline Lap Time: {estimate_lap_time_realistic(centre_points)}s")
-    visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path, show_segs=False)
+    optimal_path_time = estimate_lap_time_realistic(optimal_path)
+    centreline_time = estimate_lap_time_realistic(centre_points)
+    reduction = (1-(optimal_path_time/centreline_time))*100
+    print(f"Optimal Path Lap Time: {optimal_path_time}s")
+    print(f"Centreline Lap Time: {centreline_time}s")
+    print(f"Lap time optimized by {reduction:.3g}%.")
+    visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path, show_segs=True)
 
 
 
