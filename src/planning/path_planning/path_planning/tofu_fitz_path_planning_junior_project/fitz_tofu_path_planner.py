@@ -1,7 +1,7 @@
 from typing import List, Tuple, Dict, Any, Optional
 import numpy as np
 import matplotlib.pyplot as plt
-import math
+import time
 from scipy.interpolate import splprep, splev
 from pyclothoids import Clothoid
 from scipy.interpolate import splprep, splev
@@ -281,6 +281,19 @@ def break_apart_severe_corners_and_join_straights(centre_points, segs, split_ang
 
     return new_segs
 
+def identify_segs(centre_points, window_length=20, max_R_for_corner=61):
+    fits = segment_centreline_and_fit_arcs(centre_points, window_length=window_length, step_size=1)
+    fits = classify_arcs_vs_straights(fits,
+                                      max_rms_err=1.0,
+                                      min_arc_angle=0.15,
+                                      max_R_for_corner=max_R_for_corner)
+    segs = consolidate_segments(fits, min_straight_len=5)
+    corns = characterize_corners(segs, centre_points)
+    segs = attach_turn_directions(segs, corns)
+    segs = break_apart_severe_corners_and_join_straights(centre_points, segs)
+
+    return segs
+
 
 # tofu's planning-----------------------------------------------------------------------------------------------------------------------------------------------------
 class CornerRepr():
@@ -344,7 +357,11 @@ def connect_points_with_clothoid(A, B, theta_start_deg, theta_end_deg, n_points=
         return points
 
 class EulerSpiral():
-    def __init__(self, spiral, seg_index):
+    def __init__(self, spiral, seg_index, start=None, end=None, edge_start=None, edge_end=None):
+        self.start = start
+        self.end = end
+        self.edge_start = edge_start
+        self.edge_end = edge_end
         self.spiral = spiral
         self.seg_index = seg_index
 
@@ -500,7 +517,9 @@ def euler_spirals(centre_points, blue_cones, yellow_cones, segs, ranked_corners,
             else:
                 spiral = traditional_apex(centre, outside, inside, mid_index_inside, sigma=traditional_apex_smoothing_sigma)
             
-            spirals.append(EulerSpiral(spiral, seg_index))
+            spiral = clamp_path_to_track(spiral, blue, yellow)
+
+            spirals.append(EulerSpiral(spiral, seg_index, edge_start=start, edge_end=end))
 
             finished_spirals[seg_index] = start_point
 
@@ -537,6 +556,7 @@ def interpolate_laterals(reference_points, initial_point, final_point):
 
     return path
 
+
 def stitch_path(centre_points, segs, spirals, n_straight_points=50, straight_sample_step=10):
     """
     Joins a list of EulerSpiral objects and samples straight lines between each spiral.
@@ -555,8 +575,12 @@ def stitch_path(centre_points, segs, spirals, n_straight_points=50, straight_sam
         spiral = spirals[i].spiral
         next_spiral = spirals[(i + 1) % length].spiral
 
+        spirals[i].start = len(joined_path) - 1
+
         # Add the spiral path, excluding the last point (to prevent duplication)
         joined_path.extend(spiral[:-1])
+
+        spirals[i].end = len(joined_path) - 1
 
         following_straight_index = (spirals[i].seg_index + 1) % len(segs)
         if segs[following_straight_index]['type'] == 'straight':
@@ -576,7 +600,102 @@ def stitch_path(centre_points, segs, spirals, n_straight_points=50, straight_sam
             straight = sample_straight_line(spiral[-1], next_spiral[0], n=n_straight_points)
             joined_path.extend(straight[1:])
 
-    return np.array(joined_path)
+    return np.array(joined_path), spirals
+
+def clamp_point_to_track(point, left_edge, right_edge):
+    """
+    Projects a point onto the line between the nearest left and right edge segment.
+    """
+    min_dist = float('inf')
+    clamped_point = point
+
+    for i in range(len(left_edge) - 1):
+        # Get left and right edge points for the segment
+        left_start, left_end = left_edge[i], left_edge[i + 1]
+        right_start, right_end = right_edge[i], right_edge[i + 1]
+
+        # Get centerline segment approximation (optional but helps with consistency)
+        mid_start = (left_start + right_start) / 2
+        mid_end = (left_end + right_end) / 2
+
+        # Distance from point to centerline segment
+        seg_vec = mid_end - mid_start
+        pt_vec = point - mid_start
+        seg_len = np.linalg.norm(seg_vec)
+        if seg_len < 0.001:
+            continue
+        proj = np.dot(pt_vec, seg_vec) / seg_len
+        proj = np.clip(proj, 0, seg_len)
+        closest_point = mid_start + (seg_vec / seg_len) * proj
+        dist = np.linalg.norm(point - closest_point)
+
+        if dist < min_dist:
+            min_dist = dist
+            # Define direction between left and right edge at this segment
+            edge_vec = right_start - left_start
+            t = np.dot(point - left_start, edge_vec) / np.dot(edge_vec, edge_vec)
+            t = np.clip(t, 0, 1)
+            clamped_point = left_start + t * edge_vec
+
+    return clamped_point
+
+def clamp_path_to_track(path, blue_cones, yellow_cones):
+    # Clamp all optimal path points
+    clamped_path = np.array([
+        clamp_point_to_track(pt, blue_cones, yellow_cones)
+        for pt in path
+    ])
+    return clamped_path
+
+def check_if_valid_path(stitched_path, blue_cones, yellow_cones, spirals, threshold=4):
+    for spiral in spirals:
+        path = stitched_path[spiral.start:spiral.end]
+        blue = blue_cones[spiral.edge_start:spiral.edge_end]
+        yellow = yellow_cones[spiral.edge_start:spiral.edge_end]
+
+        # Skip if any list is too short to sample
+        min_len = len(path)
+        if min_len < 2:
+            continue
+        max_len = len(blue)
+        proportion = max_len/min_len
+
+
+        for idx in range(min_len - 1):
+            pt = path[idx]
+            edge_idx = min(int(idx*proportion), (max_len - 2))
+            blue_pt = blue[edge_idx]
+            yellow_pt = yellow[edge_idx]
+
+            # Vector from blue to yellow defines track direction
+            blue_heading_vec = blue[edge_idx+1] - blue_pt
+            yellow_heading_vec = yellow[edge_idx+1] - yellow_pt
+
+            side_vs_blue = find_point_hand_side(blue_pt, blue_heading_vec, pt)
+            side_vs_yellow = find_point_hand_side(yellow_pt, yellow_heading_vec, pt)
+
+            if side_vs_blue != 'R' or side_vs_yellow != 'L':
+                 # Plot the issue
+                # plt.figure(figsize=(6, 6))
+                # plt.plot(*zip(*blue), 'b.', label='Blue cones')
+                # plt.plot(*zip(*yellow), 'y.', label='Yellow cones')
+                # plt.plot(*zip(*path), 'g--', label='Path')
+                # plt.plot(pt[0], pt[1], 'ro', label='Invalid point')
+
+                # # Draw arrows for context
+                # plt.arrow(blue_pt[0], blue_pt[1], blue_heading_vec[0], blue_heading_vec[1],
+                #           head_width=0.3, color='blue', length_includes_head=True, label='Track direction')
+                # plt.arrow(yellow_pt[0], yellow_pt[1], yellow_heading_vec[0], yellow_heading_vec[1],
+                #           head_width=0.3, color='yellow', length_includes_head=True, label='Track direction')
+
+                # plt.axis('equal')
+                # plt.legend()
+                # plt.title('Invalid point detected')
+                # plt.grid(True)
+                # plt.show()
+                return False, pt
+
+    return True, None
 
 def smooth_path(stitched_path, sigma=2):
     """
@@ -600,20 +719,23 @@ def smooth_path(stitched_path, sigma=2):
 
 
 # visualization----------------------------------------------------------------------------------------------------------------------------------------------------------
-def visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path, show_segs=False):
+def visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path, problem_point, show_segs=False):
     plt.figure(figsize=(12, 7))
     # plt.scatter(centre_points[:, 0], centre_points[:, 1], color='red', marker='x', label='Centre Points')
     plt.scatter(blue_cones[:, 0], blue_cones[:, 1], color='blue', marker='o', label='Blue Cones', s=1)
     plt.scatter(yellow_cones[:, 0], yellow_cones[:, 1], color='#CCCC00', marker='o', label='Yellow Cones', s=1)
     # plt.scatter(blue_margin[:, 0], blue_margin[:, 1], color='blue', marker='o', label='Blue Margin', s=1)
     # plt.scatter(yellow_margin[:, 0], yellow_margin[:, 1], color='yellow', marker='o', label='Yellow Margin', s=1)
-    plt.plot(stitched_path[:, 0], stitched_path[:, 1], color='green', label='Stitched Path', linewidth=3)
-    plt.plot(optimal_path[:, 0], optimal_path[:, 1], color='red', label='Optimal Path', linewidth=2)
+    # plt.plot(stitched_path[:, 0], stitched_path[:, 1], color='green', label='Stitched Path', linewidth=3)
+    plt.plot(optimal_path[:, 0], optimal_path[:, 1], color='red', label='Optimal Path', linewidth=4)
     # for spiral in spirals:
     #     plt.plot(spiral.spiral[:, 0], spiral.spiral[:, 1], color='green', linewidth=3, label='Spiral Path')
     
     plt.scatter(centre_points[0][0], centre_points[0][1], color='black', zorder=5, s=70, label='Start Point')
     plt.scatter(centre_points[-2][0], centre_points[-2][1], color='purple', zorder=5, s=70, label='End Point')
+
+    if problem_point is not None:
+        plt.scatter(problem_point[0], problem_point[1], color='green', zorder=5, s=70, label='PROBLEM Point')
     
     # # Plot segments
     if show_segs:
@@ -895,6 +1017,7 @@ def generate_ellipse_track(num_points=500):
 def generate_real_track(file_name):
     x = []
     y = []
+    file_name = r'src/planning/path_planning/path_planning/tofu_fitz_path_planning_junior_project/test_tracks/' + file_name + r'.txt'
 
     # Open and read the file
     with open(file_name, 'r') as file:
@@ -916,6 +1039,8 @@ def estimate_lap_time_realistic(
     top_speed_ms=95.0  # ≈ 342 km/h
 ):
     n = len(path_points)
+    if n == 0:
+        return 0
     distances = np.zeros(n - 1)
     curvatures = np.zeros(n - 2)
     speeds = np.zeros(n)
@@ -960,58 +1085,54 @@ def estimate_lap_time_realistic(
 
 # main----------------------------------------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    # Generation----------------------------------------------------------------------------------------------------------------------------------------------------------
-    if False:
-        pass
-        # centre_points = generate_sine_perturbed_circle()
-        # centre_points = generate_long_straight_track()
-        # centre_points = generate_oval_track()
-        # centre_points = generate_square_track_with_rounded_corners()
-        # centre_points = generate_flower_track()
-        # centre_points = generate_ellipse_track()
-        # centre_points = generate_real_track('berlin_2018.txt')
-        # centre_points = generate_real_track('modena_2019.txt')
-        # centre_points = generate_real_track('handling_track.txt')
-        # centre_points = generate_real_track('rounded_rectangle.txt')
-        # centre_points = generate_real_track('LVMS.txt')
-    # centre_points = generate_sine_perturbed_circle()
-    centre_points = generate_real_track('BrandsHatch.txt')
+    start_time = time.time()
 
+    # Generation----------------------------------------------------------------------------------------------------------------------------------------------------------
+    centre_points = generate_real_track('Nuerburgring')
     centre_points = np.array(centre_points)
     cone_distance_from_centre_points = 5
-    margin = 0.85
+    margin = 0.85 #max(2.3, min(0.85, cone_distance_from_centre_points // 2.5))
     blue_cones, yellow_cones = generate_cones(centre_points, offset=cone_distance_from_centre_points)
     blue_margin, yellow_margin = generate_cones(centre_points, offset=cone_distance_from_centre_points-margin) # car is approx 1.7m in width, so half of that
 
+
     # Corner Identification----------------------------------------------------------------------------------------------------------------------------------------------------------
-    fits = segment_centreline_and_fit_arcs(centre_points, window_length=20, step_size=1)
-    fits = classify_arcs_vs_straights(fits,
-                                      max_rms_err=1.0,
-                                      min_arc_angle=0.15,
-                                      max_R_for_corner=61)
-    segs = consolidate_segments(fits, min_straight_len=5)
-    corns = characterize_corners(segs, centre_points)
-    segs = attach_turn_directions(segs, corns)
-    segs = break_apart_severe_corners_and_join_straights(centre_points, segs)
+    segs = identify_segs(centre_points, window_length=20, max_R_for_corner=61)
+
     # Path Planning----------------------------------------------------------------------------------------------------------------------------------------------------------
     ranked_corners = rank_corners(centre_points, segs)
     spirals = euler_spirals(centre_points, blue_margin, yellow_margin, segs, ranked_corners, 
-                            threshold_distance=0.1, min_straight_length=1, traditional_apex_smoothing_sigma=10)
-    stitched_path = stitch_path(centre_points, segs, spirals, straight_sample_step=3)
-    try:
-        optimal_path = smooth_path(stitched_path, sigma=3)
-    except:
-        optimal_path = centre_points
-    # optimal_path = stitched_path
+                            threshold_distance=1, min_straight_length=1, traditional_apex_smoothing_sigma=10)
+    
+    stitched_path, spirals = stitch_path(centre_points, segs, spirals, straight_sample_step=3)
+    
+    sigma = 3
+    valid_path, problem_point = check_if_valid_path(stitched_path, blue_cones, yellow_cones, spirals)
+    if not valid_path or len(ranked_corners) < 3:
+        stitched_path = centre_points
+        print("Invalid path, using fallback")
+        sigma *= 0.6
+
+    if sigma != 0:
+        try:
+            optimal_path = smooth_path(stitched_path, sigma=sigma)
+        except:
+            optimal_path = smooth_path(centre_points, sigma=sigma)
+    else:
+        optimal_path = stitched_path
+
+    print(f"no. of corners: {len(ranked_corners)}")
 
     # Visualization & Testing----------------------------------------------------------------------------------------------------------------------------------------------------------
+    end_time = time.time()
     optimal_path_time = estimate_lap_time_realistic(optimal_path)
     centreline_time = estimate_lap_time_realistic(centre_points)
     reduction = (1-(optimal_path_time/centreline_time))*100
+    print(f"Execution time: {end_time - start_time:.3g}s")
     print(f"Optimal Path Lap Time: {optimal_path_time}s")
     print(f"Centreline Lap Time: {centreline_time}s")
     print(f"Lap time optimized by {reduction:.3g}%.")
-    visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path, show_segs=True)
+    visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path, problem_point, show_segs=True)
 
 
 

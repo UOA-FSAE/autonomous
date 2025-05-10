@@ -24,9 +24,9 @@ margin = 0.85
 angle_close_enough_threshold = max_direction_delta_deg//2 # degrees
 
 # state sample parameters-----------------------------------------------------------------------------------------------------------------------------------------------------------
-state_speed_sample = 5
+state_speed_sample = 6
 state_direction_sample = 9
-lateral_slices = 5
+lateral_slices = 6
 # longitudinal_slices = 100 # approximate
 
 corner_longitudinal_slices = 10 # approximate
@@ -513,6 +513,7 @@ def smooth_path(stitched_path, sigma=2):
 def generate_real_track(file_name):
     x = []
     y = []
+    file_name = r'src/planning/path_planning/path_planning/tofu_fitz_path_planning_junior_project/test_tracks/' + file_name + r'.txt'
 
     # Open and read the file
     with open(file_name, 'r') as file:
@@ -522,7 +523,8 @@ def generate_real_track(file_name):
                 x.append(float(parts[0]))
                 y.append(float(parts[1]))
 
-    return np.array(np.column_stack((x, y)))
+    return np.column_stack((x, y))
+
 
 def generate_cones(centre_points, offset=1.5):
     """
@@ -650,7 +652,7 @@ if __name__ == "__main__":
     start_time = time.time()
 
     # Generation----------------------------------------------------------------------------------------------------------------------------------------------------------
-    centre = generate_real_track('berlin_2018.txt')
+    centre = generate_real_track('BrandsHatch')
     left, right = generate_cones(centre, offset=cone_distance_from_centre_points)
     left_margin, right_margin = generate_cones(centre, offset=cone_distance_from_centre_points-margin) # car is approx 1.7m in width, so half of that
 
@@ -662,8 +664,7 @@ if __name__ == "__main__":
     longitudinal_slices = 100
     states = spawn_states(centre, left_margin, right_margin, state_speeds, state_relative_angles_deg, longitudinal_slices)
     compute_transition_costs(states, longitudinal_slices, lateral_slices, state_speeds, state_relative_angles_deg, angle_threshold_deg=angle_close_enough_threshold, F_max=F_max, mass=mass, k_a=k_a)
-    optimal_path = smooth_path(compute_optimal_path(states, longitudinal_slices, lateral_slices, state_speeds, state_relative_angles_deg), 
-                               sigma=1)
+    optimal_path = compute_optimal_path(states, longitudinal_slices, lateral_slices, state_speeds, state_relative_angles_deg)
     
     # Visualization & Testing----------------------------------------------------------------------------------------------------------------------------------------------------------
     
