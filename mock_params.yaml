@@ -1,0 +1,9 @@
+/tutorial/our_stimulus:
+  ros__parameters:
+    accel: 0.0
+    angle: 10.0
+    angular_vel: 0.0
+    use_sim_time: false
+    vel: 11.0
+    verbose: false
+

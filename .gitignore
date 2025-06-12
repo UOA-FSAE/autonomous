@@ -13,7 +13,11 @@ kaggle.json
 *.srv
 .venv/*
 wandb/
-*.engine
 *.onnx
 *.svo2
 *.pt
+./scrum/planningDesign/shortHorzion/build
+./scrum/planningDesign/shortHorzion/install
+./scrum/planningDesign/shortHorzion/log
+**/CMakeFiles*
+**/cmake_build*

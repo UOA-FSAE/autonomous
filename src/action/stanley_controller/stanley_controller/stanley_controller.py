@@ -4,7 +4,6 @@ import numpy as np
 import math
 from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import Pose
-from moa_msgs.msg import ConeMap
 from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
 from std_msgs.msg import Header
 
@@ -77,17 +76,19 @@ class StanleyControl(Node):
         self.k_stanley = 5.0 #stanley Controller gain
         self.k_speed = 1.0 #speed Controller gain
         self.cam_fron_axle_dist= 1 #[m] Wheel base of vehicle
-        self.max_steer = 27.0  # [degrees] max steering angle
+        self.max_steer = 22.0  # [degrees] max steering angle
         self.target_speed = 3.6/3.6 #[m/s]
 
+        # The max steering angle is now +-30
+
         #Subscribe for car pose and track
-        self.create_subscription(PoseArray, "moa/selected_trajectory", self.selected_trajectory_handler, 5)
+        self.create_subscription(PoseArray, "selected_trajectory", self.selected_trajectory_handler, 5)
         self.create_subscription(Pose, "car_position", self.main_hearback, 5)
         #Publish result
-        self.cmd_drive_pub = self.create_publisher(AckermannDrive, "/drive", 5)
-        self.cmd_vis_pub = self.create_publisher(AckermannDrive, "/drive_vis", 5)
-        self.cmd_vel_pub = self.create_publisher(AckermannDriveStamped, "/cmd_vel", 5)
-        self.create_publisher(Pose, "moa/track_point", 5)
+        self.cmd_drive_pub = self.create_publisher(AckermannDrive, "drive", 5)
+        self.cmd_vis_pub = self.create_publisher(AckermannDrive, "drive_vis", 5)
+        self.cmd_vel_pub = self.create_publisher(AckermannDriveStamped, "cmd_vel", 5)
+        self.create_publisher(Pose, "track_point", 5)
     
     def main_hearback(self, msg):
         car_pose = msg
@@ -149,7 +150,7 @@ class StanleyControl(Node):
 
         self.cmd_drive_pub.publish(msg1)
         self.cmd_vis_pub.publish(msg2)
-        #self.cmd_vel_pub.publish(msg3)
+        self.cmd_vel_pub.publish(msg3)
 
     
     def get_front_axle_position(self,cam_pos,car_yaw):
