@@ -9,6 +9,8 @@ class mock_stimulus_node(Node):
     def __init__(self):
         super().__init__("stimulus_node")
         
+        
+        # real angle is 1.395 the magnitude of the input angle 
         self.declare_parameters(
             namespace='',
             parameters=[
