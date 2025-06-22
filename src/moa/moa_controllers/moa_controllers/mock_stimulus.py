@@ -6,8 +6,8 @@ from std_msgs.msg import Header
 
 class mock_stimulus_node(Node):
     
-    def __init__(self):
-        super().__init__("stimulus_node")
+    def __init__(self, *vargs, **kwargs):
+        super().__init__("stimulus_node", *vargs, **kwargs)
         
         
         # real angle is 1.395 the magnitude of the input angle 
@@ -45,7 +45,7 @@ class mock_stimulus_node(Node):
             jerk = 0.0,
         )
         
-        ackermannHeader = Header(stamp=Node("stimulus_node").get_clock().now().to_msg(),
+        ackermannHeader = Header(stamp=self.get_clock().now().to_msg(),
                                   frame_id="gokart")
         
         msg = AckermannDriveStamped(
@@ -57,15 +57,27 @@ class mock_stimulus_node(Node):
         
 
 
+from rclpy.context import Context
+from rclpy.executors import SingleThreadedExecutor
+
 
 def main(args=None):
-    rclpy.init(args=args)
+    ctx = Context()
+    rclpy.init(args=args, context=ctx)
+    executor = SingleThreadedExecutor(context=ctx)
+    node = mock_stimulus_node(context=ctx)
+    executor.add_node(node)
+    
 
-    node = mock_stimulus_node()
-    rclpy.spin(node)
+    try:
+        executor.spin()
+    except KeyboardInterrupt:
+        node.get_logger().info("keyboard interrupt signal intercepted")
+    finally:
+        node.get_logger().info("shutting down")
 
-    node.destroy_node()
-    rclpy.shutdown()
+    # node.destroy_node()
+    # rclpy.shutdown()
 
 if __name__ == "__main__":
     main()

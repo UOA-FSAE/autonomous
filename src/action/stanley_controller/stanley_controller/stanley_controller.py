@@ -76,8 +76,8 @@ class StanleyControl(Node):
         self.k_stanley = 5.0 #stanley Controller gain
         self.k_speed = 1.0 #speed Controller gain
         self.cam_fron_axle_dist= 1 #[m] Wheel base of vehicle
-        self.max_steer = 22.0  # [degrees] max steering angle
-        self.target_speed = 3.6/3.6 #[m/s]
+        self.max_steer = 30.0  # [degrees] max steering angle
+        self.target_speed = 36/3.6 #[m/s]
 
         # The max steering angle is now +-30
 
@@ -110,7 +110,7 @@ class StanleyControl(Node):
             delta = math.degrees(theta_e + theta_d)
             delta = np.clip(delta, -self.max_steer, self.max_steer)
             self.steering_angle = delta
-            self.target_speed = 3.6/3.6
+            self.target_speed = 36/3.6
         else:
             self.steering_angle = 0
             self.target_speed = 0
@@ -148,6 +148,8 @@ class StanleyControl(Node):
                  "drive": msg1}
         msg3 = AckermannDriveStamped(**args3)
 
+        self.get_logger().warn('Sending Angle: ' + str(self.steering_angle))
+        
         self.cmd_drive_pub.publish(msg1)
         self.cmd_vis_pub.publish(msg2)
         self.cmd_vel_pub.publish(msg3)
