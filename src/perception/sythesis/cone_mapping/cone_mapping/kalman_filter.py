@@ -29,8 +29,8 @@ class Item(object):
 
 
 class Cone_Mapper(Node):
-    def __init__(self):
-        super().__init__('cone_mapper')
+    def __init__(self, *vargs, **kwargs):
+        super().__init__('cone_mapper', *vargs, **kwargs)
         qos_profile = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
             history=QoSHistoryPolicy.KEEP_LAST,
@@ -366,12 +366,24 @@ class Cone_Mapper(Node):
         self.times_modified_publisher.publish(times_modified_list)
         
 
+from rclpy.context import Context
+from rclpy.executors import SingleThreadedExecutor
+
 def main(args=None):
-    rclpy.init(args=args)
-    cone_mapper = Cone_Mapper()
-    rclpy.spin(cone_mapper)
+    ctx = Context()
+    rclpy.init(args=args, context=ctx)
+    executor = SingleThreadedExecutor(context=ctx)
+    cone_mapper = Cone_Mapper(context=ctx)
+    executor.add_node(cone_mapper) 
+    
+    try:
+        executor.spin() # shuts down internally on SIGINT signal
+    except KeyboardInterrupt:
+        cone_mapper.get_logger().info("keyboard interrupt signal intercepted")
+    finally:
+        cone_mapper.get_logger().info("shutting down")
+        
     cone_mapper.destroy_node()
-    rclpy.shutdown()
 
 
 if __name__ == '__main__':
