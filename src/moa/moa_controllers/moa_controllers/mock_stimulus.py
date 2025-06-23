@@ -2,13 +2,15 @@ import rclpy
 from rclpy.node import Node
 from ackermann_msgs.msg import AckermannDrive, AckermannDriveStamped
 from std_msgs.msg import Header
-from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.task import Future
 
 
 class mock_stimulus_node(Node):
     
     def __init__(self, *vargs, **kwargs):
         super().__init__("stimulus_node", *vargs, **kwargs)
+        
+        self.shutdown_future = Future()
         
         # real angle is 1.395 the magnitude of the input angle 
         self.declare_parameters(
@@ -56,41 +58,25 @@ class mock_stimulus_node(Node):
         self.cmd_vel_pub.publish(msg)
         
 
-
-from rclpy.context import Context
-from rclpy.executors import SingleThreadedExecutor
 import signal
 
-shutdown_requested = False
-
 def main(args=None):
-    ctx = Context()
     
     # Handle shutdown via Ctrl+C
     def sigint_handler(signum, frame):
         global shutdown_requested
         node.get_logger().info("handling SIGINT - triggering shut down")
-        shutdown_requested = True
+        if not node.shutdown_future.done():
+            node.shutdown_future.set_result(None)
     signal.signal(signal.SIGINT, sigint_handler)
-    rclpy.init(args=args, context=ctx, signal_handler_options=rclpy.signals.SignalHandlerOptions.NO)
+    rclpy.init(args=args, signal_handler_options=rclpy.signals.SignalHandlerOptions.NO)
     
-    executor = SingleThreadedExecutor(context=ctx)
+    node = mock_stimulus_node()
     
-    node = mock_stimulus_node(context=ctx)
-    executor.add_node(node)
-    
-    
-    try:
-        while ctx.ok() and not shutdown_requested:
-            executor.spin_once(timeout_sec=0)
-    except KeyboardInterrupt:
-        # KeyboardInterrupts will not be raised on Ctrl+C as rcl does not handle the
-        # SIGINT signal
-        node.get_logger().info("keyboard interrupt signal intercepted")
-    finally:
-        node.get_logger().info("shutting down")
-
+    rclpy.spin_until_future_complete(node, node.shutdown_future)
+    node.get_logger().info("shutting down")
     node.destroy_node()
+    rclpy.shutdown()
 
 if __name__ == "__main__":
     main()
