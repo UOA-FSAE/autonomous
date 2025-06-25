@@ -42,5 +42,12 @@ def generate_launch_description():
             executable="ack_to_can_node",
             name='ack_to_can',
             output="screen"
+        ),
+        launch_ros.actions.Node(
+            namespace='moa',
+            package="path_planning_visualiser",
+            executable="image_throttler",
+            name='image_throttler',
+            output="screen"
         )
     ])

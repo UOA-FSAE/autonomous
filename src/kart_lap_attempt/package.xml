@@ -18,6 +18,8 @@
   <depend>CanTalk</depend>
   <depend>cone_mapping</depend>
   <exec_depend>ros2launch</exec_depend>
+  <exec_depend>path_planning_visualiser</exec_depend>
+
 
   <!-- Testing dependencies -->
   <test_depend>ament_copyright</test_depend>
