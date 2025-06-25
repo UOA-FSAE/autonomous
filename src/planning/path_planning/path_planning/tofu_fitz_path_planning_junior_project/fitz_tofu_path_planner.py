@@ -1088,7 +1088,7 @@ if __name__ == "__main__":
     start_time = time.time()
 
     # Generation----------------------------------------------------------------------------------------------------------------------------------------------------------
-    centre_points = generate_real_track('Nuerburgring')
+    centre_points = generate_real_track('Shanghai')
     centre_points = np.array(centre_points)
     cone_distance_from_centre_points = 5
     margin = 0.85 #max(2.3, min(0.85, cone_distance_from_centre_points // 2.5))
@@ -1102,7 +1102,7 @@ if __name__ == "__main__":
     # Path Planning----------------------------------------------------------------------------------------------------------------------------------------------------------
     ranked_corners = rank_corners(centre_points, segs)
     spirals = euler_spirals(centre_points, blue_margin, yellow_margin, segs, ranked_corners, 
-                            threshold_distance=1, min_straight_length=1, traditional_apex_smoothing_sigma=10)
+                            threshold_distance=0.5, min_straight_length=1, traditional_apex_smoothing_sigma=10)
     
     stitched_path, spirals = stitch_path(centre_points, segs, spirals, straight_sample_step=3)
     
@@ -1121,7 +1121,7 @@ if __name__ == "__main__":
     else:
         optimal_path = stitched_path
 
-    print(f"no. of corners: {len(ranked_corners)}")
+    # print(f"no. of corners: {len(ranked_corners)}")
 
     # Visualization & Testing----------------------------------------------------------------------------------------------------------------------------------------------------------
     end_time = time.time()
@@ -1132,7 +1132,7 @@ if __name__ == "__main__":
     print(f"Optimal Path Lap Time: {optimal_path_time}s")
     print(f"Centreline Lap Time: {centreline_time}s")
     print(f"Lap time optimized by {reduction:.3g}%.")
-    visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path, problem_point, show_segs=True)
+    visualize(centre_points, blue_cones, yellow_cones, blue_margin, yellow_margin, segs, spirals, stitched_path, optimal_path, problem_point, show_segs=False)
 
 
 

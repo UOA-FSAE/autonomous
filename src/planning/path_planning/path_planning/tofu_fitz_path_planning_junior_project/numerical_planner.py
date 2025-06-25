@@ -652,7 +652,7 @@ if __name__ == "__main__":
     start_time = time.time()
 
     # Generation----------------------------------------------------------------------------------------------------------------------------------------------------------
-    centre = generate_real_track('BrandsHatch')
+    centre = generate_real_track('berlin_2018')
     left, right = generate_cones(centre, offset=cone_distance_from_centre_points)
     left_margin, right_margin = generate_cones(centre, offset=cone_distance_from_centre_points-margin) # car is approx 1.7m in width, so half of that
 
@@ -661,7 +661,7 @@ if __name__ == "__main__":
 
     # centre_optimized, left_optimized, right_optimized, longitudinal_slices = optimize_track(centre, left_margin, right_margin, segs)
     # states = spawn_states(centre_optimized, left_optimized, right_optimized, state_speeds, state_relative_angles_deg, longitudinal_slices)
-    longitudinal_slices = 100
+    longitudinal_slices = 70
     states = spawn_states(centre, left_margin, right_margin, state_speeds, state_relative_angles_deg, longitudinal_slices)
     compute_transition_costs(states, longitudinal_slices, lateral_slices, state_speeds, state_relative_angles_deg, angle_threshold_deg=angle_close_enough_threshold, F_max=F_max, mass=mass, k_a=k_a)
     optimal_path = compute_optimal_path(states, longitudinal_slices, lateral_slices, state_speeds, state_relative_angles_deg)
