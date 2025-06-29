@@ -2,10 +2,17 @@ import launch
 import launch.actions
 import launch_ros.actions
 from launch import LaunchDescription
+from launch.actions.declare_launch_argument import DeclareLaunchArgument
 from launch_ros.actions import Node
+from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
     return LaunchDescription([
+        DeclareLaunchArgument(
+        'can_id',
+        default_value='0x300',
+        description='The frame ID for the CAN messages containing Ackermann commands that are sent to the car'
+        ),
         Node(
             namespace='moa',
             package='zed_launch',
@@ -41,6 +48,7 @@ def generate_launch_description():
             package="moa_controllers",
             executable="ack_to_can_node",
             name='ack_to_can',
+            parameters=[{'can_id': LaunchConfiguration('can_id')}],
             output="screen"
         ),
         launch_ros.actions.Node(

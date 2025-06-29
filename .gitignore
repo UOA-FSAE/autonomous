@@ -13,7 +13,6 @@ kaggle.json
 *.srv
 .venv/*
 wandb/
-*.engine
 *.onnx
 *.svo2
 *.pt
