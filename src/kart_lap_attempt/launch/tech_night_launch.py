@@ -6,22 +6,16 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     return LaunchDescription([
-        # Node(
-        #     namespace='moa',
-        #     package='zed_launch',
-        #     executable='zed_launch_node',
-        #     name='perception'
-        # ),
         Node(
             namespace='moa',
-            package='cone_mapping',
-            executable='kalman_filter',
-            name='kalman_filter'
+            package='zed_launch',
+            executable='zed_launch_node',
+            name='perception'
         ),
         Node(
             namespace='moa',
             package='path_planning',
-            executable='fasttube',
+            executable='fasttube_without_kalman',
             name='centerline_planner'
         ),
         Node(

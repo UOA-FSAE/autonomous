@@ -28,6 +28,8 @@ setup(
             'trajectory_optimisation = path_planning.trajectory_optimisation_CS:main',
             'center_line = path_planning.simple_centerline_planner:main',
             'fasttube = path_planning.fasttube_planner:main'
+            
+            'fasttube_without_kalman = path_planning.fasttube_without_kalman:main'
         ],
     },
 )
