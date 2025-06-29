@@ -65,3 +65,12 @@ make build target=jetson
 ```
 make up target=jetson
 ```
+
+
+
+
+
+
+
+ros2 bag 
+ros2 bag record -o bags/loop1 /moa/image_throttled /moa/cone_detection /moa/car_position /moa/car_velocity /moa/cmd_vel /moa/pub_raw_can

@@ -21,3 +21,5 @@ wandb/
 ./scrum/planningDesign/shortHorzion/log
 **/CMakeFiles*
 **/cmake_build*
+logging/
+bags/
