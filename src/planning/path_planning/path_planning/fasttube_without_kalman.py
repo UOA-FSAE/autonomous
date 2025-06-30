@@ -137,7 +137,7 @@ class centerline_planner(Node):
             plt.plot(lbx,lby,'*b',label='left')
             plt.plot(rbx,rby,'*y',label='right')
             plt.plot(centx,centy,'-r',label='centerline')
-            plt.plot(car_x,car_y,'*k',label='car position')
+            plt.plot(0,0,'*k',label='car position')
 
             plt.pause(0.1)
             plt.legend()

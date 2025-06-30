@@ -37,7 +37,7 @@ def generate_launch_description():
             executable='controller',
             name='stanley_controller',
             parameters=[
-                {'vel': 10.0},
+                {'vel': 9.0},
             ],
         ),
         launch_ros.actions.Node(
@@ -66,6 +66,10 @@ def generate_launch_description():
             package='foxglove_bridge',
             executable='foxglove_bridge',
             name='foxglove_bridge',
-            parameters=[{'port':8765, 'topic_whitelist': ["/moa/image_throttled", "/moa/cmd_vel", "/moa/selected_trajectory"]}]
+            # parameters=[{'port':8765, 'topic_whitelist':
+            # ["/moa/image_throttled", "/moa/cmd_vel",
+            # "/moa/selected_trajectory", "/moa/car_position",
+            # "/moa/cone_detection", "/moa/times_modified"]}]
+            parameters=[{'port':8765, 'topic_whitelist': ["/moa/image_throttled"]}]
         ),
     ])

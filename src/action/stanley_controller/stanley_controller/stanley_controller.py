@@ -84,7 +84,11 @@ class StanleyControl(Node):
         self.k_speed = 1.0 #speed Controller gain
         self.cam_fron_axle_dist= 1 #[m] Wheel base of vehicle
         self.max_steer = 30.0  # [degrees] max steering angle
-        self.target_speed = self.get_parameter('vel') #[m/s]
+        self.target_speed = self.get_parameter('vel').get_parameter_value() #[m/s]
+        
+        self.trajectory_in_global_frame = PoseArray()
+        self.tx = []
+        self.ty = []
 
         # The max steering angle is now +-30
 
@@ -103,8 +107,12 @@ class StanleyControl(Node):
         car_yaw = car_pose.orientation.w
         self.car_yaw_corrected = self.normalize_angle(car_yaw-4.71)
         
+        # self.target_speed = 10.0
+        self.target_speed = self.get_parameter('vel').get_parameter_value().double_value
+        
+        self.get_logger().info(f"car_yaw: {car_yaw}, car_yaw_corrected: {self.car_yaw_corrected}")
 
-        if hasattr(self, "trajectory_in_global_frame"):
+        if len(self.tx) > 1 and len(self.ty) > 1:
             #Get Car front axle center position
             axle_pos = self.get_front_axle_position(camera_position,self.car_yaw_corrected)
             #Get closest point on track and distance error
@@ -112,19 +120,26 @@ class StanleyControl(Node):
             #Compute target yaw - Angle from positive x in radians
             target_yaw = self.cal_target_yaw(cls_point)
             #Compute steering angle
-            theta_e = -(target_yaw-self.car_yaw_corrected)
-            theta_d = -np.arctan2(self.k_stanley * error_front_axle, self.target_speed)
+            theta_e = -self.circular_diff(target_yaw, self.car_yaw_corrected)
+            theta_d = -(np.arctan2(self.k_stanley * error_front_axle, self.target_speed))
+
+            self.get_logger().info(f"target_yaw: {target_yaw}")
+        
             delta = math.degrees(theta_e + theta_d)
             delta = np.clip(delta, -self.max_steer, self.max_steer)
+            
+            self.get_logger().info(f"steering angle: {delta}")
+            
             self.steering_angle = delta
-            self.target_speed = 9.0
+            self.target_speed = self.target_speed
         else:
             self.steering_angle = 0
             self.target_speed = 0
-            self.get_logger().info("Warning: no trajectory found, will set steering angle to 0!!!!")
+            self.get_logger().warn("Warning: no trajectory found, will set steering angle to 0!!!!")
 
         # Publish command for velocity
         self.publish_ackermann()
+   
 
     def selected_trajectory_handler(self, msg):
         self.trajectory_in_global_frame = msg
@@ -167,6 +182,7 @@ class StanleyControl(Node):
         return axle_pos
 
     def get_closest_track_point(self,axle_pos,car_yaw):
+        # self.get_logger().info(f"target position: {self.tx}, {self.ty}")
         dx = list(axle_pos[0]-np.asarray(self.tx))
         dy = list(axle_pos[1]-np.asarray(self.ty))
         d = np.hypot(dx, dy)
@@ -188,8 +204,8 @@ class StanleyControl(Node):
         target_yaw_op1 = self.normalize_angle(np.arctan2(dy,dx))
         target_yaw_op2 = self.normalize_angle(target_yaw_op1 + np.pi)
 
-        yaw_diff_1 = abs(target_yaw_op1-self.car_yaw_corrected)
-        yaw_diff_2 = abs(target_yaw_op2-self.car_yaw_corrected)
+        yaw_diff_1 = abs(self.circular_diff(target_yaw_op1, self.car_yaw_corrected))
+        yaw_diff_2 = abs(self.circular_diff(target_yaw_op2, self.car_yaw_corrected))
         target_yaw2 = target_yaw_op1 if yaw_diff_1<yaw_diff_2 else target_yaw_op2
 
         dy_dx = np.gradient(self.ty, self.tx)
@@ -197,10 +213,13 @@ class StanleyControl(Node):
         rate = dy_dx[cls_point]
         target_yaw = np.arctan(rate)
         if(rate)<0: 
-            target_yaw = 3.14+target_yaw
-
-
+            target_yaw = math.pi+target_yaw
+    
+    
         return target_yaw2
+    
+    def circular_diff(self, a, b):
+        return angle_mod(a - b)
     
     def normalize_angle(self,angle):
         return angle_mod(angle,zero_2_2pi=True)
@@ -217,3 +236,5 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+
+

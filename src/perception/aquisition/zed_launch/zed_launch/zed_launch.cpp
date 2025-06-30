@@ -37,6 +37,7 @@ int main(int argc, char * argv[])
   init_parameters.sdk_verbose = true;
   init_parameters.depth_mode = sl::DEPTH_MODE::ULTRA;
   init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::RIGHT_HANDED_Z_UP; 
+  
 
   if (argc > 1) {
     std::string zed_opt = argv[1];
@@ -50,6 +51,11 @@ int main(int argc, char * argv[])
       std::cerr << "Camera Open " << returned_state << ", exit program." << std::endl;
       return EXIT_FAILURE;
   }
+  
+  zed.setCameraSettings(sl::VIDEO_SETTINGS::EXPOSURE, sl::VIDEO_SETTINGS_VALUE_AUTO);
+  zed.setCameraSettings(sl::VIDEO_SETTINGS::BRIGHTNESS, 5);
+  zed.setCameraSettings(sl::VIDEO_SETTINGS::CONTRAST, 7);
+  zed.setCameraSettings(sl::VIDEO_SETTINGS::SATURATION, 7);
 
   // Enable positional tracking
   zed.enablePositionalTracking();

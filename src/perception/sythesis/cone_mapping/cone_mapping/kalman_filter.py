@@ -84,8 +84,23 @@ class Cone_Mapper(Node):
 
         # Modify rate
         self.modify_rate = 1.08
+        
+        # Detection reset counter
+        self.reset_counter = 0
+        self.reset_count = 400
 
-################################################################################ (parameters to tune)
+################################################################################
+#(parameters to tune)
+
+    def reset_map(self):
+        self.left_track = Track()
+        self.left_track.cones = []
+        self.right_track = Track()
+        self.right_track.cones = []
+
+        # KDTrees for searching
+        self.left_tree = kdtree.create(None, dimensions=2)
+        self.right_tree = kdtree.create(None, dimensions=2)
 
     def cones_callback(self, msg: Detections) -> None:
         """This function updates the existing cone map with newly detected cones and 
@@ -101,7 +116,12 @@ class Cone_Mapper(Node):
         if self.times_updated_counter > self.remove_point_counter:
             self.times_updated_counter = 0
             self.remove_cones()
-
+        
+        self.reset_counter += 1
+        if self.reset_counter > self.reset_count:
+            self.reset_counter = 0
+            self.reset_map()
+        
         self.left_track_publisher.publish(self.left_track)
         self.right_track_publisher.publish(self.right_track)
 
