@@ -75,7 +75,7 @@ class StanleyControl(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-            ('vel', 9.0),
+            ('vel', 8.0),
             ]
         )
         

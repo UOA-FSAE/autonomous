@@ -52,10 +52,11 @@ int main(int argc, char * argv[])
       return EXIT_FAILURE;
   }
   
-  zed.setCameraSettings(sl::VIDEO_SETTINGS::EXPOSURE, sl::VIDEO_SETTINGS_VALUE_AUTO);
-  zed.setCameraSettings(sl::VIDEO_SETTINGS::BRIGHTNESS, 5);
-  zed.setCameraSettings(sl::VIDEO_SETTINGS::CONTRAST, 7);
-  zed.setCameraSettings(sl::VIDEO_SETTINGS::SATURATION, 7);
+  
+  // zed.setCameraSettings(sl::VIDEO_SETTINGS::EXPOSURE, sl::VIDEO_SETTINGS_VALUE_AUTO);
+  // zed.setCameraSettings(sl::VIDEO_SETTINGS::BRIGHTNESS, 5);
+  // zed.setCameraSettings(sl::VIDEO_SETTINGS::CONTRAST, 7);
+  // zed.setCameraSettings(sl::VIDEO_SETTINGS::SATURATION, 7);
 
   // Enable positional tracking
   zed.enablePositionalTracking();

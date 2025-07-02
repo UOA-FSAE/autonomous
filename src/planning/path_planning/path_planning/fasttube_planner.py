@@ -16,7 +16,7 @@ class centerline_planner(Node):
 
         # parameters
         self._plot = True
-        self.look_forward = 4
+        self.look_forward = 6
         self.left_cones = []
         self.right_cones = []
         self.path_planner = PathPlanner(MissionTypes.trackdrive)
