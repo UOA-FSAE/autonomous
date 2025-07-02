@@ -28,8 +28,15 @@ class centerline_planner(Node):
 
         # publishers
         self.centerline_publisher = self.create_publisher(PoseArray, "selected_trajectory", 10)
+
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+            ('invert_cones', False),
+            ]
+        )
     
-    def set_car_position(self, msg: Pose) -> None:
+    def set_car_position(self, msg:Pose) -> None: 
         self.car_pose = msg
         self.loop()
 
@@ -152,10 +159,15 @@ class centerline_planner(Node):
             plt.ion()
             plt.clf()
 
-            plt.plot(lbx, lby, '*b', label='left')
-            plt.plot(rbx, rby, '*y', label='right')
-            plt.plot(centx, centy, '-r', label='centerline')
-            plt.plot(car_x, car_y, '*k', label='car position')
+            if not self.get_parameter('invert_cones').get_parameter_value().bool_value:
+                plt.plot(lbx,lby,'*b',label='left')
+                plt.plot(rbx,rby,'*y',label='right')
+            else:
+                plt.plot(lbx,lby,'*y',label='right')
+                plt.plot(rbx,rby,'*b',label='left')
+                
+            plt.plot(centx,centy,'-r',label='centerline')
+            plt.plot(car_x,car_y,'*k',label='car position')
 
             plt.pause(0.1)
             plt.legend()
