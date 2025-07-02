@@ -40,25 +40,49 @@ class centerline_planner(Node):
         self.car_pose = msg
         self.loop()
 
-    def left_cone_map_callback(self, msg:Track) -> None:
+    def left_cone_map_callback(self, msg: Track) -> None:
         self.left_cones = msg.cones
 
-    def right_cone_map_callback(self, msg:Track) -> None:
+    def right_cone_map_callback(self, msg: Track) -> None:
         self.right_cones = msg.cones
     
     def loop(self) -> None:
-        self.get_logger().info(f"car pose recieved = {hasattr(self,'car_pose')}")   
-        
-        if not hasattr(self,'car_pose'):
-            return 
-        
-        lb, rb = self.get_boundaries()   # get boundaries (list of [x,y] points)
+        self.get_logger().info(f"car pose received = {hasattr(self, 'car_pose')}")
 
-        if not len(lb) > 0 or not len(rb) > 0:
+        if not hasattr(self, 'car_pose'):
             return
 
-        lblocal, _, _= self.get_next_points(lb,self.look_forward)  # get local points (list of [x,y] points) close to car
-        rblocal, car_position, car_orientation = self.get_next_points(rb,self.look_forward)
+        lb, rb = self.get_boundaries()   # get boundaries (list of [x,y] points)
+
+        # >>> DEBUG override: when only one cone color is seen
+        if len(lb) > 0 and len(rb) == 0:  # only blue cones
+            self.get_logger().info("DEBUG: only blue cones -> full right")  # >>> LOG
+            car_x = self.car_pose.position.x     # >>> CHANGED
+            car_y = self.car_pose.position.y     # >>> CHANGED
+            # simple right-turn trajectory
+            right_line = [                      # >>> CHANGED
+                [car_x + 1.0, car_y + 1.0],
+                [car_x + 2.0, car_y + 2.0],
+            ]
+            msg = self.get_posearray_msg(right_line)  # >>> CHANGED
+            self.centerline_publisher.publish(msg)     # >>> CHANGED
+            return                                   # >>> CHANGED
+        elif len(rb) > 0 and len(lb) == 0:  # only yellow cones
+            self.get_logger().info("DEBUG: only yellow cones -> full left")   # >>> LOG
+            car_x = self.car_pose.position.x     # >>> CHANGED
+            car_y = self.car_pose.position.y     # >>> CHANGED
+            # simple left-turn trajectory
+            left_line = [
+                [car_x - 1.0, car_y + 1.0],
+                [car_x - 2.0, car_y + 2.0],
+            ]
+            msg = self.get_posearray_msg(left_line)   # >>> CHANGED
+            self.centerline_publisher.publish(msg)     # >>> CHANGED
+            return                                   # >>> CHANGED
+        # <<< end DEBUG override >>>
+
+        lblocal, _, _ = self.get_next_points(lb, self.look_forward)  # get local points (list of [x,y] points) close to car
+        rblocal, car_position, car_orientation = self.get_next_points(rb, self.look_forward)
 
         if not len(lblocal) > 0 or not len(rblocal) > 0:
             return
@@ -66,7 +90,7 @@ class centerline_planner(Node):
         global_cones = self.get_global_cones(lblocal, rblocal)
         car_direction = self.get_car_direction(car_orientation)
         
-        path = self.path_planner.calculate_path_in_global_frame(global_cones, car_position, car_direction) # compute centerline
+        path = self.path_planner.calculate_path_in_global_frame(global_cones, car_position, car_direction)  # compute centerline
         
         centerline = path[:, 1:3]
 
@@ -77,8 +101,7 @@ class centerline_planner(Node):
         msg = self.get_posearray_msg(centerline)
         self.centerline_publisher.publish(msg)
 
-        self.plot(lb,rb,centerline,self._plot) # plot
-        
+        self.plot(lb, rb, centerline, self._plot)  # plot
         
     def get_global_cones(self, lb, rb):
         cones_by_type = [np.zeros((0, 2)) for _ in range(5)]
@@ -86,10 +109,8 @@ class centerline_planner(Node):
         cones_by_type[ConeTypes.RIGHT] = rb
         return cones_by_type
         
-        
     def get_car_direction(self, car_orientation):
         return np.array([-math.sin(car_orientation), math.cos(car_orientation)])
-        
         
     # MAIN FUNCTIONS
     def get_boundaries(self):
@@ -99,47 +120,42 @@ class centerline_planner(Node):
 
         return left_cones, right_cones
 
-    def get_next_points(self,line,look_forward):
+    def get_next_points(self, line, look_forward):
         """Retrieves the points closest to the car
         *ASSUMES THE points ARE SORTED/ORDERED
         """
-        car_point = np.array([self.car_pose.position.x,self.car_pose.position.y])
+        car_point = np.array([self.car_pose.position.x, self.car_pose.position.y])
         car_orientation = self.car_pose.orientation.w
         points = np.array(line)
         
-        min_indx = np.argmin(np.linalg.norm(car_point-points, axis=1))
-        # min_indx += self.is_behind_car(points[min_indx], car_point, car_orientation)
-        points = self.get_local_points(min_indx,points,look_forward)
+        min_indx = np.argmin(np.linalg.norm(car_point - points, axis=1))
+        points = self.get_local_points(min_indx, points, look_forward)
 
         return points, car_point, car_orientation
-    
-    
+        
     def get_posearray_msg(self, line):
         pose_array = PoseArray()
 
         for P in line:
             pose = Pose()
-            pose.position.x = P[0]  # assing x,y values to position of pose
+            pose.position.x = P[0]
             pose.position.y = P[1]
             pose_array.poses.append(pose)
         
         return pose_array
-    
-    
-    def plot(self,lb,rb,centerline,to_plot=False):
+        
+    def plot(self, lb, rb, centerline, to_plot=False):
         """Plots the boundary and centerline points"""
         if to_plot:
-            # x, y points
             lb = np.array(lb)
             rb = np.array(rb)
             centerline = np.array(centerline)
 
-            lbx, lby = lb[:,0], lb[:,1]
-            rbx, rby = rb[:,0], rb[:,1]
-            centx, centy = centerline[:,0], centerline[:,1]
+            lbx, lby = lb[:, 0], lb[:, 1]
+            rbx, rby = rb[:, 0], rb[:, 1]
+            centx, centy = centerline[:, 0], centerline[:, 1]
             car_x, car_y = [self.car_pose.position.x, self.car_pose.position.y]
 
-            # plot
             plt.ion()
             plt.clf()
 
@@ -156,12 +172,12 @@ class centerline_planner(Node):
             plt.pause(0.1)
             plt.legend()
             plt.show()
-    
-    
-    def get_local_points(self,min_indx,points,look_forward):
-        remaining_points = len(points) - (min_indx+1) # number of points forwards the car has detected
-        if remaining_points < look_forward: look_forward = remaining_points+1
-        points = points[min_indx:min_indx+look_forward] # local points based on closest distance to car
+
+    def get_local_points(self, min_indx, points, look_forward):
+        remaining_points = len(points) - (min_indx + 1)
+        if remaining_points < look_forward:
+            look_forward = remaining_points + 1
+        points = points[min_indx:min_indx + look_forward]
 
         return points
 
