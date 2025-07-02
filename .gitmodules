@@ -1,9 +1,12 @@
 [submodule "src/hardware_drivers/CanTalk"]
 	path = src/hardware_drivers/CanTalk
 	url = https://github.com/UOA-FSAE/CanTalk.git
+	branch = nightly
 [submodule "ROS2-protobuff-compiler"]
 	path = ROS2-protobuff-compiler
 	url = https://github.com/UOA-FSAE/ROS2-protobuff-compiler.git
+	branch = trunk
 [submodule "Formula-Student-Driverless-Simulator"]
 	path = Formula-Student-Driverless-Simulator
 	url = https://github.com/FS-Driverless/Formula-Student-Driverless-Simulator.git
+	branch = master
