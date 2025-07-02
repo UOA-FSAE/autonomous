@@ -87,7 +87,7 @@ class Cone_Mapper(Node):
         
         # Detection reset counter
         self.reset_counter = 0
-        self.reset_count = 400
+        self.reset_count = 60
 
 ################################################################################
 #(parameters to tune)
