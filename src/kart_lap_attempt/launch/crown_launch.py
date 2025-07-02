@@ -7,7 +7,10 @@ from launch_ros.actions import Node
 from launch.substitutions import LaunchConfiguration
  
 def generate_launch_description():
-    return LaunchDescription([
+    invert_cones = True
+    visualize = False
+    
+    base_description = [
         DeclareLaunchArgument(
         'can_id',
         default_value='0x300',
@@ -23,13 +26,19 @@ def generate_launch_description():
             namespace='moa',
             package='cone_mapping',
             executable='kalman_filter',
-            name='kalman_filter'
+            name='kalman_filter',
+            parameters=[
+                {'invert_cones': invert_cones},
+            ],
         ),
         Node(
             namespace='moa',
             package='path_planning',
             executable='fasttube',
-            name='centerline_planner'
+            name='centerline_planner',
+            parameters=[
+                {'invert_cones': invert_cones},
+            ],
         ),
         Node(
             namespace='moa',
@@ -55,6 +64,8 @@ def generate_launch_description():
             output="screen"
         ),
         # visualisation
+    ]
+    visual_description = [
         launch_ros.actions.Node(
             namespace='moa',
             package="path_planning_visualiser",
@@ -71,5 +82,11 @@ def generate_launch_description():
             # "/moa/selected_trajectory", "/moa/car_position",
             # "/moa/cone_detection", "/moa/times_modified"]}]
             parameters=[{'port':8765, 'topic_whitelist': ["/moa/image_throttled"]}]
-        ),
-    ])
+        )
+    ]
+    description = base_description
+    
+    if (visualize):
+        description.extend(visual_description)
+        
+    return LaunchDescription(description)
