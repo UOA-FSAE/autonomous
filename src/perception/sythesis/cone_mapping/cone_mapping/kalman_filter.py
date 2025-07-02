@@ -89,6 +89,15 @@ class Cone_Mapper(Node):
         self.reset_counter = 0
         self.reset_count = 60
 
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+            ('blue_left_yellow_right', True),
+            ]
+        )
+
+        self.blue_left_yellow_right = self.get_parameter('blue_left_yellow_right').get_parameter_value()
+
 ################################################################################
 #(parameters to tune)
 
@@ -138,10 +147,16 @@ class Cone_Mapper(Node):
         global_yellow_cone_positions = self.cones_local_to_global(msg.yellow, car_position)
 
         # Update the left track and the right track if cones got detected
-        if len(global_blue_cone_positions) != 0:
-            self.update_left_track(global_blue_cone_positions)
-        if len(global_yellow_cone_positions) != 0:
-            self.update_right_track(global_yellow_cone_positions)
+        if self.blue_left_yellow_right:
+            if len(global_blue_cone_positions) != 0:
+                self.update_left_track(global_blue_cone_positions)
+            if len(global_yellow_cone_positions) != 0:
+                self.update_right_track(global_yellow_cone_positions)
+        else:
+            if len(global_yellow_cone_positions) != 0:
+                self.update_left_track(global_yellow_cone_positions)
+            if len(global_blue_cone_positions) != 0:
+                self.update_right_track(global_blue_cone_positions)
 
 
     def update_left_track(self, points: list) -> None:
