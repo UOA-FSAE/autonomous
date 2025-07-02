@@ -92,11 +92,9 @@ class Cone_Mapper(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-            ('invert_cones', True),
+            ('invert_cones', False),
             ]
         )
-
-        self.invert_cones = self.get_parameter('invert_cones').get_parameter_value()
 
 ################################################################################
 #(parameters to tune)
@@ -147,7 +145,7 @@ class Cone_Mapper(Node):
         global_yellow_cone_positions = self.cones_local_to_global(msg.yellow, car_position)
 
         # Update the left track and the right track if cones got detected
-        if self.invert_cones:
+        if not self.get_parameter('invert_cones').get_parameter_value().bool_value:
             if len(global_blue_cone_positions) != 0:
                 self.update_left_track(global_blue_cone_positions)
             if len(global_yellow_cone_positions) != 0:
