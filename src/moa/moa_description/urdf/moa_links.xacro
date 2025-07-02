@@ -7,31 +7,47 @@
     <!--chassis link-->
     <link name='chassis_link'>
         <visual>
+            <origin  xyz='0.281 0 -0.133' rpy='${pi} 0 0'/>
             <geometry>
                 <mesh filename='package://moa_description/meshes/Chassis.stl'/>
             </geometry>
             <material name='grey'>
                 <color rgba='0.4 0.4 0.4 1'/>
             </material> 
-            <origin  xyz='0.281 0 -0.133' rpy='${pi/2} 0 0'/>
         </visual>
+
+        <!-- inertial-->
+        <inertial>
+            <mass value="150.0"/>
+            <!-- assumed a box/cubeoid -->
+            <inertia ixx="625.0" ixy="0.0" ixz="0.0" iyy="625.0" iyz="0.0" izz="625.0"/>
+        </inertial>
+
+        <!-- collision-->
+        <collision>
+            <geometry>
+                <!-- <box size="5.0 5.0 5.0"/> -->
+                <mesh filename='package://moa_description/meshes/Chassis.stl'/>
+            </geometry>
+        </collision>
+        
     </link>
     
     <!--Wheel/Tyre link-->
     <xacro:tyre_link name='front_right_wheel_link'>
-        <origin xyz='0 0 0' rpy='${pi/2} 0 0'/>
+        <origin xyz='0 0 0' rpy='${pi} 0 0'/>
     </xacro:tyre_link>
 
     <xacro:tyre_link name='front_left_wheel_link'>
-        <origin xyz='0 0 0' rpy='${-pi/2} 0 0'/>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
     </xacro:tyre_link>
 
     <xacro:tyre_link name='rear_right_wheel_link'>
-        <origin xyz='0 0 0' rpy='${pi/2} 0 0'/>
+        <origin xyz='0 0 0' rpy='${pi} 0 0'/>
     </xacro:tyre_link>
 
     <xacro:tyre_link name='rear_left_wheel_link'>
-        <origin xyz='0 0 0' rpy='${-pi/2} 0 0'/>
+        <origin xyz='0 0 0' rpy='0 0 0'/>
     </xacro:tyre_link>
 
     <!--kingpin link-->

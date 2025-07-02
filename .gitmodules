@@ -1,6 +1,12 @@
-[submodule "src/hardware_drivers/foxglove-bridge"]
-	path = src/hardware_drivers/foxglove-bridge
-	url = https://github.com/foxglove/ros-foxglove-bridge.git
-[submodule "src/moa/cone-detection/cone_detection/yolov7"]
-	path = src/perception/cone-detection/cone_detection/yolov7
-	url = https://github.com/WongKinYiu/yolov7.git
+[submodule "src/hardware_drivers/CanTalk"]
+	path = src/hardware_drivers/CanTalk
+	url = https://github.com/UOA-FSAE/CanTalk.git
+	branch = nightly
+[submodule "ROS2-protobuff-compiler"]
+	path = ROS2-protobuff-compiler
+	url = https://github.com/UOA-FSAE/ROS2-protobuff-compiler.git
+	branch = trunk
+[submodule "Formula-Student-Driverless-Simulator"]
+	path = Formula-Student-Driverless-Simulator
+	url = https://github.com/FS-Driverless/Formula-Student-Driverless-Simulator.git
+	branch = master
