@@ -12,4 +12,7 @@
     <xacro:include filename="$(find moa_description)/urdf/moa_links.xacro" />
     <xacro:include filename="$(find moa_description)/urdf/moa_joints.xacro" />
 
+    <!-- gazebo-->
+    <xacro:include filename='$(find moa_description)/urdf/gazebo.xacro' />
+
 </robot>

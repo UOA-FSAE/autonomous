@@ -1,6 +1,0 @@
-uint8 ebs_active
-uint8 ts_active
-uint8 in_gear
-uint8 master_switch_on
-uint8 asb_ready
-uint8 brakes_engaged

@@ -26,12 +26,10 @@ services:
 
   autonomous_zed:
     image: zed_sdk
-
     privileged: true
-    
     build:
-      context: ..
-      dockerfile: .devcontainer/zed.Dockerfile
+      context: .
+      dockerfile: ./zed.Dockerfile
 
     environment:
       - DISPLAY
