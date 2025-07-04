@@ -1,0 +1,46 @@
+# T0fu: Please don't fuck with the actual .bashrc cuz I don't even wanna think about what could go wrong.
+# the .bashrc of the jetson sources this file, so please make anything you want here and it'll work just as good.
+echo "Added autonomous aliases."
+
+setdisp() {
+    export DISPLAY=192.168.50.$1:0
+}
+
+source /opt/ros/humble/setup.bash
+
+export ROS_DOMAIN_ID=47
+
+alias sros="source /opt/ros/humble/setup.bash"
+alias slros="source ./install/local_setup.bash"
+alias zdisp="export DISPLAY=192.168.50.102:0"
+
+alias cbuild="colcon build --symlink-install"
+alias cbuilds="colcon build --symlink-install --packages-select"
+
+#I cba remembering the whole process to run so:
+runkart() {
+  if [[ "$(basename "$PWD")" != "autonomous" ]]; then
+    cd ~/autonomous || { echo "Could not change to ~/autonomous"; return 1; }
+  fi
+
+  read -p "Have you built the workspace? (y/n): " built
+
+  if [[ "$built" == "n" || "$built" == "N" ]]; then
+    read -p "Enter the packages to build (space-separated): " -a pkgs
+    if [ ${#pkgs[@]} -eq 0 ]; then
+      echo "No packages provided. Exiting."
+      return 1
+    fi
+
+    echo "Building packages: ${pkgs[*]}"
+    colcon build --symlink-install --packages-select "${pkgs[@]}"
+  fi
+
+  sros
+  slros
+  echo "The ROS environment is set up ;). Hold onto the leash the kart will run soon"
+
+  echo "Launch by writing the package name and launch file. 
+  This function ends here so you have easier (press Tab) autocomplete features. eg. 
+  ros2 launch kart_lap_attempt crown_launch.py"
+}
