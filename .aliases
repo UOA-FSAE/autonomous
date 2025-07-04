@@ -43,4 +43,5 @@ runkart() {
   echo "Launch by writing the package name and launch file. 
   This function ends here so you have easier (press Tab) autocomplete features. eg. 
   ros2 launch kart_lap_attempt crown_launch.py"
+  echo "Done successfully."
 }
