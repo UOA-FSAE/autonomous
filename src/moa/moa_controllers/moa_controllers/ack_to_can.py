@@ -6,6 +6,8 @@ from rclpy.node import Node
 import numpy as np
 from math import pi
 from rcl_interfaces.msg import ParameterDescriptor
+from geometry_msgs.msg import Pose
+import math
 
 # Ros Imports
 from ackermann_msgs.msg import AckermannDriveStamped
@@ -40,12 +42,27 @@ def get_can_data_zero():
     dtype=np.uint8
     )
     return ackermann_vals.tolist()
+
+def float_to_bytes_16bit(val, scale=100.0):
+    #convert float to 2 bytes with scsaling
+    int_val = int(val * scale)
+    return [(int_val >>8) & 0xFF, int_val & 0xFF]
+
  
 #  todo create a CAN message class wrapper
 
 
 class AckToCan(Node):
     def __init__(self, *vargs, **kwargs):
+        
+        self.prev_position = None
+        self.prev_time = None
+        
+        #state variables for the filter
+        self.alpha = 0.1 #guess lol
+        self.speed_estimate = 0.0
+        self.raw_speed_feedback = 0.0
+                
         super().__init__('ackermann_to_can', *vargs, **kwargs) # node name (NB: MoTec listens to this)
 
         # init ros_arg parameters
@@ -53,8 +70,17 @@ class AckToCan(Node):
                                300, 
                                ParameterDescriptor(description= 'The frame ID for the CAN messages sent to the car'))
         
+        #this can id could be an issue, make sure you can use 301 as well
+        self.declare_parameter('car_position_can_id', 
+                               301,
+                               ParameterDescriptor(description= 'The frame ID for the CAN messages for the IMU car pos'))
+        
         self.can_id = self.get_parameter('can_id').get_parameter_value().integer_value
         self.get_logger().info(f'the value of can_id is {self.can_id}')
+        
+        self.car_position_can_id = self.get_parameter('car_position_can_id').get_parameter_value().integer_value
+        self.get_logger().info(f'the value of the car_position_can_id is {self.car_position_can_id}')
+        
 
         # create subscriber for ackermann input
         self.subscription = self.create_subscription(
@@ -62,6 +88,13 @@ class AckToCan(Node):
             'cmd_vel',                 # topic receiving from
             self.AckToCan_publish_callback,    #callback function
             10                         # qos profile
+        )
+        
+        self.position_subscription = self.create_subscription(
+            Pose,
+            'car_position',
+            self.position_to_can_callback,
+            10
         )
 
         # create publisher for CAN
@@ -112,6 +145,8 @@ class AckToCan(Node):
         
         # publish CAN to topic
         self.can_pub.publish(can_msg)
+        
+        
         
         
     def ackermann_to_can_parser(self, ack_msg: AckermannDriveStamped) -> Optional[CANStamped]:
@@ -201,7 +236,43 @@ class AckToCan(Node):
             )
 
         return ackermann_vals.tolist()
+    
+    def position_to_can_callback(self, pose_msg: Pose):
+        current_time = self.get_clock().now()
+        x = pose_msg.position.x
+        y = pose_msg.position.y
+        
+        if self.prev_position is not None and self.prev_time is not None:
+            dt = 0.1  # seconds
+            #note line above is hardcoded, use this if issues
+            #dt = (current_time - self.prev_time).nanoseconds / 1e9
+            
+            if dt == 0:
+                return  # Avoid division by zero
+            
+            dx = x - self.prev_position[0]
+            dy = y - self.prev_position[1]
+            
+            vx = dx/dt  #in m/s
+            vy = dy/dt  #in m/s
+            
+            raw_speed = math.sqrt(vx**2 + vy**2)
+            self.speed_estimate = (self.alpha * self.speed_estimate) +((1-self.alpha) * raw_speed)
+            
+            #formatting speed as 2-byte ints (this will comvert to cm/s)
+            speed_bytes = float_to_bytes_16bit(self.speed_estimate) 
+            
+            #creating can msg
+            can_msg= CANStamped()
+            can_msg.header.frame_id = 'velocity_feedback'
+            can_msg.can.id = self.car_position_can_id
+            can_msg.can.data = speed_bytes + [0] * 6
 
+            self.can_pub.publish(can_msg)
+        
+        self.prev_position = (x, y)
+        self.prev_time = current_time
+                
 
     def AckToCan_publish_callback(self, ack_msg: AckermannDriveStamped):
         can_msg = CANStamped()
@@ -218,7 +289,7 @@ class AckToCan(Node):
             can_msg.can.data = data
             # publish CAN to topic
             self.can_pub.publish(can_msg)
-
+            
 
 def shutdown_cb():
     print("[from callback] - shutting down ")
