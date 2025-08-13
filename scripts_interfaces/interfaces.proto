@@ -1,14 +1,5 @@
 syntax = "proto3";
 
-message AllStates {
-    uint16 id = 1; 
-    repeated ackermann_msgs.AckermannDrive states = 2;
-}
-
-message AllTrajectories {
-    uint16 id = 1;
-    repeated geometry_msgs.PoseArray trajectories = 2;
-}
 message BoundaryStamped {
     std_msgs.Header header = 1;
     repeated float32 coords = 2;
@@ -19,16 +10,6 @@ message CAN {
     bool is_rtr = 2;
     repeated uint8 data = 3;
 }
-
-message CandidateState {
-    Ackermann ackermann = 1;
-    float32 lateralVel = 2;
-}
-
-message CandidateStates {
-    repeated CandidateState candidateState = 1;
-}
-
 message CANStamped {
     std_msgs.Header header = 1;
     CAN can = 2;
@@ -41,9 +22,18 @@ message Detections {
     repeated geometry_msgs.Point small_orange = 4; 
     repeated geometry_msgs.Point big_orange = 5; 
 }
+message DetectionsStamped {
+    std_msgs.Header header = 1;
+    Detections detections = 2;
+}
+
 
 message Track { 
     repeated geometry_msgs.Point cones = 1;
+}
+message TrackStamped {
+    std_msgs.Header header = 1;
+    Track track = 2;
 }
 
 message HardwareStates {
@@ -58,6 +48,7 @@ message HardwareStatesStamped {
     std_msgs.Header header = 1;
     HardwareStates hardware_states = 2;
 }
+
 message MissionStates {
     uint8 mission_selected = 1;
     uint8 mission_finished = 2;
@@ -80,10 +71,22 @@ message Pulse{
 
 service Services {
     rpc CANSendReq (CANSendReqRequest) returns (CANSendReqResponce); 
+    rpc CANSendReqStamped (CANSendReqRequestStamped) returns (CANSendReqResponceStamped); 
 }
+
 message CANSendReqRequest {   
     CAN can = 1;
 }
 message CANSendReqResponce {
     bool sent =1;
 }
+message CANSendReqRequestStamped {   
+    std_msgs.Header header = 2;
+    CAN can = 1;
+}
+message CANSendReqResponceStamped {
+    std_msgs.Header header = 2;
+    bool sent =1;
+}
+
+    
