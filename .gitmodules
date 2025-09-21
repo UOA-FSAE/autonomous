@@ -5,9 +5,9 @@
 [submodule "ROS2-protobuff-compiler"]
 	path = ROS2-protobuff-compiler
 	url = https://github.com/UOA-FSAE/ROS2-protobuff-compiler.git
-	branch = trunk
-	
+	branch = trunk	
+
 [submodule "src/fs_msgs"]
-	path = fs_msgs
-	url = git@github.com:FS-Driverless/fs_msgs.git
+	path = src/fs_msgs
+	url = https://github.com/FS-Driverless/fs_msgs.git
 	branch = ros2
