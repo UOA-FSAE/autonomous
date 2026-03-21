@@ -42,7 +42,7 @@ def generate_launch_description():
         ),
         launch_ros.actions.Node(
             namespace='moa',
-            package="moa_controllers",
+            package="gocart_control",
             executable="ack_to_can_node",
             name='ack_to_can',
             parameters=[{'can_id': LaunchConfiguration('can_id')}],

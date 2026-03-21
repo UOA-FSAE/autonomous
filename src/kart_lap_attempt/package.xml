@@ -14,7 +14,7 @@
   <depend>zed_launch</depend>
   <depend>path_planning</depend>
   <depend>stanley_controller</depend>
-  <depend>moa_controllers</depend>
+  <depend>gocart_control</depend>
   <depend>CanTalk</depend>
   <depend>cone_mapping</depend>
   <exec_depend>ros2launch</exec_depend>

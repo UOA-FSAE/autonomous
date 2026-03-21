@@ -1,6 +1,6 @@
 import pytest
 import rclpy
-from moa_controllers.sys_status import as_status
+from gocart_control.sys_status import as_status
 from fsae_interfaces.msg import HardwareStatesStamped, MissionStatesStamped
 from ackermann_msgs.msg import AckermannDriveStamped
 

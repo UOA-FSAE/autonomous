@@ -1,13 +1,15 @@
-import launch
-import launch_ros.actions
+from launch_ros.actions import Node
+from launch import LaunchDescription
 from launch.actions.declare_launch_argument import DeclareLaunchArgument
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+
 from ament_index_python import get_package_share_directory
 import os
 
 def generate_launch_description():  
-    return launch.LaunchDescription([
+    return LaunchDescription([
         DeclareLaunchArgument(
         'can_id',
         default_value='0x300',
@@ -20,34 +22,49 @@ def generate_launch_description():
             description='The subscriber and publisher topic for the Can Adapter node'
         ),
         
-        launch_ros.actions.Node(
-            package='moa_controllers',
+        Node(
+            package='gocart_control',
             executable='ack_to_can_node',
             name='ack_to_can_node',
-            parameters=[{'can_id': launch.substitutions.LaunchConfiguration('can_id')}],
+            parameters=[{'can_id': LaunchConfiguration('can_id')}],
+        ),
+
+        Node(
+            namespace='moa',
+            package='zed_launch',
+            executable='zed_launch_node',
+            name='perception'
+        ),
+
+        Node(
+            namespace='moa',
+            package='cone_mapping',
+            executable='kalman_filter',
+            name='kalman_filter'
+        ),
+        
+        Node(
+            namespace='moa',
+            package='path_planning',
+            executable='fasttube',
+            name='centerline_planner'
         ),
         
         # # uncomment when CAN interface is completed
-        # launch_ros.actions.Node(
-        #     package='moa_driver',
+        # Node(
+        #     package='gocart_driver',
         #     executable='can_interface_jnano',
         #     name='can_interface_jnano'),
-
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource([os.path.join(
-        #         get_package_share_directory('gocart_description'), 'launch'),
-        #                     '/urdf_model.py'])),
-
-        launch_ros.actions.Node(
-            package='moa_controllers',
-            executable='as_status_node',
-            name='as_status_node',
-        ),
         
-        launch_ros.actions.Node(
+        Node(
             package='CanTalk',
             executable='candapter_node',
             name='candapter_node',
-            remappings=[('can',launch.substitutions.LaunchConfiguration('candapter_topic'))],
+            remappings=[('can', LaunchConfiguration('candapter_topic'))],
+        ),
+        Node(
+            package='gocart_control',
+            executable='mock_stimulus',
+            name='mock_stimulus',
         ),
   ])

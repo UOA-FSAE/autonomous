@@ -23,36 +23,15 @@ def generate_launch_description():
         ),
         
         Node(
-            package='moa_controllers',
+            package='gocart_control',
             executable='ack_to_can_node',
             name='ack_to_can_node',
             parameters=[{'can_id': LaunchConfiguration('can_id')}],
         ),
-
-        Node(
-            namespace='moa',
-            package='zed_launch',
-            executable='zed_launch_node',
-            name='perception'
-        ),
-
-        Node(
-            namespace='moa',
-            package='cone_mapping',
-            executable='kalman_filter',
-            name='kalman_filter'
-        ),
-        
-        Node(
-            namespace='moa',
-            package='path_planning',
-            executable='fasttube',
-            name='centerline_planner'
-        ),
         
         # # uncomment when CAN interface is completed
         # Node(
-        #     package='moa_driver',
+        #     package='gocart_driver',
         #     executable='can_interface_jnano',
         #     name='can_interface_jnano'),
         
@@ -63,7 +42,7 @@ def generate_launch_description():
             remappings=[('can', LaunchConfiguration('candapter_topic'))],
         ),
         Node(
-            package='moa_controllers',
+            package='gocart_control',
             executable='mock_stimulus',
             name='mock_stimulus',
         ),

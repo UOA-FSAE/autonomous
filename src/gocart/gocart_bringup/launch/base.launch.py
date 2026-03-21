@@ -1,15 +1,13 @@
-from launch_ros.actions import Node
-from launch import LaunchDescription
+import launch
+import launch_ros.actions
 from launch.actions.declare_launch_argument import DeclareLaunchArgument
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
-
 from ament_index_python import get_package_share_directory
 import os
 
 def generate_launch_description():  
-    return LaunchDescription([
+    return launch.LaunchDescription([
         DeclareLaunchArgument(
         'can_id',
         default_value='0x300',
@@ -22,28 +20,34 @@ def generate_launch_description():
             description='The subscriber and publisher topic for the Can Adapter node'
         ),
         
-        Node(
-            package='moa_controllers',
+        launch_ros.actions.Node(
+            package='gocart_control',
             executable='ack_to_can_node',
             name='ack_to_can_node',
-            parameters=[{'can_id': LaunchConfiguration('can_id')}],
+            parameters=[{'can_id': launch.substitutions.LaunchConfiguration('can_id')}],
         ),
         
         # # uncomment when CAN interface is completed
-        # Node(
-        #     package='moa_driver',
+        # launch_ros.actions.Node(
+        #     package='gocart_driver',
         #     executable='can_interface_jnano',
         #     name='can_interface_jnano'),
+
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource([os.path.join(
+        #         get_package_share_directory('gocart_description'), 'launch'),
+        #                     '/urdf_model.py'])),
+
+        launch_ros.actions.Node(
+            package='gocart_control',
+            executable='as_status_node',
+            name='as_status_node',
+        ),
         
-        Node(
+        launch_ros.actions.Node(
             package='CanTalk',
             executable='candapter_node',
             name='candapter_node',
-            remappings=[('can', LaunchConfiguration('candapter_topic'))],
-        ),
-        Node(
-            package='moa_controllers',
-            executable='mock_stimulus',
-            name='mock_stimulus',
+            remappings=[('can',launch.substitutions.LaunchConfiguration('candapter_topic'))],
         ),
   ])

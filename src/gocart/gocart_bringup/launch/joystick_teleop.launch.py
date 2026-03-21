@@ -37,13 +37,13 @@ def generate_launch_description():
         # add base launch file
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([
-                FindPackageShare("moa_bringup"),'/launch','/base.launch.py'
+                FindPackageShare("gocart_bringup"),'/launch','/base.launch.py'
             ])
         ),
 
         # joystick teleoperation node
         Node(
-            package='moa_controllers',
+            package='gocart_control',
             executable='joystick_teleop',
             name='joystick_teleop',
             parameters=[{'max_speed', LaunchConfiguration("max_speed")},

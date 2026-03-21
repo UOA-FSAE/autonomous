@@ -22,7 +22,7 @@ def generate_launch_description():
         
         # acker to can
         launch_ros.actions.Node(
-            package='moa_controllers',
+            package='gocart_control',
             executable='ack_to_can_node',
             name='ack_to_can_node',
             parameters=[{'can_id': launch.substitutions.LaunchConfiguration('can_id')}],
@@ -77,7 +77,7 @@ def generate_launch_description():
 
         # controller
         launch_ros.actions.Node(
-            package='moa_controllers',
+            package='gocart_control',
             executable='trajectory_follower',
             name='trajectory_follower',
         ),
@@ -97,7 +97,7 @@ def generate_launch_description():
         ),
 
         # launch_ros.actions.Node(
-        #     package='moa_controllers',
+        #     package='gocart_control',
         #     executable='as_status_node',
         #     name='as_status_node',
         # ),
