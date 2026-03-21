@@ -1,11 +1,11 @@
 # UOA FSAE — Autonomous System
 
 ROS 2 workspace for the University of Auckland Formula SAE autonomous go-kart.
-The car drives itself around a cone-lined track using a ZED stereo camera for perception,
+Currently, the car drives itself around a cone-lined track using a ZED stereo camera for perception,
 Kalman-filter-based landmark mapping, fast-tube path planning, and Stanley lateral control,
 all bridged to the physical kart over CAN.
 
-> **Platform:** NVIDIA Jetson (L4T 35.4) · ROS 2 Jazzy · ZED 2i stereo camera
+> **Platform:** NVIDIA Jetson (L4T 35.4) · ROS 2 Jazzy (on the autonomous PC, Humble on the Jetson - needs to be upgraded) · ZED 2i stereo camera
 > **Build system:** colcon (ament_cmake + ament_python)
 
 ---
@@ -134,7 +134,7 @@ ZED Camera → Cone Landmark Mapper → Fast-Tube Planner → Stanley Controller
 
 Optional (set `visualize = True`): image_throttler + foxglove_bridge on port 8765.
 
-### `gocart_autonomous_no_kalman.launch.py` — Without SLAM
+### `gocart_autonomous_no_kalman.launch.py` — Without Kalman Filter for cone positions
 
 Same pipeline but skips `cone_landmark_mapper`, uses `fasttube_without_kalman` instead,
 runs at `vel: 10.0`, and always enables Foxglove visualisation.
