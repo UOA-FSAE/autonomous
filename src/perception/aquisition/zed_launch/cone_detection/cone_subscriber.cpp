@@ -18,7 +18,7 @@
 #include <iostream>
 
 #include "rclcpp/rclcpp.hpp"
-#include "moa_msgs/msg/detections.hpp"
+#include "fsae_interfaces/msg/detections.hpp"
 
 using std::placeholders::_1;
 
@@ -28,12 +28,12 @@ public:
   ConeSubscriber()
   : Node("cone_subscriber")
   {
-    subscription_ = this->create_subscription<moa_msgs::msg::Detections>(
+    subscription_ = this->create_subscription<fsae_interfaces::msg::Detections>(
       "cone_detection", 10, std::bind(&ConeSubscriber::cone_detection_callback, this, _1));
   }
 
 private:
-  void cone_detection_callback(const moa_msgs::msg::Detections & msg) const
+  void cone_detection_callback(const fsae_interfaces::msg::Detections & msg) const
   {
     for (auto i = 0u; i < msg.blue.size(); i++)
     {
@@ -41,7 +41,7 @@ private:
       std::cout << "blue: " << i << " " << msg.blue[i].x << " " << msg.blue[i].y << " " << distance << std::endl;
     }
   }
-  rclcpp::Subscription<moa_msgs::msg::Detections>::SharedPtr subscription_;
+  rclcpp::Subscription<fsae_interfaces::msg::Detections>::SharedPtr subscription_;
 };
 
 int main(int argc, char * argv[])

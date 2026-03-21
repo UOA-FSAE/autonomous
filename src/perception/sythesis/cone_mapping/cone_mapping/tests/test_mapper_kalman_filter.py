@@ -1,5 +1,5 @@
 from perception.sythesis.cone_mapping.cone_mapping.kalman_filter import Cone_Mapper
-from moa_msgs.msg import ConeMap
+from fsae_interfaces.msg import ConeMap
 
 def Transformation_test(mapper: Cone_Mapper, msg : ConeMap):
     """Extract measurement state from the Cone Map message subscription

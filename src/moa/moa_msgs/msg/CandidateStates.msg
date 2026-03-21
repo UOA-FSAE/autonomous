@@ -1,1 +1,0 @@
-CandidateState[] candidateState 

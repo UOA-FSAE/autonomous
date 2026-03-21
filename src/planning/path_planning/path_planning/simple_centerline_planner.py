@@ -6,7 +6,7 @@ from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
 
 from geometry_msgs.msg import Pose, PoseArray
-from moa_msgs.msg import ConeMap, Cone
+from fsae_interfaces.msg import ConeMap, Cone
 
 
 

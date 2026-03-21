@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 from foxglove_msgs.msg import LinePrimitive, Color, SceneEntity, SceneUpdate, ArrowPrimitive, SpherePrimitive, PoseInFrame, PosesInFrame
 from geometry_msgs.msg import Point, Quaternion, Pose, Vector3, Quaternion, PoseArray
-#from moa_msgs.msg import AllTrajectories, AllStates
+#from fsae_interfaces.msg import AllTrajectories, AllStates
 from visualization_msgs.msg import Marker, MarkerArray
-from moa_msgs.msg import AllTrajectories
+from fsae_interfaces.msg import AllTrajectories
 from ackermann_msgs.msg import AckermannDrive
 
 from builtin_interfaces.msg import Time, Duration

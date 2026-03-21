@@ -30,7 +30,7 @@ find_package(cv_bridge REQUIRED)
 
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(moa_msgs REQUIRED)
+find_package(fsae_interfaces REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -105,7 +105,7 @@ add_executable(cone_subscriber cone_detection/cone_subscriber.cpp)
 ament_target_dependencies(cone_subscriber
   rclcpp
   std_msgs
-  moa_msgs
+  fsae_interfaces
   geometry_msgs
 )
 
@@ -113,7 +113,7 @@ add_executable(localisation_subscriber localisation/localisation_subscriber.cpp)
 ament_target_dependencies(localisation_subscriber
   rclcpp
   std_msgs
-  moa_msgs
+  fsae_interfaces
   geometry_msgs
 )
 
@@ -122,7 +122,7 @@ ament_target_dependencies(zed_launch_node
   cv_bridge
   OpenCV
   std_msgs
-  moa_msgs
+  fsae_interfaces
   geometry_msgs
   visualization_msgs
   sensor_msgs

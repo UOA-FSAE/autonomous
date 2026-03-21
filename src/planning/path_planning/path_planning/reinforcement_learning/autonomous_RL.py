@@ -5,7 +5,7 @@ import numpy as np
 
 import rclpy
 from rclpy.node import Node
-from moa_msgs.msg import Cone, ConeMap
+from fsae_interfaces.msg import Cone, ConeMap
 from std_msgs.msg import Float32
 from geometry_msgs.msg import PoseArray, Pose
 

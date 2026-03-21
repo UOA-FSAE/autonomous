@@ -9,7 +9,7 @@
 
 #include "std_msgs/msg/string.hpp"
 #include "geometry_msgs/msg/pose.hpp"
-#include "moa_msgs/msg/detections.hpp"
+#include "fsae_interfaces/msg/detections.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "geometry_msgs/msg/vector3.hpp"
 
@@ -25,7 +25,7 @@ public:
     cam_w_pose.pose_data.setIdentity();
 
     // Create the publishers
-    cone_detection_publisher = this->create_publisher<moa_msgs::msg::Detections>("zed/cone_detection", 10);
+    cone_detection_publisher = this->create_publisher<fsae_interfaces::msg::Detections>("zed/cone_detection", 10);
     car_position_publisher = this->create_publisher<geometry_msgs::msg::Pose>("zed/car_position", 10);
     car_velocity_publisher = this->create_publisher<geometry_msgs::msg::Vector3>("zed/car_velocity", 10);
     image_publisher = this->create_publisher<sensor_msgs::msg::Image>("zed/image", 10);
@@ -49,7 +49,7 @@ private:
     std::string model_name = "cone_detection_model.engine";
 
     // Publishers
-    rclcpp::Publisher<moa_msgs::msg::Detections>::SharedPtr cone_detection_publisher;
+    rclcpp::Publisher<fsae_interfaces::msg::Detections>::SharedPtr cone_detection_publisher;
     rclcpp::Publisher<geometry_msgs::msg::Pose>::SharedPtr car_position_publisher;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_publisher;
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr car_velocity_publisher;

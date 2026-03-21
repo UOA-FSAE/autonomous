@@ -6,9 +6,9 @@ from example_interfaces.srv import AddTwoInts
 
 import rclpy
 from rclpy.node import Node
-from moa_msgs.msg import Cone, ConeMap, BoundaryStamped
+from fsae_interfaces.msg import Cone, ConeMap, BoundaryStamped
 from std_msgs.msg import Header
-# from moa_msgs.msg import OccupancyGrid
+# from fsae_interfaces.msg import OccupancyGrid
 import math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D

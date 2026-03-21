@@ -10,7 +10,7 @@
   <depend>ackermann_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
-  <depend>moa_msgs</depend>
+  <depend>fsae_interfaces</depend>
 
   <depend>python3-numpy</depend>
   <depend>python3-matplotlib</depend>

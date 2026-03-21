@@ -23,7 +23,7 @@ using namespace nvinfer1;
 #include "std_msgs/msg/string.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/pose.hpp"
-#include "moa_msgs/msg/detections.hpp"
+#include "fsae_interfaces/msg/detections.hpp"
 #include "sensor_msgs/msg/image.hpp"
 
 std::mutex mtx;
@@ -133,7 +133,7 @@ void ZedLaunchNode::cone_detection_loop()
         }
 
         // Publish the detected objects
-        moa_msgs::msg::Detections detectionsMsg;
+        fsae_interfaces::msg::Detections detectionsMsg;
 
         int count = 0;
         for (sl::ObjectData& obj : objects.object_list) {

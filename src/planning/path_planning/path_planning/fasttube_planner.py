@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 
-from moa_msgs.msg import Track
+from fsae_interfaces.msg import Track
 from geometry_msgs.msg import Pose, PoseArray
 
 import numpy as np

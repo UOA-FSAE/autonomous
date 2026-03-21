@@ -1,4 +1,4 @@
-from moa_msgs.msg import Cone
+from fsae_interfaces.msg import Cone
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Pose

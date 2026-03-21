@@ -8,7 +8,7 @@ from rclpy.executors import SingleThreadedExecutor
 from std_msgs.msg import Float32, Float64
 
 from geometry_msgs.msg import PoseArray, Pose
-from moa_msgs.msg import ConeMap
+from fsae_interfaces.msg import ConeMap
 
 from std_msgs.msg import Header
 from builtin_interfaces.msg import Time

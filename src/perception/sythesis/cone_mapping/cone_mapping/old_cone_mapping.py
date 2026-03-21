@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
-from moa_msgs.msg import ConeMap, Cones, Cone
+from fsae_interfaces.msg import ConeMap, Cones, Cone
 from geometry_msgs.msg import Point, Quaternion, Pose, PoseWithCovariance
 
 import math

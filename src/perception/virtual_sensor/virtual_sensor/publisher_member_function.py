@@ -16,8 +16,8 @@ import rclpy
 from rclpy.node import Node
 
 from std_msgs.msg import String
-from moa_msgs.msg import ConeMap
-from moa_msgs.msg import Cone
+from fsae_interfaces.msg import ConeMap
+from fsae_interfaces.msg import Cone
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import PoseWithCovariance;

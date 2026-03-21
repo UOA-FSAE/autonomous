@@ -9,7 +9,7 @@ from message_filters import ApproximateTimeSynchronizer, Subscriber
 # ROS imports
 from ackermann_msgs.msg import AckermannDriveStamped
 from std_msgs.msg import UInt8
-from moa_msgs.msg import HardwareStatesStamped, MissionStatesStamped
+from fsae_interfaces.msg import HardwareStatesStamped, MissionStatesStamped
 
 
 class as_status(Node):

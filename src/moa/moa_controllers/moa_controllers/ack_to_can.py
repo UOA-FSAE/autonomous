@@ -9,7 +9,7 @@ from rcl_interfaces.msg import ParameterDescriptor
 
 # Ros Imports
 from ackermann_msgs.msg import AckermannDriveStamped
-from moa_msgs.msg import CANStamped
+from fsae_interfaces.msg import CANStamped
 
 def can_data_is_valid(data):
     from collections.abc import Sequence

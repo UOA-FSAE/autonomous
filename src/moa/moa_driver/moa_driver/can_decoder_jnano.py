@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 
 # import all msg types needed
-from moa_msgs.msg import CANStamped
+from fsae_interfaces.msg import CANStamped
 from sensor_msgs.msg import BatteryState # https://docs.ros2.org/foxy/api/sensor_msgs/msg/BatteryState.html
 from ackermann_msgs.msg import AckermannStamped # http://docs.ros.org/en/api/ackermann_msgs/html/msg/AckermannDriveStamped.html
 

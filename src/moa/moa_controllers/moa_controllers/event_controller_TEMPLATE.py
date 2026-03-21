@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from moa_msgs.msg import Pulse
+from fsae_interfaces.msg import Pulse
 from std_msgs.msg import UInt8, String
 
 MAXLAPS = 3

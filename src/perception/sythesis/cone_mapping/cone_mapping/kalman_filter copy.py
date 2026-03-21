@@ -3,7 +3,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
 from std_msgs.msg import Float32MultiArray
-from moa_msgs.msg import Detections, Track
+from fsae_interfaces.msg import Detections, Track
 from geometry_msgs.msg import Point, Quaternion, Pose, PoseWithCovariance
 
 import math
