@@ -21,7 +21,6 @@ setup(
 	entry_points={
 		    'console_scripts': [
                     'kalman_filter = cone_mapping.kalman_filter:main',
-                    'db_scan = cone_mapping.db_scan:main',
 		    ],
 	},
 )

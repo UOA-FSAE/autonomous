@@ -21,7 +21,6 @@ setup(
     entry_points={
         'console_scripts': [
             'can_decoder_jnano = moa_driver.can_decoder_jnano:main',
-            'can_interface_jnano = moa_driver.can_interface_jnano:main',
         ]
     },
 )

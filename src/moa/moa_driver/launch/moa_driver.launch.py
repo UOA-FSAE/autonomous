@@ -9,14 +9,6 @@ def generate_launch_description():
         output='screen'
     )
     
-    can_interface = Node(
-        package='moa_driver',
-        executable='can_interface_jnano',
-        name='can_interface_node',
-        output='screen'
-    )
-
     return LaunchDescription([
         can_decoder,
-        can_interface
     ])
