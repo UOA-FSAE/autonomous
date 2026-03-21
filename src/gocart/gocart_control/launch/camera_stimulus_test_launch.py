@@ -31,7 +31,7 @@ def generate_launch_description():
 
         Node(
             namespace='moa',
-            package='zed_launch',
+            package='zed_perception',
             executable='zed_launch_node',
             name='perception'
         ),
@@ -45,7 +45,7 @@ def generate_launch_description():
         
         Node(
             namespace='moa',
-            package='path_planning',
+            package='fsae_planning',
             executable='fasttube',
             name='centerline_planner'
         ),

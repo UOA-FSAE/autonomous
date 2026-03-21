@@ -15,19 +15,19 @@ def generate_launch_description():
         ),
         Node(
             namespace='moa',
-            package='zed_launch',
+            package='zed_perception',
             executable='zed_launch_node',
             name='perception'
         ),
         Node(
             namespace='moa',
-            package='path_planning',
+            package='fsae_planning',
             executable='fasttube_without_kalman',
             name='centerline_planner'
         ),
         Node(
             namespace='moa',
-            package='stanley_controller',
+            package='fsae_control',
             executable='controller',
             name='stanley_controller',
             parameters=[
