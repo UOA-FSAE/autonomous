@@ -25,10 +25,10 @@ public:
     cam_w_pose.pose_data.setIdentity();
 
     // Create the publishers
-    cone_detection_publisher = this->create_publisher<moa_msgs::msg::Detections>("cone_detection", 10);
-    car_position_publisher = this->create_publisher<geometry_msgs::msg::Pose>("car_position", 10);
-    car_velocity_publisher = this->create_publisher<geometry_msgs::msg::Vector3>("car_velocity", 10);
-    image_publisher = this->create_publisher<sensor_msgs::msg::Image>("image", 10);
+    cone_detection_publisher = this->create_publisher<moa_msgs::msg::Detections>("zed/cone_detection", 10);
+    car_position_publisher = this->create_publisher<geometry_msgs::msg::Pose>("zed/car_position", 10);
+    car_velocity_publisher = this->create_publisher<geometry_msgs::msg::Vector3>("zed/car_velocity", 10);
+    image_publisher = this->create_publisher<sensor_msgs::msg::Image>("zed/image", 10);
 
     // Start the threads
     std::thread t1(&ZedLaunchNode::cone_detection_loop, this);

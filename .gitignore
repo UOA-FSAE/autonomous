@@ -1,25 +1,47 @@
+# IDE and editor settings
 .idea/
-build
-install
-log
-kaggle.json
+.vs/
+.vscode/
+
+# Local devcontainer overrides
 .devcontainer/docker-compose.yml
 .devcontainer/zed.Dockerfile
 .devcontainer/ros2_ws.Dockerfile
-.vscode/settings.json
-.vscode/c_cpp_properties.json
+
+# ROS/colcon build artifacts
+build/
+install/
+log/
+**/CMakeFiles*/
+**/cmake_build*/
+./scrum/planningDesign/shortHorzion/build/
+./scrum/planningDesign/shortHorzion/install/
+./scrum/planningDesign/shortHorzion/log/
+
+# Python
 **/__pycache__/
-*.msg
-*.srv
-.venv/*
-wandb/
-*.onnx
-*.svo2
-*.pt
-./scrum/planningDesign/shortHorzion/build
-./scrum/planningDesign/shortHorzion/install
-./scrum/planningDesign/shortHorzion/log
-**/CMakeFiles*
-**/cmake_build*
+.venv/
+*.py[cod]
+
+# Logs and experiment outputs
 logging/
+wandb/
+*.log
+
+# Models and large artifacts
+*.onnx
+*.pt
+*.svo2
+
+# Data dumps
 bags/
+
+# Secrets/local credentials
+kaggle.json
+
+# OS/editor temp files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~

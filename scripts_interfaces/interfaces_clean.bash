@@ -1,1 +1,0 @@
-python3 ROS2-protobuff-compiler/protobuf2rosmsg.py -m src/moa/moa_msgs/msg -s src/moa/moa_msgs/srv -c
