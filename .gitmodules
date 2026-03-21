@@ -1,5 +1,5 @@
-[submodule "src/hardware_drivers/CanTalk"]
-	path = src/hardware_drivers/CanTalk
+[submodule "src/gocart/CanTalk"]
+	path = src/gocart/CanTalk
 	url = https://github.com/UOA-FSAE/CanTalk.git
 	branch = nightly
 [submodule "ROS2-protobuff-compiler"]
@@ -10,9 +10,9 @@
 	path = Formula-Student-Driverless-Simulator
 	url = https://github.com/FS-Driverless/Formula-Student-Driverless-Simulator.git
 	branch = master
-[submodule "src/hardware_drivers/foxglove-bridge"]
-	path = src/hardware_drivers/foxglove-bridge
+[submodule "src/third_party/foxglove-bridge"]
+	path = src/third_party/foxglove-bridge
 	url = https://github.com/foxglove/ros-foxglove-bridge.git
-[submodule "src/perception/cone-detection/cone_detection/yolov7"]
+[submodule "src/third_party/yolov7"]
 	path = src/third_party/yolov7
 	url = https://github.com/WongKinYiu/yolov7.git
