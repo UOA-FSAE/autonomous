@@ -7,7 +7,7 @@ from launch.actions import OpaqueFunction
 import os
 
 def generate_launch_description():
-    package_name = 'cone_mapping'
+    package_name = 'fsae_slam'
     package_dir = os.path.join(get_package_prefix(package_name), 'lib', package_name)   # directory of installed node names
     mappers = os.listdir(package_dir)  # retrieves installed node names 
 
@@ -16,7 +16,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'node_name',
             default_value='kalman_filter',
-            description='which node from cone_mapping package to launch'
+            description='which node from fsae_slam package to launch'
         )
     ]
 

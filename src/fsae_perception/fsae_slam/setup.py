@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'cone_mapping'
+package_name = 'fsae_slam'
 
 setup(
     name=package_name,
@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
 	entry_points={
 		    'console_scripts': [
-                    'kalman_filter = cone_mapping.kalman_filter:main',
+                    'kalman_filter = fsae_slam.cone_landmark_mapper:main',
 		    ],
 	},
 )

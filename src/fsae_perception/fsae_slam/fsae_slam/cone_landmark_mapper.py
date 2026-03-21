@@ -1,3 +1,27 @@
+"""
+Cone Landmark Mapper — maintains a persistent map of cone positions on the track.
+
+Subscribes to /cone_detection (fsae_interfaces/Detections) which provides the
+car's pose and lists of blue/yellow cones in the camera's local frame.
+
+For each detection frame:
+  1. Transforms cone positions from the car's local frame to the global frame.
+  2. Matches each observed cone to the nearest known landmark using a KD-tree
+     (within a configurable match radius).
+  3. If matched: refines the landmark's position via a 1-D Kalman filter and
+     increments a confidence counter.
+  4. If unmatched: inserts a new landmark into the map.
+  5. Periodically prunes low-confidence landmarks (those not seen often enough).
+
+Publishes:
+  /left_track  (fsae_interfaces/Track) — refined blue cone positions
+  /right_track (fsae_interfaces/Track) — refined yellow cone positions
+  /times_modified (Float32MultiArray)  — confidence scores of pruned cones (debug)
+
+Parameters:
+  invert_cones (bool, default False) — swap blue↔yellow track assignment
+"""
+
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy

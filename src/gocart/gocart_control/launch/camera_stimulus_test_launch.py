@@ -38,9 +38,9 @@ def generate_launch_description():
 
         Node(
             namespace='moa',
-            package='cone_mapping',
+            package='fsae_slam',
             executable='kalman_filter',
-            name='kalman_filter'
+            name='cone_landmark_mapper'
         ),
         
         Node(
