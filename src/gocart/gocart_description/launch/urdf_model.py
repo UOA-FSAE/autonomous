@@ -12,7 +12,7 @@ import xacro
 
 def generate_launch_description():
 
-    # pkg_install_path = get_package_share_directory('moa_description')
+    # pkg_install_path = get_package_share_directory('gocart_description')
 
     # if 'GAZEBO_MODEL_PATH' in os.environ:
     #     model_path =  os.environ['GAZEBO_MODEL_PATH'] + ':' + pkg_install_path
@@ -22,7 +22,7 @@ def generate_launch_description():
     # gazebo_env = SetEnvironmentVariable("GAZEBO_MODEL_PATH", model_path)
 
     # get urdf file path
-    path = os.path.join(get_package_share_directory('moa_description'))
+    path = os.path.join(get_package_share_directory('gocart_description'))
     xacro_file = os.path.join(path,'urdf','moa_robot.urdf.xacro')
     # process xacro file
     robot_description = xacro.process_file(xacro_file)

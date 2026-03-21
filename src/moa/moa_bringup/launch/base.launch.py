@@ -35,7 +35,7 @@ def generate_launch_description():
 
         # IncludeLaunchDescription(
         #     PythonLaunchDescriptionSource([os.path.join(
-        #         get_package_share_directory('moa_description'), 'launch'),
+        #         get_package_share_directory('gocart_description'), 'launch'),
         #                     '/urdf_model.py'])),
 
         launch_ros.actions.Node(
