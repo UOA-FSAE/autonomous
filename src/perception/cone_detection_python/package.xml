@@ -8,26 +8,10 @@
   <license>Apache License 2.0</license>
   
   <buildtool_depend>ament_python</buildtool_depend>
-  <build_depend>rclpy</build_depend>
-  <build_depend>std_msgs</build_depend>
-  <build_depend>fsae_interfaces</build_depend>
-  <build_depend>sys</build_depend>
-  <build_depend>numpy</build_depend>
-  <build_depend>argparse</build_depend>
-  <build_depend>torch</build_depend>
-  <build_depend>cv2</build_depend>
-  <build_depend>pyzed</build_depend>
-  
-  
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-  <exec_depend>fsae_interfaces</exec_depend>
-  <exec_depend>sys</exec_depend>
-  <exec_depend>numpy</exec_depend>
-  <exec_depend>argparse</exec_depend>
-  <exec_depend>torch</exec_depend>
-  <exec_depend>cv2</exec_depend>
-  <exec_depend>pyzed</exec_depend>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>fsae_interfaces</depend>
   
 
   <test_depend>ament_copyright</test_depend>
