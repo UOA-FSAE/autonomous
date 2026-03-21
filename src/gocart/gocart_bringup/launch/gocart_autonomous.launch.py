@@ -25,7 +25,7 @@ def generate_launch_description():
         Node(
             namespace='moa',
             package='fsae_slam',
-            executable='kalman_filter',
+            executable='cone_landmark_mapper',
             name='cone_landmark_mapper',
             parameters=[
                 {'invert_cones': invert_cones},

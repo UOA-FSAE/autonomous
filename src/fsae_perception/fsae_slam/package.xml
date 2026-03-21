@@ -3,23 +3,21 @@
 <package format="3">
   <name>fsae_slam</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="daniel.yu@fsae.co.nz">dyu056</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Cone landmark SLAM — fuses camera and lidar detections into a persistent track map</description>
+  <maintainer email="siva.sriram1604@gmail.com">Siva-Sriram</maintainer>
+  <license>Apache-2.0</license>
 
-  <depend>ackermann_msgs</depend>
-  <depend>geometry_msgs</depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
   <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
   <depend>fsae_interfaces</depend>
 
-  <depend>python3-numpy</depend>
-
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
 
   <export>
-    <build_type>ament_python</build_type>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>
