@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(zed_perception)
+set(CMAKE_POLICY_DEFAULT_CMP0072 NEW)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,7 +22,7 @@ ENDIF()
 #############################################
 # Dependencies
 find_package(ZED 4 REQUIRED)
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 4 REQUIRED)
 find_package(GLUT REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(OpenGL REQUIRED)
@@ -70,8 +71,18 @@ set(ZED_LIBS
 include_directories(/usr/local/cuda/include)
 link_directories(/usr/local/cuda/lib64)
 # tensorrt
-include_directories(/usr/include/x86_64-linux-gnu/)
-link_directories(/usr/lib/x86_64-linux-gnu/)
+# --- Detect Architecture for TensorRT/CUDA paths ---
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+    # Desktop PC Paths
+    include_directories(/usr/include/x86_64-linux-gnu/)
+    link_directories(/usr/lib/x86_64-linux-gnu/)
+    message(STATUS "Configuring for x86_64 Desktop")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+    # Jetson / ARM Paths
+    include_directories(/usr/include/aarch64-linux-gnu/)
+    link_directories(/usr/lib/aarch64-linux-gnu/)
+    message(STATUS "Configuring for aarch64 Jetson")
+endif()
 
 FILE(GLOB_RECURSE SRC_FILES cone_detection/cone_detection.cpp cone_detection/yolo.cpp zed_launch/zed_launch.cpp localisation/localisation.cpp velocity/velocity.cpp) 
 FILE(GLOB_RECURSE HDR_FILES cone_detection/*.h* zed_launch/*.h*)
@@ -94,7 +105,8 @@ target_link_libraries(zed_launch_node
                         ${OPENGL_LIBRARIES}
                         ${GLUT_LIBRARIES}
                         ${GLEW_LIBRARIES}
-                        ${OpenCV_LIBRARIES})
+)
+                    
 
 if(INSTALL_SAMPLES)
     LIST(APPEND SAMPLE_LIST zed_launch_node)
