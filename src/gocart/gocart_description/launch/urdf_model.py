@@ -1,65 +1,30 @@
-import os
-
-from ament_index_python import get_package_share_directory, get_package_prefix
-
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import FileContent, LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
-from launch.actions import IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.actions import SetEnvironmentVariable
+from launch_ros.substitutions import FindPackageShare
 
-import xacro
 
 def generate_launch_description():
+    use_sim_time = LaunchConfiguration('use_sim_time', default='false')
+    urdf = FileContent(
+        PathJoinSubstitution([FindPackageShare('urdf_gocart'), 'gocartv1.urdf.xml']))
 
-    # pkg_install_path = get_package_share_directory('gocart_description')
-
-    # if 'GAZEBO_MODEL_PATH' in os.environ:
-    #     model_path =  os.environ['GAZEBO_MODEL_PATH'] + ':' + pkg_install_path
-    # else:
-    #     model_path =  pkg_install_path
-    
-    # gazebo_env = SetEnvironmentVariable("GAZEBO_MODEL_PATH", model_path)
-
-    # get urdf file path
-    path = os.path.join(get_package_share_directory('gocart_description'))
-    xacro_file = os.path.join(path,'urdf','moa_robot.urdf.xacro')
-    # process xacro file
-    robot_description = xacro.process_file(xacro_file)
-    
-    # robot state publisher node
-    robot_state_pub_node = Node(
+    return LaunchDescription([
+        DeclareLaunchArgument(
+            'use_sim_time',
+            default_value='false',
+            description='Use simulation (Gazebo) clock if true'),
+        Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
+            name='robot_state_publisher',
             output='screen',
-            parameters=[{'robot_description':robot_description.toxml(),
-                         'use_sim_time':True}]
-        )
-    
-    # joint state publisher node
-    # joint_state_pub_node = Node(
-    #         package='joint_state_publisher',
-    #         executable='joint_state_publisher',
-    #         remappings=[('joint_states','/joint_states')],
-    #         parameters=[{'robot_description':str(robot_description.toxml())}]
-    #     )
-
-    # start gazebo
-    gazebo = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory('gazebo_ros'),'launch'), '/gazebo.launch.py']),
-        )
-    
-    # spawn entity
-    spawn_entity = Node(
-        package='gazebo_ros',
-        executable='spawn_entity.py',
-        arguments=['-topic','robot_description',
-                   '-entity','my_bot',
-                   '-x', '0',
-                   '-y', '0',
-                   '-z', '1'],
-        output='screen'
-    )
-
-    return LaunchDescription([robot_state_pub_node, gazebo, spawn_entity])
+            parameters=[{'use_sim_time': use_sim_time, 'robot_description': urdf}],
+            arguments=[urdf]),
+        Node(
+            package='urdf_gocart',
+            executable='state_publisher',
+            name='state_publisher',
+            output='screen'),
+    ])
