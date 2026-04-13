@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<robot name="gocart">
+
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <mesh filename="package://urdf_gocart/meshes/go_cart_base.stl"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="lidar_link">
+    <visual>
+      <geometry>
+        <mesh filename="package://urdf_gocart/meshes/go_cart_lidar.stl"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 0.8 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="lidar_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar_link"/>
+    <origin xyz="0.65 0 0.4" rpy="0 0 0"/> </joint>
+
+  <link name="camera_link">
+    <visual>
+      <geometry>
+        <mesh filename="package://urdf_gocart/meshes/go_cart_camera.stl"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 0.8 0 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera_link"/>
+    <origin xyz="-0.28 0 1.02" rpy="0 0 0"/> </joint>
+
+</robot>
