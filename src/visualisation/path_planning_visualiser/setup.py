@@ -22,7 +22,7 @@ setup(
         'console_scripts': [
             'visualiser = path_planning_visualiser.visualise_trajectories:main',
             'visualiser2 = path_planning_visualiser.visualise_trajectories_demo:main',
-            'image_throttler = path_planning_visualiser.ImageThrolleNode:main',
+            'image_throttler = path_planning_visualiser.ImageThrollerNode:main',
         ],
     },
 )

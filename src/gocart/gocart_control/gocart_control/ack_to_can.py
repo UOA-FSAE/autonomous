@@ -49,9 +49,9 @@ class AckToCan(Node):
         super().__init__('ackermann_to_can', *vargs, **kwargs) # node name (NB: MoTec listens to this)
 
         # init ros_arg parameters
-        self.declare_parameter('can_id', 
-                               300, 
-                               ParameterDescriptor(description= 'The frame ID for the CAN messages sent to the car'))
+        self.declare_parameter('can_id',
+                               768,  # 0x300 — the MoTeC ECU CAN frame ID
+                               ParameterDescriptor(description='The frame ID for the CAN messages sent to the car'))
         
         self.can_id = self.get_parameter('can_id').get_parameter_value().integer_value
         self.get_logger().info(f'the value of can_id is {self.can_id}')
@@ -143,8 +143,12 @@ class AckToCan(Node):
         The `steering_angle` value is converted to a 2-byte representation for transmission over the CAN bus.
         """
 
+        # Scale steering to MoTeC units (×4: quarter-degree resolution) BEFORE bounds check
+        # so the safety gate operates on the value actually sent over CAN.
+        steering_angle = ack_msg.drive.steering_angle * 4  # ±30 deg → ±120 MoTeC units
+        
         # checks before sending Ackermann
-        if 0 > ack_msg.drive.speed or ack_msg.drive.speed > 255:  # m/s   
+        if 0 > ack_msg.drive.speed or ack_msg.drive.speed > 33:  # m/s (≈120 km/h)
             self.get_logger().warn('ackermann drive SPEED out of bounds: ' + str(ack_msg.drive.speed))
             return None
 
@@ -152,18 +156,15 @@ class AckToCan(Node):
             self.get_logger().warn('ackermann drive ACCLERATION out of bounds: ' + str(ack_msg.drive.acceleration))
             return None
 
-        elif 0 > ack_msg.drive.jerk or ack_msg.drive.jerk > 1:  # m/s^3 
-            # unsure of upper limit
-            # not too fussed about assign 1 byte 
+        elif 0 > ack_msg.drive.jerk or ack_msg.drive.jerk > 1:  # m/s^3
             self.get_logger().warn('ackermann drive JERK out of bounds: ' + str(ack_msg.drive.jerk))
             return None
         
-        elif  ack_msg.drive.steering_angle < -30 or 30 < ack_msg.drive.steering_angle:  # degrees
+        elif steering_angle < -120 or 120 < steering_angle:  # ±30 degrees × 4 = ±120 MoTeC units
             self.get_logger().warn('ackermann drive STEERING_ANGLE out of bounds: ' + str(ack_msg.drive.steering_angle))
             return None
 
         elif 0 > ack_msg.drive.steering_angle_velocity or ack_msg.drive.steering_angle_velocity > 1:  # radians/s
-            # unsure of upper limit definitely dont need more than 1
             self.get_logger().warn('ackermann drive STEERING_ANGLE_VELOCITY out of bounds: ' + str(ack_msg.drive.steering_angle_velocity))
             return None
 
@@ -171,7 +172,6 @@ class AckToCan(Node):
         speed = ack_msg.drive.speed
         acceleration = ack_msg.drive.acceleration
         jerk = ack_msg.drive.jerk*100
-        steering_angle = ack_msg.drive.steering_angle *4
         steering_angle_vel = ack_msg.drive.steering_angle_velocity*100
         
         # convert fro 2's compliment to signed magnitude
@@ -220,31 +220,39 @@ class AckToCan(Node):
             self.can_pub.publish(can_msg)
 
 
-def shutdown_cb():
-    print("[from callback] - shutting down ")
-
-
 from rclpy.context import Context
 from rclpy.executors import SingleThreadedExecutor
+import signal
 
 
 def main(args=None):
     
-    # set up a cucstom context to handle init-shutdown cycle
+    # set up a custom context to handle init-shutdown cycle
     context = Context()
     rclpy.init(args=args, context=context)
-    
+
     ack_to_can_node = AckToCan(context=context)
     executor = SingleThreadedExecutor(context=context)
     executor.add_node(ack_to_can_node)
     
+    def _shutdown_handler(signum, frame):
+        print(f"\nSIGTERM received — zeroing servo and shutting down")
+        ack_to_can_node.on_shutdown()
+        executor.shutdown()
+ 
+    # Handle SIGTERM (systemd stop, docker stop, ROS launch kill) only.
+    # SIGINT (Ctrl+C) is left to rclpy's own handler to avoid conflicts.
+    signal.signal(signal.SIGTERM, _shutdown_handler)
+
     try:
         executor.spin()
-    except KeyboardInterrupt:
-        print("\nkeyboard interrupt signal intercepted")
-        ack_to_can_node.on_shutdown()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except Exception as e:
+        print(f"\nunexpected exception: {e}")
     finally:
-        print("\nshutting down")
+        print("\nshutting down — zeroing control signals")
+        ack_to_can_node.on_shutdown()
         ack_to_can_node.destroy_node()
     context.shutdown()
 

@@ -9,7 +9,7 @@ def generate_launch_description():
     base_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('gocart_bringup'), 'launch'),
-                        '/base.py'])
+                        '/base.launch.py'])
     )
     
     scrut_launch = IncludeLaunchDescription(

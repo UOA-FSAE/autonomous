@@ -14,8 +14,8 @@ class centerline_planner(Node):
     def __init__(self):
         super().__init__("centerline_planner")
 
-        # parameters
-        self._plot = True
+        # parameters — plotting disabled by default (crashes on headless Jetson)
+        self._plot = False
         self.look_forward = 6
         self.left_cones = []
         self.right_cones = []
@@ -53,32 +53,8 @@ class centerline_planner(Node):
 
         lb, rb = self.get_boundaries()   # get boundaries (list of [x,y] points)
 
-        # >>> DEBUG override: when only one cone color is seen
-        if len(lb) > 0 and len(rb) == 0:  # only blue cones
-            self.get_logger().info("DEBUG: only blue cones -> full right")  # >>> LOG
-            car_x = self.car_pose.position.x     # >>> CHANGED
-            car_y = self.car_pose.position.y     # >>> CHANGED
-            # simple right-turn trajectory
-            right_line = [                      # >>> CHANGED
-                [car_x + 1.0, car_y + 1.0],
-                [car_x + 2.0, car_y + 2.0],
-            ]
-            msg = self.get_posearray_msg(right_line)  # >>> CHANGED
-            self.centerline_publisher.publish(msg)     # >>> CHANGED
-            return                                   # >>> CHANGED
-        elif len(rb) > 0 and len(lb) == 0:  # only yellow cones
-            self.get_logger().info("DEBUG: only yellow cones -> full left")   # >>> LOG
-            car_x = self.car_pose.position.x     # >>> CHANGED
-            car_y = self.car_pose.position.y     # >>> CHANGED
-            # simple left-turn trajectory
-            left_line = [
-                [car_x - 1.0, car_y + 1.0],
-                [car_x - 2.0, car_y + 2.0],
-            ]
-            msg = self.get_posearray_msg(left_line)   # >>> CHANGED
-            self.centerline_publisher.publish(msg)     # >>> CHANGED
-            return                                   # >>> CHANGED
-        # <<< end DEBUG override >>>
+        if not len(lb) > 0 or not len(rb) > 0:
+            return
 
         lblocal, _, _ = self.get_next_points(lb, self.look_forward)  # get local points (list of [x,y] points) close to car
         rblocal, car_position, car_orientation = self.get_next_points(rb, self.look_forward)

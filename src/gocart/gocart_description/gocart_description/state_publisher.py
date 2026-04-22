@@ -34,7 +34,7 @@ class StatePublisher(Node):
         t.transform.translation.y = 0.0
         t.transform.translation.z = 0.0
 
-        t.transform.rotation = 0.0
+        t.transform.rotation.w = 1.0
 
 def main(args=None):
     rclpy.init(args=args)

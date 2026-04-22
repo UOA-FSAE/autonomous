@@ -6,12 +6,20 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(fsae_interfaces REQUIRED)
 
-# ---------- cone_landmark_mapper node ----------
+# ---------- cone_landmark_mapper_py node (Python — active implementation) ----------
+install(PROGRAMS
+  reference_cone_landmark_mapper.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME cone_landmark_mapper_py
+)
+ 
+# ---------- cone_landmark_mapper node (C++ stub — kept for future porting) ----------
 add_executable(cone_landmark_mapper src/cone_landmark_mapper.cpp)
 target_include_directories(cone_landmark_mapper PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

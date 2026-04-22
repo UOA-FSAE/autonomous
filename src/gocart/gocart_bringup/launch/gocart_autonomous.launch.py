@@ -20,12 +20,16 @@ def generate_launch_description():
             namespace='moa',
             package='zed_perception',
             executable='zed_launch_node',
-            name='perception'
+            name='perception',
+            remappings=[
+                ('zed/car_position', 'car_position'),
+                ('zed/cone_detection', 'cone_detection'),
+            ],
         ),
         Node(
             namespace='moa',
             package='fsae_slam',
-            executable='cone_landmark_mapper',
+            executable='cone_landmark_mapper_py',
             name='cone_landmark_mapper',
             parameters=[
                 {'invert_cones': invert_cones},

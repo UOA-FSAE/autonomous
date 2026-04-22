@@ -90,7 +90,11 @@ class StanleyControl(Node):
         self.tx = []
         self.ty = []
 
-        # The max steering angle is now +-30
+        #Rate limiting + smoothing to prevent servo jitter and overcurrent
+        self.steering_angle = 0.0
+        self.last_publish_time = self.get_clock().now()
+        self.MIN_PUBLISH_INTERVAL = 0.1  # 10 Hz max publish rate
+        self.ALPHA = 0.3               # low-pass filter: weight on new measurement
 
         #Subscribe for car pose and track
         self.create_subscription(PoseArray, "selected_trajectory", self.selected_trajectory_handler, 5)
@@ -125,19 +129,23 @@ class StanleyControl(Node):
 
             self.get_logger().info(f"target_yaw: {target_yaw}")
         
-            delta = math.degrees(theta_e + theta_d)
-            delta = np.clip(delta, -self.max_steer, self.max_steer)
-            
-            self.get_logger().info(f"steering angle: {delta}")
-            
-            self.steering_angle = delta
+            raw_delta = np.clip(math.degrees(theta_e + theta_d), -self.max_steer, self.max_steer)
+            # Low-pass filter to smooth out localization noise and prevent jitter
+            self.steering_angle = self.ALPHA * raw_delta + (1.0 - self.ALPHA) * self.steering_angle
+ 
+            self.get_logger().info(f"steering angle (filtered): {self.steering_angle:.2f}")
             self.target_speed = self.target_speed
         else:
-            self.steering_angle = 0
-            self.target_speed = 0
+            self.steering_angle = 0.0
+            self.target_speed = 0.0
             self.get_logger().warn("Warning: no trajectory found, will set steering angle to 0!!!!")
 
-        # Publish command for velocity
+        # Rate-limit publishes to 10 Hz max to prevent servo from chasing every noisy position update
+        now = self.get_clock().now()
+        elapsed = (now - self.last_publish_time).nanoseconds / 1e9
+        if elapsed < self.MIN_PUBLISH_INTERVAL:
+            return
+        self.last_publish_time = now
         self.publish_ackermann()
    
 

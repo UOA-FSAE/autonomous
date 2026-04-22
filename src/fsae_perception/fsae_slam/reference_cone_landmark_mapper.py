@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Cone Landmark Mapper — maintains a persistent map of cone positions on the track.
 

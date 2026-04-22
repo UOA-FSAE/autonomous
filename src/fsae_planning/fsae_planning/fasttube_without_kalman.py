@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 
 from fsae_interfaces.msg import Detections
-from geometry_msgs.msg import Pose, PoseArray
+from geometry_msgs.msg import Pose, PoseArray, Point
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,8 +14,8 @@ class centerline_planner(Node):
     def __init__(self):
         super().__init__("centerline_planner")
 
-        # parameters
-        self._plot = True
+        # parameters — plotting disabled by default (crashes on headless Jetson)
+        self._plot = False
         self.look_forward = 4
         self.left_cones = []
         self.right_cones = []
@@ -34,8 +34,25 @@ class centerline_planner(Node):
         self.loop()
 
     def cone_detection_callback(self, msg: Detections) -> None:
-        self.left_cones = msg.blue
-        self.right_cones = msg.yellow
+        # cone_detection publishes positions in the camera's LOCAL frame.
+        # Transform to global frame using the car pose packed in the same message
+        # before storing, so the path planner receives world-frame coordinates.
+        self.left_cones  = self._local_to_global(msg.blue,   msg.car_pose)
+        self.right_cones = self._local_to_global(msg.yellow, msg.car_pose)
+ 
+    def _local_to_global(self, cones, car_pose: Pose):
+        x     = car_pose.position.x
+        y     = car_pose.position.y
+        theta = car_pose.orientation.w   # yaw packed into .w by ZED convention
+        cos_t = math.cos(theta)
+        sin_t = math.sin(theta)
+        result = []
+        for p in cones:
+            gp = Point()
+            gp.x = cos_t * p.x - sin_t * p.y + x
+            gp.y = sin_t * p.x + cos_t * p.y + y
+            result.append(gp)
+        return result
     
     def loop(self) -> None:
         self.get_logger().info(f"car pose recieved = {hasattr(self,'car_pose')}")   
