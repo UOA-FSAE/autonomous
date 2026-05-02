@@ -286,8 +286,7 @@ void ZedLaunchNode::cone_detection_loop()
             tmp.probability = it.prob; // Pass the YOLO confidence score to the ZED so it can weigh how reliable this detection is during sensor fusion.
             tmp.label = (int) it.label; // Cast the YOLO class label (e.g., 0 for blue, 4 for yellow) to an integer as the ZED SDK requires.
             tmp.bounding_box_2d = cvt(it.box); // Convert YOLO's 2-corner box format (top-left + bottom-right) into the ZED's required 4-corner clockwise format using our cvt() helper.
-            tmp.is_grounded = ((int) it.label == 0); // Only the first class (person) is grounded, that is moving on the floor plane.
-            // others are tracked in full 3D space                
+            tmp.is_grounded = true; // All classes are cones on a flat race track, so every detection should be anchored to the ground plane for accurate depth estimation.
             objects_in.push_back(tmp); // Add the fully populated detection to our list.
         }
 

@@ -610,26 +610,24 @@ std::vector<BBoxInfo> Yolo::run(sl::Mat left_sl, int orig_image_h, int orig_imag
             auto& height = orig_image_h; // Original camera frame height in pixels.
 
             /*
-            Wrap the raw h_output float array in an OpenCV matrix for convenient row-based 
-            access. The YOLOv8/v5 output is shaped [num_channels x num_anchors], so we 
-            transpose it to [num_anchors x num_channels], making each row one detection.
-            This avoids manually computing strided offsets into the flat float array.
+            Read h_output directly via stride arithmetic, avoiding any matrix allocation or
+            memory copy. The buffer is laid out as [num_channels x num_anchors] in row-major
+            order, so channel c for anchor i is at data[c * num_anchors + i]. This is the
+            zero-copy equivalent of constructing a cv::Mat view and then calling .t(), which
+            would trigger a full O(num_channels * num_anchors) heap allocation and copy per frame.
             */
-            cv::Mat output = cv::Mat(
-                    num_channels,
-                    num_anchors,
-                    CV_32F,
-                    static_cast<float*> (h_output) // Point directly into h_output - no data copy, just a view.
-                    );
-            output = output.t(); // Transpose: converts from [channels x anchors] to [anchors x channels] so each row is a complete detection.
+            const float* data = static_cast<const float*>(h_output); // Raw read-only pointer into the TensorRT output buffer. No allocation, no copy.
             for (int i = 0; i < num_anchors; i++) {
-                auto row_ptr = output.row(i).ptr<float>(); // Pointer to the first float of this detection's row.
-                auto bboxes_ptr = row_ptr; // First 4 floats are the box geometry: cx, cy, w, h.
-                auto scores_ptr = row_ptr + out_box_struct_number; // Floats after the 4 geometry fields are the per-class confidence scores.
-                auto max_s_ptr = std::max_element(scores_ptr, scores_ptr + num_labels); // Find the highest class score. This is both the winning class and its confidence.
-                float score = *max_s_ptr; // The confidence of the most likely class for this anchor.
+                // Find the highest-scoring class for this anchor. std::max_element cannot be used
+                // here because the class scores for a single anchor are not contiguous in memory
+                // (they are separated by num_anchors elements each). A manual loop is required.
+                int label = 0;
+                float score = data[out_box_struct_number * num_anchors + i]; // Initialise with class 0's score.
+                for (int c = 1; c < num_labels; c++) {
+                    float s = data[(out_box_struct_number + c) * num_anchors + i];
+                    if (s > score) { score = s; label = c; }
+                }
                 if (score > thres) { // Only process this anchor if its best class confidence exceeds the threshold (0.8).
-                    int label = max_s_ptr - scores_ptr; // The index of the winning class = pointer arithmetic distance from the start of the scores array.
 
                     BBoxInfo bbi; // Container for this detection's data.
 
@@ -639,10 +637,10 @@ std::vector<BBoxInfo> Yolo::run(sl::Mat left_sl, int orig_image_h, int orig_imag
                     space, then multiply by scalingFactor to get back to original image pixel space.
                     clamp() ensures box corners never exceed the image boundaries.
                     */
-                    float x = *bboxes_ptr++ - dw; // cx in padded network space → subtract horizontal padding.
-                    float y = *bboxes_ptr++ - dh; // cy in padded network space → subtract vertical padding.
-                    float w = *bboxes_ptr++; // Box width in network space (not affected by padding offset).
-                    float h = *bboxes_ptr; // Box height in network space.
+                    float x = data[0 * num_anchors + i] - dw; // cx in padded network space → subtract horizontal padding.
+                    float y = data[1 * num_anchors + i] - dh; // cy in padded network space → subtract vertical padding.
+                    float w = data[2 * num_anchors + i]; // Box width in network space (not affected by padding offset).
+                    float h = data[3 * num_anchors + i]; // Box height in network space.
 
                     float x0 = clamp((x - 0.5f * w) * scalingFactor_x, 0.f, width); // Left edge: center minus half-width, then scale back to original image pixels, clamped to [0, image_width].
                     float y0 = clamp((y - 0.5f * h) * scalingFactor_y, 0.f, height); // Top edge: center minus half-height, scaled and clamped.
