@@ -21,6 +21,7 @@ DEPENDENCIES:
 #include <chrono>
 #include <memory>
 #include <thread>
+#include <atomic>
 #include <iostream>
 
 #include "sl/Camera.hpp"
@@ -66,15 +67,26 @@ public:
     Launch dedicated worker threads in parallel so cone detection, localisation,
     and velocity estimation can run concurrently.
     */
-    std::thread t1(&ZedLaunchNode::cone_detection_loop, this);
-    std::thread t2(&ZedLaunchNode::car_position, this);
-    std::thread t3(&ZedLaunchNode::car_velocity, this);
-
+    t1_ = std::thread(&ZedLaunchNode::cone_detection_loop, this);
+    t2_ = std::thread(&ZedLaunchNode::car_position, this);
+    t3_ = std::thread(&ZedLaunchNode::car_velocity, this);
     /*
-    t1.join() tells the constructor, "Wait right here until t1 finishes its job." Might be a problem because t1 is 
-    an infinite loop (it runs as long as the camera is on), the constructor never finishes. It never hits the }.
+    No join() here. Joining in the constructor would block it forever (the loops run
+    until the camera stops), preventing rclcpp::spin() in main() from ever running.
+    Threads are joined cleanly in the destructor instead.
     */
-    t1.join();
+  }
+
+  ~ZedLaunchNode() {
+    /*
+    Signal all worker loops to exit their while(camera_running) condition, then wait
+    for each thread to finish. Without this, destroying the node while threads are
+    still running would call std::terminate() via the std::thread destructor.
+    */
+    camera_running = false;
+    if (t1_.joinable()) t1_.join();
+    if (t2_.joinable()) t2_.join();
+    if (t3_.joinable()) t3_.join();
   }
 
 private:
@@ -85,7 +97,7 @@ private:
     sl::Pose cam_w_pose;
 
     // Runtime flags/config values consumed by the worker loops.
-    bool camera_running = true;
+    std::atomic<bool> camera_running{true}; // Atomic so worker threads can read it without a mutex (plain bool reads across threads are a data race).
     bool visualisation = true;
     std::string model_name = "cone_detection_model.engine"; // Custom object detection model.
 
@@ -104,4 +116,9 @@ private:
     void cone_detection_loop();
     void car_position();
     void car_velocity();
+
+    // Worker threads stored as members so they can be joined in the destructor.
+    // Local thread variables in the constructor would be destroyed on scope exit,
+    // which calls std::terminate() if the thread is still running and unjoinable.
+    std::thread t1_, t2_, t3_;
 };

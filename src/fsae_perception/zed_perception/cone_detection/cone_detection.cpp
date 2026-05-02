@@ -360,7 +360,7 @@ void ZedLaunchNode::cone_detection_loop()
         only publish the message if both a blue and a yellow cone are visible, ensuring the planning
         stack always receives a message that describes both sides of the track.
         */
-        mtx.lock(); // Acquire the mutex lock before touching any data shared with other threads.
+        std::lock_guard<std::mutex> lock(mtx); // RAII lock: acquired here, automatically released when `lock` goes out of scope at the end of this iteration (or if any exception is thrown). Replaces the manual mtx.lock()/mtx.unlock() pair which would deadlock all other threads if an exception skipped the unlock.
 
         zed.getPosition(cam_w_pose, sl::REFERENCE_FRAME::WORLD); // Ask the ZED's internal visual odometry system for the camera's current position and orientation, expressed in the fixed global world frame.
         detectionsMsg.car_pose.position.x = cam_w_pose.getTranslation().tx / 1000.0; // Extract the car's X position and convert from millimeters to meters.
@@ -379,9 +379,7 @@ void ZedLaunchNode::cone_detection_loop()
         if (detectionsMsg.yellow.size() > 0 && detectionsMsg.blue.size() > 0) { // Only publish if we can see at least one cone on each side of the track. A message with only one boundary color would give the planner an incomplete and potentially dangerous picture.
             cone_detection_publisher->publish(detectionsMsg); // Publish the fully populated Detections message (3D cone positions + car pose) to the ROS topic for the SLAM and path planning nodes to consume.
         }
-
-        mtx.unlock(); // Release the mutex so the main thread can access shared data again.
-    }
+    } // lock_guard released here — mtx is unlocked automatically at end of each loop iteration.
 
     /*
     We reach here only when zed.grab() stops returning SUCCESS - meaning the camera has been disconnected,
@@ -390,9 +388,5 @@ void ZedLaunchNode::cone_detection_loop()
     false. We lock the mutex first because the main thread may be reading this flag at any time, and writing
     to a shared variable without a lock is a data race.
     */
-    mtx.lock(); // Acquire the mutex before modifying the shared camera_running flag.
-
-    camera_running = false; // Notify all other threads that the camera has stopped and this detection loop has fully exited.
-
-    mtx.unlock(); // Release the mutex so the main thread can read the updated camera_running flag and respond accordingly.
+    camera_running = false; // Atomic write: safely signals all other threads to exit their while(camera_running) loops. No mutex needed since std::atomic<bool> guarantees a data-race-free write.
 }
