@@ -9,9 +9,8 @@ KEY RESPONSIBILITIES:
        of those boxes and tracks them over time (giving them unique IDs and velocities).
     3. Visualization: Draws the bounding boxes, confidence scores, and class labels onto the camera stream and publishes it as a ROS image topic 
        for debugging (e.g., viewing in RViz).
-    4. Data Extraction & ROS Publishing: Extracts the 3D coordinates of the tracked cones, filters them by distance (ignoring cones further than 
-       6 meters), categorizes them by color (blue, yellow, orange), grabs the car's current pose, and publishes everything as a single 
-       fsae_interfaces::msg::Detections message.
+    4. Data Extraction & ROS Publishing: Extracts the 3D coordinates of the tracked cones, categorizes them by color (blue, yellow, orange),
+       grabs the car's current pose, and publishes everything as a single fsae_interfaces::msg::Detections message.
 
 DEPENDENCIES:
     - ZED SDK (sl::Camera, sl::Objects): For retrieving images and 3D spatial data.
@@ -194,7 +193,7 @@ frame, in a strict sequence:
     Step 4 - Fuse:      Hands those 2D bounding boxes back to the ZED SDK, which combines them with stereo depth data to
                         produce real 3D world-space positions and assign persistent tracking IDs to each cone.
     Step 5 - Visualize: If the visualisation flag is set, draws the boxes onto the frame and publishes it as a ROS image topic.
-    Step 6 - Classify:  Sorts detected 3D cones by color, discards anything beyond 6 meters, and packs them into a ROS message.
+    Step 6 - Classify:  Sorts detected 3D cones by color and packs them into a ROS message.
     Step 7 - Publish:   Safely locks shared data, reads the car's 3D pose, extracts the yaw heading, and fires off the message.
 */
 void ZedLaunchNode::cone_detection_loop()
@@ -318,11 +317,9 @@ void ZedLaunchNode::cone_detection_loop()
         /*
         Build the ROS Detections message for this frame. We create a fresh, empty message and then loop
         over every cone the ZED is currently tracking. For each cone, we convert its position from
-        millimeters (the ZED SDK's native unit) to meters, compute its straight-line distance from the
-        car (Pythagorean theorem on x and y), and discard it if it's further than 6 meters away. Cones
-        beyond that distance are unreliable due to depth noise and are outside the planning horizon anyway.
-        Each surviving cone is then sorted into the correct color bucket (blue, yellow, or big_orange)
-        based on its YOLO class label.
+        millimeters (the ZED SDK's native unit) to meters and sort it into the correct color bucket
+        (blue, yellow, or big_orange) based on its YOLO class label. All confirmed detections are
+        forwarded regardless of distance - the planning stack decides what to act on.
         */
         fsae_interfaces::msg::Detections detectionsMsg; // Create a blank Detections message that will be populated and published at the end of this frame's iteration.
 
@@ -333,29 +330,17 @@ void ZedLaunchNode::cone_detection_loop()
                 case 0: // Label 0 = Blue cone (left boundary of the track).
                     p.x = obj.position[0] / 1000.0; // Convert X position from millimeters to meters by dividing by 1000.
                     p.y = obj.position[1] / 1000.0; // Convert Y position from millimeters to meters.
-
-                    if (sqrt(p.x * p.x + p.y * p.y) < 6.0) { // Pythagorean distance check: only keep this cone if it is within 6 meters of the car (the origin).
-                        detectionsMsg.blue.push_back(p); // Cone is close enough - add its 3D position to the blue cone list in the message.
-                    }
-
+                    detectionsMsg.blue.push_back(p); // Add its 3D position to the blue cone list in the message.
                     break;
                 case 4: // Label 4 = Yellow cone (right boundary of the track).
                     p.x = obj.position[0] / 1000.0; // Convert X position from millimeters to meters.
                     p.y = obj.position[1] / 1000.0; // Convert Y position from millimeters to meters.
-
-                    if (sqrt(p.x * p.x + p.y * p.y) < 6.0) { // Same 6-meter distance filter applied to yellow cones.
-                        detectionsMsg.yellow.push_back(p); // Add to the yellow cone list.
-                    }
-                    
+                    detectionsMsg.yellow.push_back(p); // Add to the yellow cone list.
                     break;
                 default: // Any other label is treated as a large orange cone, used to mark the start/finish line or chicanes.
                     p.x = obj.position[0] / 1000.0; // Convert X position from millimeters to meters.
                     p.y = obj.position[1] / 1000.0; // Convert Y position from millimeters to meters.
-
-                    if (sqrt(p.x * p.x + p.y * p.y) < 6.0) { // Same 6-meter distance filter applied consistently to all cone colors.
-                        detectionsMsg.big_orange.push_back(p); // Add to the big orange cone list.
-                    }
-
+                    detectionsMsg.big_orange.push_back(p); // Add to the big orange cone list.
                     break;
             }
         }
