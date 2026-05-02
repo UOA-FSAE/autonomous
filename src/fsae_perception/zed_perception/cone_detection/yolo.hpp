@@ -202,9 +202,9 @@ private:
     size_t input_width = 0, input_height = 0, batch_size = 1; // Input tensor spatial dimensions and batch size. Batch size is always 1 for our real-time pipeline.
     // Yolov6 1x8400x85 //  85=5+80=cxcy+cwch+obj_conf+cls_conf //https://github.com/DefTruth/lite.ai.toolkit/blob/1267584d5dae6269978e17ffd5ec29da496e503e/lite/ort/cv/yolov6.cpp#L97
     // Yolov8/yolov5 1x84x8400
-    size_t out_dim = 8400, out_class_number = 80 /*for COCO*/, out_box_struct_number = 4; // https://github.com/ultralytics/yolov3/issues/750#issuecomment-569783354
+    size_t out_dim = 8400, out_class_number = 0, out_box_struct_number = 4; // https://github.com/ultralytics/yolov3/issues/750#issuecomment-569783354
     // out_dim = the number of candidate anchor boxes the model considers per frame (8400 for a 640x640 input).
-    // out_class_number = how many object categories were trained (80 for COCO; ours is smaller, but this is the default).
+    // out_class_number = how many object categories were trained. Set to 0 here; overwritten by init() from the loaded model's output tensor shape.
     // out_box_struct_number = how many values describe each box's geometry (4 for YOLOv8: cx, cy, w, h; 5 for YOLOv6 which adds an objectness score).
     size_t output_size = 0; // Total number of floats in the output tensor = out_dim * (out_class_number + out_box_struct_number). Computed during init() once the model is loaded.
 

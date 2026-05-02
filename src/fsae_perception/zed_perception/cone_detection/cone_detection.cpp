@@ -323,7 +323,6 @@ void ZedLaunchNode::cone_detection_loop()
         */
         fsae_interfaces::msg::Detections detectionsMsg; // Create a blank Detections message that will be populated and published at the end of this frame's iteration.
 
-        int count = 0; // Unused counter, retained for potential future use (e.g., logging detection totals).
         for (sl::ObjectData& obj : objects.object_list) { // Iterate over every cone the ZED 3D tracker is currently tracking.
             geometry_msgs::msg::Point p; // A temporary point struct to hold this cone's converted x/y position in meters.
             switch (obj.raw_label) { // Branch on the YOLO class label to determine which color bucket this cone belongs to.
