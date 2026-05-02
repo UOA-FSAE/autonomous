@@ -36,9 +36,20 @@ DEPENDENCIES:
 #include <NvInfer.h> // Brings in NVIDIA TensorRT, which is the high-performance engine that runs our YOLO model on the GPU.
 
 using namespace nvinfer1;
-#define CONF_THRESH 0.8 // Threshold for the YOLO model. If the AI is less than 80% confident that it sees a cone, it will ignore it, reducing false positives.
-#define NMS_THRESH 0.4 // NMS stands for Non-Maximum Suppression. If the AI draws two overlapping boxes on the same cone, 
+#define CONF_THRESH 0.40 // YOLO confidence gate. Lowered from 0.80 to 0.40 to allow distant cones (which naturally produce lower per-frame scores) to reach the ZED tracker. The ZED's EKF then acts as the real quality filter: it rejects objects that don't persist or move physically plausibly across frames, so the lower gate does not increase false positives in the published output.
+#define NMS_THRESH 0.4 // NMS stands for Non-Maximum Suppression. If the AI draws two overlapping boxes on the same cone,
                       // this threshold tells the code to combine/delete the weaker box if they overlap by more than 40%.
+
+// Post-ZED distance-tiered confidence thresholds (applied to obj.confidence, which is the ZED SDK's own temporally-
+// smoothed tracker confidence on a 0-100 scale). Close cones are seen clearly so we demand high tracker confidence;
+// at longer ranges the per-frame YOLO score is inherently lower and the EKF needs a few frames to build confidence,
+// so we relax the requirement. Cones beyond MAX_DETECTION_DIST_M are discarded entirely.
+#define ZED_CONF_NEAR   60.0f // Minimum ZED tracker confidence for cones within DIST_NEAR_M (0-8 m).
+#define ZED_CONF_MID    40.0f // Minimum ZED tracker confidence for cones within DIST_MID_M (8-15 m).
+#define ZED_CONF_FAR    25.0f // Minimum ZED tracker confidence for cones within DIST_FAR_M (15-25 m).
+#define DIST_NEAR_M      8.0f // Upper boundary (metres) of the near zone.
+#define DIST_MID_M      15.0f // Upper boundary (metres) of the mid zone.
+#define DIST_FAR_M      25.0f // Upper boundary (metres) of the far zone. Cones beyond this are dropped.
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -311,30 +322,45 @@ void ZedLaunchNode::cone_detection_loop()
 
         /*
         Build the ROS Detections message for this frame. We create a fresh, empty message and then loop
-        over every cone the ZED is currently tracking. For each cone, we convert its position from
-        millimeters (the ZED SDK's native unit) to meters and sort it into the correct color bucket
-        (blue, yellow, or big_orange) based on its YOLO class label. All confirmed detections are
-        forwarded regardless of distance - the planning stack decides what to act on.
+        over every cone the ZED is currently tracking. For each cone we:
+          1. Convert its position from millimeters to meters.
+          2. Compute its 2D ground-plane distance from the car.
+          3. Apply a distance-tiered ZED tracker confidence threshold. Near cones (0-8 m) require a
+             high tracker confidence of 60/100; mid-range (8-15 m) require 40/100; far cones (15-25 m)
+             require 25/100. Anything beyond 25 m is discarded. This allows the lower YOLO gate (0.40)
+             to pass distant, blurry detections to the ZED EKF, while the tiered filter ensures only
+             cones the ZED itself is confident about reach the planning stack.
         */
         fsae_interfaces::msg::Detections detectionsMsg; // Create a blank Detections message that will be populated and published at the end of this frame's iteration.
 
         for (sl::ObjectData& obj : objects.object_list) { // Iterate over every cone the ZED 3D tracker is currently tracking.
-            geometry_msgs::msg::Point p; // A temporary point struct to hold this cone's converted x/y position in meters.
+            geometry_msgs::msg::Point p;
+            p.x = obj.position[0] / 1000.0; // Convert X position from millimeters to meters.
+            p.y = obj.position[1] / 1000.0; // Convert Y position from millimeters to meters.
+
+            // Compute flat ground-plane distance (metres) from the car (origin) to this cone.
+            float dist = std::sqrt(p.x * p.x + p.y * p.y);
+
+            // Determine the minimum ZED tracker confidence required for this cone's distance band.
+            // obj.confidence is the ZED SDK's temporally-smoothed quality score (0-100): it rises
+            // across frames as the EKF accumulates evidence that the object moves physically plausibly.
+            float required_conf;
+            if      (dist <= DIST_NEAR_M) required_conf = ZED_CONF_NEAR;
+            else if (dist <= DIST_MID_M)  required_conf = ZED_CONF_MID;
+            else if (dist <= DIST_FAR_M)  required_conf = ZED_CONF_FAR;
+            else continue; // Beyond the far zone: the ZED's depth estimate is too noisy to be useful. Skip.
+
+            if (obj.confidence < required_conf) continue; // ZED tracker not yet confident enough for this distance band. Skip.
+
             switch (obj.raw_label) { // Branch on the YOLO class label to determine which color bucket this cone belongs to.
                 case 0: // Label 0 = Blue cone (left boundary of the track).
-                    p.x = obj.position[0] / 1000.0; // Convert X position from millimeters to meters by dividing by 1000.
-                    p.y = obj.position[1] / 1000.0; // Convert Y position from millimeters to meters.
-                    detectionsMsg.blue.push_back(p); // Add its 3D position to the blue cone list in the message.
+                    detectionsMsg.blue.push_back(p);
                     break;
                 case 4: // Label 4 = Yellow cone (right boundary of the track).
-                    p.x = obj.position[0] / 1000.0; // Convert X position from millimeters to meters.
-                    p.y = obj.position[1] / 1000.0; // Convert Y position from millimeters to meters.
-                    detectionsMsg.yellow.push_back(p); // Add to the yellow cone list.
+                    detectionsMsg.yellow.push_back(p);
                     break;
-                default: // Any other label is treated as a large orange cone, used to mark the start/finish line or chicanes.
-                    p.x = obj.position[0] / 1000.0; // Convert X position from millimeters to meters.
-                    p.y = obj.position[1] / 1000.0; // Convert Y position from millimeters to meters.
-                    detectionsMsg.big_orange.push_back(p); // Add to the big orange cone list.
+                default: // Any other label is treated as a large orange cone.
+                    detectionsMsg.big_orange.push_back(p);
                     break;
             }
         }
