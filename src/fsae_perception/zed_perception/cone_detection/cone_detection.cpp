@@ -199,16 +199,11 @@ frame, in a strict sequence:
 void ZedLaunchNode::cone_detection_loop()
   {
     /*
-    Before the main loop starts, we configure the camera resolution. The ZED camera is physically capable of running
-    at very high resolutions, but that would be unnecessarily expensive for our pipeline. We deliberately cap it here
-    at a maximum of 720x404 pixels, giving us a solid balance between detection quality and processing speed.
-    We then query the camera a second time (camera_info) using that capped resolution. This second query gives us the
-    camera's calibration parameters (like focal length and optical center) that are mathematically correct for this
-    specific resolution - these are needed internally by the ZED SDK to correctly interpret depth.
+    Before the main loop starts, we query the camera's native resolution so that YOLO inference
+    and the visualisation overlay both operate on the full-resolution frame the hardware provides.
+    zed.retrieveImage() with no resolution argument already defaults to the native resolution,
+    so no explicit cap or override is needed.
     */
-    auto camera_config = zed.getCameraInformation().camera_configuration; // Query the camera's full native configuration to find out its maximum supported resolution.
-    sl::Resolution pc_resolution(std::min((int) camera_config.resolution.width, 720), std::min((int) camera_config.resolution.height, 404)); // Cap the resolution to 720x404. std::min ensures we never request a resolution higher than what the hardware supports.
-    auto camera_info = zed.getCameraInformation(pc_resolution).camera_configuration; // Re-query the camera using the capped resolution to get intrinsic calibration parameters that are valid at this specific resolution.
 
     /*
     Load the TensorRT inference engine and initialize the YOLO detector. The engine_name is the path to our
