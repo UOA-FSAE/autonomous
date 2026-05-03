@@ -63,6 +63,8 @@ int main(int argc, char * argv[])
   init_parameters.sdk_verbose = true; // Tells the ZED to print lots of helpful debugging info to the terminal.
   init_parameters.depth_mode = sl::DEPTH_MODE::ULTRA; // Tells the ZED to use its most accurate (but computationally heavy) algorithm for calculating 3D depth.
   init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::RIGHT_HANDED_Z_UP; // Sets the 3D axis. In this case, X is forward, Y is left, and Z is straight up.
+  init_parameters.depth_minimum_distance = 0.5f; // Ignore depth closer than 0.5 m. The ZED 2i's stereo baseline cannot reliably triangulate below this range, and the car body itself would generate noise at very short distances.
+  init_parameters.depth_maximum_distance = 25.0f; // Match DIST_FAR_M: the pipeline already discards cones beyond 25 m in the publishing loop, so computing depth beyond this range wastes GPU cycles and increases the noise floor.
   
   /*
   It allows you to run this exact code on your laptop using a pre-recorded video file 

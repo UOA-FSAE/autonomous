@@ -93,6 +93,10 @@ static void draw_objects(cv::Mat const& image,
     res = image.clone();
     cv::Mat mask{image.clone()};
     for (sl::ObjectData const& obj : objs.object_list) { // Loop that goes through every single object (cone) the ZED camera is currently tracking.
+        // Only draw cones the ZED is actively seeing right now. SEARCHING cones have extrapolated
+        // (guessed) positions that can be wildly wrong during a turn, and OFF cones are abandoned
+        // entirely. Drawing them would make the debug overlay show ghost boxes that don't exist.
+        if (obj.tracking_state != sl::OBJECT_TRACKING_STATE::OK) continue;
         /*
         Calculates a color index for the bounding box based on the ZED camera's unique 3D tracking ID (obj.id). Uses the modulo operator 
         to ensure the ID cleanly wraps around within the limits of the colors list. This guarantees that a specific physical cone retains 
@@ -334,6 +338,14 @@ void ZedLaunchNode::cone_detection_loop()
         fsae_interfaces::msg::Detections detectionsMsg; // Create a blank Detections message that will be populated and published at the end of this frame's iteration.
 
         for (sl::ObjectData& obj : objects.object_list) { // Iterate over every cone the ZED 3D tracker is currently tracking.
+            // Guard 1 — tracking state: only accept cones the ZED is physically seeing right now.
+            // SEARCHING means the cone has disappeared from view and its position is a linear
+            // extrapolation based on its last known velocity — this guess diverges rapidly when
+            // the car turns, producing ghost cones that can appear mid-track and cause the planner
+            // to swerve violently to avoid an obstacle that doesn't exist.
+            // OFF means the tracker has given up entirely. Both states must be rejected here.
+            if (obj.tracking_state != sl::OBJECT_TRACKING_STATE::OK) continue;
+
             geometry_msgs::msg::Point p;
             p.x = obj.position[0] / 1000.0; // Convert X position from millimeters to meters.
             p.y = obj.position[1] / 1000.0; // Convert Y position from millimeters to meters.
