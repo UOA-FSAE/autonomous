@@ -254,6 +254,18 @@ void ZedLaunchNode::cone_detection_loop()
     sl::Objects objects; // The output container for the ZED's sensor fusion results. After retrieveObjects(), this holds every tracked cone's 3D position, velocity, and persistent ID.
 
     /*
+    Tracks whether the car is currently moving. Updated at the end of every frame using the
+    linear velocity extracted from cam_w_pose.twist after zed.getPosition(). The one-frame lag
+    is negligible at camera framerate. Used to switch the tracking_state filter:
+      - Moving  (> 0.1 m/s): strict OK-only. SEARCHING positions are EKF extrapolations that
+                              diverge rapidly in turns, risking ghost cones on the track.
+      - Stationary (≤ 0.1 m/s): allow OK + SEARCHING. With no camera motion the ZED EKF
+                              never promotes new detections to OK, so strict filtering would
+                              silence all output during bench/stationary testing.
+    */
+    bool is_moving = false; // Conservative default: treat as stationary until first velocity reading.
+
+    /*
     The main perception loop. zed.grab() is a blocking call - it pauses execution and waits until the camera
     hardware has a brand new frame ready to process. Think of it as the "heartbeat" of the entire perception
     system: the whole pipeline runs at exactly the rate the camera produces frames. The loop only continues
@@ -338,13 +350,18 @@ void ZedLaunchNode::cone_detection_loop()
         fsae_interfaces::msg::Detections detectionsMsg; // Create a blank Detections message that will be populated and published at the end of this frame's iteration.
 
         for (sl::ObjectData& obj : objects.object_list) { // Iterate over every cone the ZED 3D tracker is currently tracking.
-            // Guard 1 — tracking state: only accept cones the ZED is physically seeing right now.
-            // SEARCHING means the cone has disappeared from view and its position is a linear
-            // extrapolation based on its last known velocity — this guess diverges rapidly when
-            // the car turns, producing ghost cones that can appear mid-track and cause the planner
-            // to swerve violently to avoid an obstacle that doesn't exist.
-            // OFF means the tracker has given up entirely. Both states must be rejected here.
-            if (obj.tracking_state != sl::OBJECT_TRACKING_STATE::OK) continue;
+            // Guard 1 — tracking state: filter based on whether the car is moving.
+            // When moving: enforce OK-only. SEARCHING means the ZED has lost sight of the cone
+            // and is linearly extrapolating its position from last known velocity — this diverges
+            // rapidly during a turn, producing ghost cones that can cause the planner to swerve.
+            // When stationary: allow OK and SEARCHING. With no camera motion the ZED EKF never
+            // promotes new detections from SEARCHING to OK, so strict filtering silences all
+            // output. OFF is always rejected in both modes (tracker has fully given up).
+            if (is_moving) {
+                if (obj.tracking_state != sl::OBJECT_TRACKING_STATE::OK) continue;
+            } else {
+                if (obj.tracking_state == sl::OBJECT_TRACKING_STATE::OFF) continue;
+            }
 
             geometry_msgs::msg::Point p;
             p.x = obj.position[0] / 1000.0; // Convert X position from millimeters to meters.
@@ -412,6 +429,13 @@ void ZedLaunchNode::cone_detection_loop()
         if (detectionsMsg.yellow.size() > 0 && detectionsMsg.blue.size() > 0) { // Only publish if we can see at least one cone on each side of the track. A message with only one boundary color would give the planner an incomplete and potentially dangerous picture.
             cone_detection_publisher->publish(detectionsMsg); // Publish the fully populated Detections message (3D cone positions + car pose) to the ROS topic for the SLAM and path planning nodes to consume.
         }
+
+        // Update the motion flag for the next frame. cam_w_pose.twist[0] and [1] are the
+        // camera's linear velocity in m/s along X and Y, populated by zed.getPosition() above.
+        // 0.1 m/s (~0.36 km/h) is effectively zero — the car is never this slow while cornering.
+        float vx = cam_w_pose.twist[0];
+        float vy = cam_w_pose.twist[1];
+        is_moving = (std::sqrt(vx * vx + vy * vy) > 0.1f);
     } // lock_guard released here — mtx is unlocked automatically at end of each loop iteration.
 
     /*
