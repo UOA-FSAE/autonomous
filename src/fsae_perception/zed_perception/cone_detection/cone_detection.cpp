@@ -273,6 +273,7 @@ void ZedLaunchNode::cone_detection_loop()
     returns a different error code, the condition becomes false, and we fall through to the cleanup code below.
     */
     while (zed.grab() == sl::ERROR_CODE::SUCCESS) {
+        std::cout << "[DEBUG CP1] Frame grabbed. is_moving=" << is_moving << std::endl;
 
         /*
         Retrieve the raw color image from the left camera lens. The ZED is actually a stereo camera with two
@@ -291,6 +292,7 @@ void ZedLaunchNode::cone_detection_loop()
         the four corner coordinates of the box around the cone.
         */
         auto detections = detector.run(left_sl, display_resolution.height, display_resolution.width, CONF_THRESH); // Run the YOLO model on the current frame. CONF_THRESH silently discards any detection where the model is less than 80% confident, before they even reach us.
+        std::cout << "[DEBUG CP2] YOLO detections: " << detections.size() << std::endl;
 
         /*
         Translate YOLO's output into the format the ZED SDK expects. The ZED has its own ingestion pipeline
@@ -321,6 +323,7 @@ void ZedLaunchNode::cone_detection_loop()
         */
         zed.ingestCustomBoxObjects(objects_in); // Hand all translated 2D detections to the ZED SDK to begin depth fusion and 3D tracking.
         zed.retrieveObjects(objects, objectTracker_parameters_rt); // Pull the ZED's fused output: the same cones now enriched with 3D world positions, persistent IDs, and velocity estimates.
+        std::cout << "[DEBUG CP3] ZED objects: " << objects.object_list.size() << std::endl;
 
         /*
         Optional visualisation: if the visualisation flag was set at node startup, we draw all the bounding
@@ -350,6 +353,12 @@ void ZedLaunchNode::cone_detection_loop()
         fsae_interfaces::msg::Detections detectionsMsg; // Create a blank Detections message that will be populated and published at the end of this frame's iteration.
 
         for (sl::ObjectData& obj : objects.object_list) { // Iterate over every cone the ZED 3D tracker is currently tracking.
+            std::cout << "[DEBUG CP4] obj id=" << obj.id
+                      << " state=" << (int)obj.tracking_state
+                      << " conf=" << obj.confidence
+                      << " label=" << obj.raw_label
+                      << " pos=(" << obj.position[0]/1000.0f << "," << obj.position[1]/1000.0f << ")"
+                      << std::endl;
             // Guard 1 — tracking state: filter based on whether the car is moving.
             // When moving: enforce OK-only. SEARCHING means the ZED has lost sight of the cone
             // and is linearly extrapolating its position from last known velocity — this diverges
@@ -426,6 +435,9 @@ void ZedLaunchNode::cone_detection_loop()
 
         detectionsMsg.car_pose.orientation.w = yaw; // Store the extracted yaw angle in orientation.w. We repurpose this single float field as a container since we only need one angle, not a full quaternion, in the downstream planning code.
 
+        std::cout << "[DEBUG CP5] blue=" << detectionsMsg.blue.size()
+                  << " yellow=" << detectionsMsg.yellow.size()
+                  << " orange=" << detectionsMsg.big_orange.size() << std::endl;
         if (detectionsMsg.yellow.size() > 0 && detectionsMsg.blue.size() > 0) { // Only publish if we can see at least one cone on each side of the track. A message with only one boundary color would give the planner an incomplete and potentially dangerous picture.
             cone_detection_publisher->publish(detectionsMsg); // Publish the fully populated Detections message (3D cone positions + car pose) to the ROS topic for the SLAM and path planning nodes to consume.
         }
@@ -436,6 +448,9 @@ void ZedLaunchNode::cone_detection_loop()
         float vx = cam_w_pose.twist[0];
         float vy = cam_w_pose.twist[1];
         is_moving = (std::sqrt(vx * vx + vy * vy) > 0.1f);
+        std::cout << "[DEBUG CP6] twist vx=" << vx << " vy=" << vy
+                  << " speed=" << std::sqrt(vx*vx + vy*vy)
+                  << " -> is_moving=" << is_moving << std::endl;
     } // lock_guard released here — mtx is unlocked automatically at end of each loop iteration.
 
     /*
