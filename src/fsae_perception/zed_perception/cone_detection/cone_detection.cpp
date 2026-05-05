@@ -250,8 +250,7 @@ void ZedLaunchNode::cone_detection_loop()
     */
     auto display_resolution = zed.getCameraInformation().camera_configuration.resolution; // The camera's native display resolution (uncapped) - used to run YOLO at the highest quality for the visualisation overlay.
     sl::Mat left_sl; // An empty ZED image buffer. Every iteration of the loop, zed.retrieveImage() will overwrite this with the newest frame.
-    sl::ObjectDetectionRuntimeParameters objectTracker_parameters_rt;
-    objectTracker_parameters_rt.detection_confidence_threshold = 20; // Set below our lowest tiered filter threshold (ZED_CONF_FAR = 25) to guarantee that the SDK's own pre-filter never silently drops cones before our distance-tiered logic runs. The SDK default is 35, which would already discard anything our far-zone tier was meant to evaluate.
+    sl::ObjectDetectionRuntimeParameters objectTracker_parameters_rt; // Runtime parameters for the ZED's built-in 3D object tracker. We use SDK defaults and do not override any settings.
     sl::Objects objects; // The output container for the ZED's sensor fusion results. After retrieveObjects(), this holds every tracked cone's 3D position, velocity, and persistent ID.
 
     /*
@@ -265,29 +264,6 @@ void ZedLaunchNode::cone_detection_loop()
                               silence all output during bench/stationary testing.
     */
     bool is_moving = false; // Conservative default: treat as stationary until first velocity reading.
-
-    /*
-    Persistent UUID table for cross-frame detection association. When YOLO detects the same physical
-    cone in consecutive frames, we reuse its UUID so the ZED EKF receives a strong, consistent hint
-    rather than treating it as a brand-new object every frame. Without this, the EKF falls back to
-    pure spatial proximity for re-association, which introduces unnecessary noise when two nearby cones
-    produce similarly-scored detections.
-
-    Matching is done by IoU overlap of the 2D bounding boxes between the current and previous frame.
-    An IoU >= 0.3 is treated as the same cone; anything below that gets a fresh UUID.
-    */
-    struct PrevDetection { BBox box; sl::String id; };
-    std::vector<PrevDetection> prev_detections;
-
-    auto box_iou = [](const BBox& a, const BBox& b) -> float {
-        float ix1 = std::max(a.x1, b.x1), iy1 = std::max(a.y1, b.y1);
-        float ix2 = std::min(a.x2, b.x2), iy2 = std::min(a.y2, b.y2);
-        float inter = std::max(0.f, ix2 - ix1) * std::max(0.f, iy2 - iy1);
-        if (inter == 0.f) return 0.f;
-        float area_a = (a.x2 - a.x1) * (a.y2 - a.y1);
-        float area_b = (b.x2 - b.x1) * (b.y2 - b.y1);
-        return inter / (area_a + area_b - inter);
-    };
 
     /*
     The main perception loop. zed.grab() is a blocking call - it pauses execution and waits until the camera
@@ -324,30 +300,16 @@ void ZedLaunchNode::cone_detection_loop()
         on the ground plane or in full 3D space. We collect all the translated detections into the
         objects_in vector, ready to feed into the ZED.
         */
-        std::vector<sl::CustomBoxObjectData> objects_in;
-        std::vector<PrevDetection> curr_detections; // Builds this frame's detection list for use as prev_detections next frame.
-        for (auto &it : detections) {
-            sl::CustomBoxObjectData tmp;
-
-            // Reuse the UUID from the previous frame's best IoU match (>= 0.3) so the ZED EKF
-            // receives a consistent ID hint. If no match is found, generate a fresh UUID for
-            // this new cone. UUIDs are matched greedily: the highest-IoU previous detection wins.
-            sl::String matched_id;
-            float best_iou = 0.3f;
-            for (auto &prev : prev_detections) {
-                float score = box_iou(it.box, prev.box);
-                if (score > best_iou) { best_iou = score; matched_id = prev.id; }
-            }
-            tmp.unique_object_id = matched_id.empty() ? sl::generate_unique_id() : matched_id;
-            curr_detections.push_back({it.box, tmp.unique_object_id});
-
+        std::vector<sl::CustomBoxObjectData> objects_in; // An empty list that will hold all translated detections for this frame, formatted for the ZED SDK.
+        for (auto &it : detections) { // Loop over every bounding box that YOLO returned for this frame.
+            sl::CustomBoxObjectData tmp; // Create a blank ZED detection container for this specific cone.
+            tmp.unique_object_id = sl::generate_unique_id(); // Assign a freshly generated UUID to this raw detection. The ZED tracker uses this to correlate detections across frames and maintain persistent cone identities.
             tmp.probability = it.prob; // Pass the YOLO confidence score to the ZED so it can weigh how reliable this detection is during sensor fusion.
             tmp.label = (int) it.label; // Cast the YOLO class label (e.g., 0 for blue, 4 for yellow) to an integer as the ZED SDK requires.
             tmp.bounding_box_2d = cvt(it.box); // Convert YOLO's 2-corner box format (top-left + bottom-right) into the ZED's required 4-corner clockwise format using our cvt() helper.
             tmp.is_grounded = true; // All classes are cones on a flat race track, so every detection should be anchored to the ground plane for accurate depth estimation.
-            objects_in.push_back(tmp);
+            objects_in.push_back(tmp); // Add the fully populated detection to our list.
         }
-        prev_detections = std::move(curr_detections); // Swap in this frame's detections for matching next frame.
 
         /*
         Sensor fusion: hand the 2D detections to the ZED and get back the 3D results. This two-step process
