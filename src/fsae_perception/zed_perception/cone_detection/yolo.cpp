@@ -211,14 +211,15 @@ Yolo::~Yolo() {
         Free GPU resources in the correct order - CUDA stream first, then the GPU memory buffers, 
         then the TensorRT objects. TensorRT objects must be destroyed before the runtime that 
         created them, to avoid dangling internal references.
+        TensorRT 10 uses RAII - smart pointers handle cleanup automatically via delete.
         */
         cudaStreamDestroy(stream); // Destroy the CUDA stream. Any pending async operations are cancelled.
         CUDA_CHECK(cudaFree(d_input)); // Release the GPU VRAM allocated for the input tensor.
         CUDA_CHECK(cudaFree(d_output)); // Release the GPU VRAM allocated for the output tensor.
         // Destroy the engine
-        context->destroy(); // Destroy the execution context (the per-inference state machine).
-        engine->destroy(); // Destroy the compiled engine (the weight-loaded GPU graph).
-        runtime->destroy(); // Destroy the TensorRT runtime (the deserialization factory).
+        delete context; // Destroy the execution context (the per-inference state machine).
+        delete engine; // Destroy the compiled engine (the weight-loaded GPU graph).
+        delete runtime; // Destroy the TensorRT runtime (the deserialization factory).
 
         // Free the CPU-side staging buffers that were allocated with new[] in init().
         delete[] h_input;
@@ -292,7 +293,6 @@ int Yolo::build_engine(std::string onnx_path, std::string engine_path, OptimDim 
             profile->setDimensions(dyn_dim_profile.tensor_name.c_str(), OptProfileSelector::kMAX, dyn_dim_profile.size); // Maximum allowed input size. Same as kMIN and kOPT since we don't support variable resolution.
 
             config->addOptimizationProfile(profile); // Register the profile with the builder config.
-            builder->setMaxBatchSize(1); // Enforce that the engine only ever processes one frame at a time.
         }
 
         auto parser = nvonnxparser::createParser(*network, gLogger); // Create the ONNX parser. It will read the raw .onnx file bytes and fill the `network` object with all the layers, weights, and connections.
@@ -326,16 +326,15 @@ int Yolo::build_engine(std::string onnx_path, std::string engine_path, OptimDim 
         (e.g., Conv+BN+ReLU become a single kernel), selects the fastest GPU kernels 
         for our specific hardware, and produces an ICudaEngine object ready for inference.
         This step can take several minutes on first run.
+        TensorRT 10: Use buildSerializedNetwork instead of buildEngineWithConfig.
         */
-        engine = builder->buildEngineWithConfig(*network, *config);
+        IHostMemory* serialized = builder->buildSerializedNetwork(*network, *config);
+        if (!serialized) return 1; // If compilation failed (e.g., unsupported ONNX op), bail out.
 
         onnx_file_content.clear(); // Free the ONNX file bytes from RAM - they are no longer needed now that the engine is built.
 
-        // write plan file if it is specified        
-        if (engine == nullptr) return 1; // If engine compilation failed (e.g., unsupported ONNX op), bail out.
-        IHostMemory* ptr = engine->serialize(); // Serialize the in-memory engine into a flat binary blob suitable for writing to disk.
-        assert(ptr);
-        if (ptr == nullptr) return 1;
+        // write plan file if it is specified
+        IHostMemory* ptr = serialized; // TensorRT 10 returns serialized network directly.
 
         /*
         Write the serialized engine binary to the .engine file path. This is the file 
@@ -347,12 +346,12 @@ int Yolo::build_engine(std::string onnx_path, std::string engine_path, OptimDim 
         fclose(fp);
 
         // Clean up all TensorRT build objects. The engine was saved to disk and is no longer needed in memory.
-        parser->destroy();
-        network->destroy();
-        config->destroy();
-        builder->destroy();
-
-        engine->destroy(); // Destroy the in-memory engine. Next time the program runs, init() will reload it from the .engine file on disk.
+        // TensorRT 10: Use delete instead of ->destroy()
+        delete parser;
+        delete network;
+        delete config;
+        delete builder;
+        delete serialized;
 
         return 0;
     } else return 1; // onnx_file_content was empty - the file could not be read.
@@ -406,32 +405,38 @@ int Yolo::init(std::string engine_name) {
     if (context == nullptr) return 1;
 
     delete[] trtModelStream; // The engine is now fully resident in GPU memory; the CPU-side byte array is no longer needed.
-    if (engine->getNbBindings() != 2) return 1; // Sanity check: all YOLO models should have exactly 2 bindings - one input tensor and one output tensor.
-
 
     /*
-    Inspect each binding (tensor) in the loaded engine to extract the model's input/output 
-    dimensions. TensorRT "bindings" are its name for the data ports of the neural network. 
-    We identify whether each binding is the input or output and read off its geometry 
+    Inspect each tensor in the loaded engine to extract the model's input/output 
+    dimensions. TensorRT 10 uses the tensor name API instead of binding indices.
+    We identify whether each tensor is the input or output and read off its geometry 
     (height, width, number of anchors, number of classes). We also use the output geometry 
     to auto-detect which YOLO generation format this engine was compiled from.
     */
-    const int bindings = engine->getNbBindings();
-    for (int i = 0; i < bindings; i++) {
-        if (engine->bindingIsInput(i)) {
-            // This binding is the input tensor (the camera image going IN to the network).
-            input_binding_name = engine->getBindingName(i); // Store the tensor name (typically "images") for future reference.
-            Dims bind_dim = engine->getBindingDimensions(i); // Query the tensor's shape: [batch, channels, height, width].
+    // TensorRT 10 tensor name API
+    int32_t num_io = engine->getNbIOTensors();
+    if (num_io != 2) return 1; // Sanity check: all YOLO models should have exactly 2 IO tensors - one input and one output.
+
+    inputIndex = 0;
+    outputIndex = 1;
+
+    for (int i = 0; i < num_io; i++) {
+        const char* name = engine->getIOTensorName(i);
+        nvinfer1::TensorIOMode mode = engine->getTensorIOMode(name);
+        nvinfer1::Dims bind_dim = engine->getTensorShape(name);
+
+        if (mode == nvinfer1::TensorIOMode::kINPUT) {
+            // This tensor is the input tensor (the camera image going IN to the network).
+            input_binding_name = name; // Store the tensor name (typically "images") for future reference.
             input_width = bind_dim.d[3]; // d[3] = width (4th dimension in [N, C, H, W] ordering).
             input_height = bind_dim.d[2]; // d[2] = height (3rd dimension).
-            inputIndex = i; // Save the binding index for use in the run() buffer pointer array.
+            inputIndex = i; // Save the tensor index.
             std::cout << "Inference size : " << input_height << "x" << input_width << std::endl;
-        }//if (engine->getTensorIOMode(engine->getBindingName(i)) == TensorIOMode::kOUTPUT) 
-        else {
-            // This binding is the output tensor (the raw detection data coming OUT of the network).
-            output_name = engine->getBindingName(i);
-            outputIndex = i; // Save the binding index for use in the run() buffer pointer array.
-            Dims bind_dim = engine->getBindingDimensions(i);
+        } else {
+            // This tensor is the output tensor (the raw detection data coming OUT of the network).
+            output_name = name;
+            outputIndex = i; // Save the tensor index.
+            Dims bind_dim = engine->getTensorShape(name);
             size_t batch = bind_dim.d[0];
             if (batch > batch_size) {
                 std::cout << "batch > 1 not supported" << std::endl;
@@ -559,10 +564,10 @@ std::vector<BBoxInfo> Yolo::run(sl::Mat left_sl, int orig_image_h, int orig_imag
     */
     CUDA_CHECK(cudaMemcpyAsync(d_input, h_input, batch_size * 3 * frame_s * sizeof (float), cudaMemcpyHostToDevice, stream)); // Async upload: copy the preprocessed float tensor from CPU RAM to GPU VRAM.
 
-    std::vector<void*> d_buffers_nvinfer(2); // TensorRT's enqueueV2 requires an array of void pointers, one per binding, pointing to the GPU buffers.
-    d_buffers_nvinfer[inputIndex] = d_input; // Wire the GPU input buffer pointer to the correct binding slot.
-    d_buffers_nvinfer[outputIndex] = d_output; // Wire the GPU output buffer pointer to the correct binding slot.
-    context->enqueueV2(&d_buffers_nvinfer[0], stream, nullptr); // Queue the neural network forward pass. TensorRT reads from d_input and writes to d_output asynchronously on the CUDA stream.
+    // TensorRT 10: Use setTensorAddress and enqueueV3 instead of enqueueV2
+    context->setTensorAddress(input_binding_name.c_str(), d_input); // Set the GPU input buffer pointer.
+    context->setTensorAddress(output_name.c_str(), d_output); // Set the GPU output buffer pointer.
+    context->enqueueV3(stream); // Queue the neural network forward pass. TensorRT reads from d_input and writes to d_output asynchronously on the CUDA stream.
 
     CUDA_CHECK(cudaMemcpyAsync(h_output, d_output, batch_size * output_size * sizeof (float), cudaMemcpyDeviceToHost, stream)); // Async download: queue the copy of TensorRT's raw output from GPU VRAM back to CPU RAM.
     cudaStreamSynchronize(stream); // Block the CPU here until all three async operations above have completed. Only after this call is h_output safe to read.

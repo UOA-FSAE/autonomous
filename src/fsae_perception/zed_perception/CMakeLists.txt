@@ -21,7 +21,8 @@ ENDIF()
 
 #############################################
 # Dependencies
-find_package(ZED 4 REQUIRED)
+set(ZED_DIR /usr/local/zed)
+find_package(ZED 5 REQUIRED)
 find_package(OpenCV 4 REQUIRED)
 find_package(GLUT REQUIRED)
 find_package(GLEW REQUIRED)
