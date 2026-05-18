@@ -172,6 +172,7 @@ public:
 
     // Runs a full inference cycle on a single camera frame and returns a list of detected bounding boxes. This is called every frame inside cone_detection_loop().
     std::vector<BBoxInfo> run(sl::Mat left_sl, int orig_image_h, int orig_image_w, float thres);
+    std::vector<BBoxInfo> run(const cv::Mat &image_bgr, int orig_image_h, int orig_image_w, float thres);
 
     // Returns the resolution the neural network was compiled to accept (e.g., 640x640). Used externally to configure the ZED camera stream size to match.
     sl::Resolution getInferenceSize() {

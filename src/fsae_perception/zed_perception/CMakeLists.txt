@@ -36,6 +36,7 @@ find_package(fsae_interfaces REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 if(BUILD_TESTING)
@@ -52,6 +53,8 @@ include_directories(${GLUT_INCLUDE_DIR})
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${cv_bridge_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/cone_detection)
 
 link_directories(${ZED_LIBRARY_DIR})
 link_directories(${GLEW_LIBRARY_DIRS})
@@ -130,6 +133,27 @@ ament_target_dependencies(localisation_subscriber
   geometry_msgs
 )
 
+add_executable(wrapper_perception_node zed_launch/wrapper_perception.cpp cone_detection/yolo.cpp)
+ament_target_dependencies(wrapper_perception_node
+  rclcpp
+  cv_bridge
+  OpenCV
+  std_msgs
+  fsae_interfaces
+  geometry_msgs
+  sensor_msgs
+  nav_msgs
+)
+
+target_link_libraries(wrapper_perception_node
+                        ${TRT_LIBS}
+                        ${SPECIAL_OS_LIBS}
+                        ${ZED_LIBS}
+                        ${OPENGL_LIBRARIES}
+                        ${GLUT_LIBRARIES}
+                        ${GLEW_LIBRARIES}
+)
+
 ament_target_dependencies(zed_launch_node
   rclcpp
   cv_bridge
@@ -143,6 +167,7 @@ ament_target_dependencies(zed_launch_node
 
 install(TARGETS
   zed_launch_node
+  wrapper_perception_node
   cone_subscriber
   localisation_subscriber
   DESTINATION lib/zed_perception

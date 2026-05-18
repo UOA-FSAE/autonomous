@@ -512,6 +512,11 @@ The function executes four distinct stages:
   4. NMS:            Calls nonMaximumSuppression() to eliminate duplicate boxes and return the
                      final, clean detection list.
 */
+std::vector<BBoxInfo> Yolo::run(const cv::Mat &image_bgr, int orig_image_h, int orig_image_w, float thres) {
+    sl::Mat left_sl(image_bgr.rows, image_bgr.cols, sl::MAT_TYPE::U8_C3, image_bgr.data, static_cast<unsigned int>(image_bgr.step));
+    return run(left_sl, orig_image_h, orig_image_w, thres);
+}
+
 std::vector<BBoxInfo> Yolo::run(sl::Mat left_sl, int orig_image_h, int orig_image_w, float thres) {
     std::vector<BBoxInfo> binfo; // The output list. Starts empty and is populated during extraction. Returned at the end.
 
