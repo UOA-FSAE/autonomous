@@ -38,7 +38,7 @@ public:
   WrapperPerceptionNode()
   : Node("zed_wrapper_cone_detection")
   {
-    image_topic_ = this->declare_parameter<std::string>("image_topic", "/zed/zed_node/rgb/color/raw/image");
+    image_topic_ = this->declare_parameter<std::string>("image_topic", "/zed/zed_node/rgb/color/rect/image");
     pointcloud_topic_ = this->declare_parameter<std::string>("pointcloud_topic", "/zed/zed_node/point_cloud/cloud_registered");
     odom_topic_ = this->declare_parameter<std::string>("odom_topic", "/zed/zed_node/odom");
     model_name_ = this->declare_parameter<std::string>("model_name", "cone_detection_model.engine");
@@ -64,16 +64,24 @@ public:
     car_position_publisher_ = this->create_publisher<geometry_msgs::msg::Pose>("zed/car_position", 10);
     car_velocity_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("zed/car_velocity", 10);
 
+    RCLCPP_INFO(get_logger(), "Initializing YOLO model: %s", model_name_.c_str());
     if (detector_.init(model_name_) != 0) {
       RCLCPP_FATAL(get_logger(), "Failed to initialize YOLO model '%s'", model_name_.c_str());
       rclcpp::shutdown();
       return;
     }
+    RCLCPP_INFO(get_logger(), "YOLO model initialized successfully");
   }
 
 private:
   void imageCallback(const sensor_msgs::msg::Image::SharedPtr msg)
   {
+    static int frame_count = 0;
+    frame_count++;
+    if (frame_count % 30 == 0) {
+      RCLCPP_DEBUG(get_logger(), "[DEBUG] Processing frame %d, encoding: %s, size: %ux%u", frame_count, msg->encoding.c_str(), msg->width, msg->height);
+    }
+
     cv_bridge::CvImagePtr cv_ptr;
     try {
       cv_ptr = cv_bridge::toCvCopy(msg, msg->encoding);
@@ -83,14 +91,20 @@ private:
     }
 
     cv::Mat image_bgr;
-    if (msg->encoding == "rgb8") {
-      cv::cvtColor(cv_ptr->image, image_bgr, cv::COLOR_RGB2BGR);
-    } else if (msg->encoding == "rgba8") {
-      cv::cvtColor(cv_ptr->image, image_bgr, cv::COLOR_RGBA2BGR);
-    } else if (msg->encoding == "bgra8") {
-      cv::cvtColor(cv_ptr->image, image_bgr, cv::COLOR_BGRA2BGR);
+    // ZED wrapper publishes BGRA, force explicit conversion
+    if (msg->encoding == "bgra8") {
+        cv::cvtColor(cv_ptr->image, image_bgr, cv::COLOR_BGRA2BGR);
+    } else if (msg->encoding == "bgr8") {
+        image_bgr = cv_ptr->image.clone();  // Force a copy
     } else {
-      image_bgr = cv_ptr->image;
+        RCLCPP_ERROR(get_logger(), "Unexpected encoding: %s", msg->encoding.c_str());
+        return;
+    }
+
+    // Verify it's actually 3-channel BGR
+    if (image_bgr.channels() != 3) {
+        RCLCPP_ERROR(get_logger(), "Image still has %d channels after conversion!", image_bgr.channels());
+        return;
     }
 
     if (image_bgr.empty()) {
@@ -99,6 +113,9 @@ private:
     }
 
     auto detections = detector_.run(image_bgr, static_cast<int>(msg->height), static_cast<int>(msg->width), CONF_THRESH);
+    if (frame_count % 30 == 0) {
+      RCLCPP_INFO(get_logger(), "[YOLO] Frame %d: detected %lu cones", frame_count, detections.size());
+    }
     fsae_interfaces::msg::Detections detections_msg;
 
     {
@@ -145,6 +162,7 @@ private:
     }
 
     if (!detections_msg.blue.empty() || !detections_msg.yellow.empty() || !detections_msg.big_orange.empty()) {
+      RCLCPP_DEBUG(get_logger(), "Publishing detections: %lu blue, %lu yellow, %lu orange", detections_msg.blue.size(), detections_msg.yellow.size(), detections_msg.big_orange.size());
       cone_detection_publisher_->publish(detections_msg);
     }
 

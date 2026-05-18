@@ -34,7 +34,7 @@ def generate_launch_description():
 
     wrapper_image_topic_arg = DeclareLaunchArgument(
         'wrapper_image_topic',
-        default_value='/zed/zed_node/rgb/color/raw/image',
+        default_value='/zed/zed_node/rgb/color/rect/image',
         description='The wrapper image topic to subscribe to for wrapper-based perception.'
     )
 
