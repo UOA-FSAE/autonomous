@@ -74,6 +74,7 @@ set(ZED_LIBS
 # cuda
 include_directories(/usr/local/cuda/include)
 link_directories(/usr/local/cuda/lib64)
+
 # tensorrt
 # --- Detect Architecture for TensorRT/CUDA paths ---
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
@@ -149,9 +150,6 @@ target_link_libraries(wrapper_perception_node
                         ${TRT_LIBS}
                         ${SPECIAL_OS_LIBS}
                         ${ZED_LIBS}
-                        ${OPENGL_LIBRARIES}
-                        ${GLUT_LIBRARIES}
-                        ${GLEW_LIBRARIES}
 )
 
 ament_target_dependencies(zed_launch_node
@@ -175,6 +173,7 @@ install(TARGETS
 
 install(DIRECTORY
   launch
+  config
   DESTINATION share/${PROJECT_NAME}/
 )
 

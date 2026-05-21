@@ -1,0 +1,14 @@
+/**:
+  ros__parameters:
+    general:
+      grab_resolution: 'HD720'
+      grab_frame_rate: 30
+      camera_timeout_sec: 10
+      camera_max_reconnect: 10
+    depth:
+      depth_mode: 'NEURAL_LIGHT'
+      openni_depth_mode: false
+      publish_depth_map: true
+      max_depth: 25.0
+    object_detection:
+      od_enabled: false
