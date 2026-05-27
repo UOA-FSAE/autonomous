@@ -18,8 +18,12 @@
   <exec_depend>ros2launch</exec_depend>
 
   <depend>python3-numpy</depend>
-  <depend>python3-scipy</depend>
-  <depend>python3-sklearn</depend>
+  <!--
+    NOTE: SciPy/scikit-learn are intentionally NOT depended on. The Jetson's
+    system SciPy is built against NumPy 1.x but NumPy 2.x is installed, so its
+    compiled extensions fail to import. All maths is implemented in pure NumPy.
+  -->
+  <exec_depend>python3-sensor-msgs-py</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

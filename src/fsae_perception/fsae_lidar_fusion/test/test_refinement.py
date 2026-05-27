@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from fsae_lidar_fusion.refinement import build_kdtree, crop_sphere
+from fsae_lidar_fusion.refinement import crop_sphere
 
 
 def _make_cloud(points):
@@ -56,10 +56,8 @@ def test_crop_sphere_empty_cloud():
     assert cropped.shape == (0, 5)
 
 
-def test_crop_sphere_reuses_prebuilt_tree():
-    """A pre-built tree gives the same result as building on demand."""
-    seed = (0.0, 0.0, 0.0)
-    cloud = _make_cloud([(0.1, 0.0, 0.0), (2.0, 0.0, 0.0)])
-    tree = build_kdtree(cloud)
-    cropped = crop_sphere(cloud, seed, r_sphere=1.0, tree=tree)
+def test_crop_sphere_boundary_inclusive():
+    """A point exactly on the radius is kept (<= comparison)."""
+    cloud = _make_cloud([(1.0, 0.0, 0.0), (1.0001, 0.0, 0.0)])
+    cropped = crop_sphere(cloud, (0.0, 0.0, 0.0), r_sphere=1.0)
     assert cropped.shape[0] == 1
