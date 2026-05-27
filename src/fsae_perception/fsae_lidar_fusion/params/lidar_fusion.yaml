@@ -25,5 +25,7 @@
     lidar_frame: 'velodyne'
 
     # --- debug ---
-    publish_debug_markers: true   # publish seed markers in the velodyne frame for RViz
+    publish_debug_markers: true   # publish seed + crop-boundary markers for RViz
     debug_marker_topic: '/lidar_fusion/seed_markers'
+    publish_debug_cloud: true     # publish the cropped in-sphere points for RViz
+    debug_cloud_topic: '/lidar_fusion/cropped_points'
