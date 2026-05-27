@@ -1,0 +1,29 @@
+/**:
+  ros__parameters:
+    # --- Component A: refinement ---
+    r_sphere: 1.0              # m, search-sphere radius around the camera seed
+    z_offset: 0.05             # m, z-test threshold above local ground
+    ground_percentile: 0.20    # fraction of lowest points used to estimate ground
+    dbscan_eps: 0.10           # m, DBSCAN neighbourhood radius (xy)
+    min_cone_points: 3
+    max_cone_points: 25
+    max_height: 0.35           # m, max vertical extent of cone cluster
+    max_width: 0.30            # m, max lateral extent of cone cluster
+    r_cone: 0.08               # m, cone-radius correction (used only in fallback)
+    lidar_max_range: 12.0      # m, beyond this LiDAR cannot see cones
+
+    # --- Component B: fusion / timing ---
+    time_sync_tolerance_ms: 50
+    detection_max_age_ms: 200
+    enable_orphan_lidar: false
+
+    # --- topics / frames ---
+    camera_topic: 'zed/cone_detection'
+    lidar_topic: '/velodyne_points'
+    output_topic: '/cone_detection_fused'
+    base_frame: 'base_link'
+    lidar_frame: 'velodyne'
+
+    # --- debug ---
+    publish_debug_markers: true   # publish seed markers in the velodyne frame for RViz
+    debug_marker_topic: '/lidar_fusion/seed_markers'

@@ -18,6 +18,8 @@ set(msg_files
   "msg/ConeMapStamped.msg"
   "msg/ConeStamped.msg"
   "msg/Detections.msg"
+  "msg/FusedCone.msg"
+  "msg/FusedCones.msg"
   "msg/HardwareStates.msg"
   "msg/HardwareStatesStamped.msg"
   "msg/MissionStates.msg"
